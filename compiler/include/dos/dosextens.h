@@ -323,43 +323,37 @@ struct DevProc
 
 /* Standard file-handle as returned by Open() (as BPTR). Generally said, you
    should not use this structure in any way and only use library-calls to
-   access files. Note that this structure is very different to the structure
-   used in AmigaOS! Treat this structure as PRIVATE. If you want to create
-   this structure nevertheless, use AllocDosObject(). */
+   access files. Note the differences from AmigaOS - you'll run into trouble
+   if you assume that things work the same as they do there. Treat this
+   structure as PRIVATE.  If you want to create this structure nevertheless,
+   use AllocDosObject(). */
 struct FileHandle
 {
     /* The next three are used with packet-based filesystems */
-    struct Message * fh_Link;   /* exec message containing packet */
-    struct MsgPort * fh_Port;   /* packet reply port */
-    struct MsgPort * fh_Type;   /* port to send packets to */
+    struct Message  *fh_Link;   /* exec message containing packet */
+    struct MsgPort  *fh_Port;   /* packet reply port */
+    struct MsgPort  *fh_Type;   /* port to send packets to */
 
-    UBYTE * fh_Buf;
-    UBYTE * fh_Pos;
-    UBYTE * fh_End;
+    /* Pointers into the buffer for buffered I/O. These are LONGs on AmigaOS */
+    UBYTE           *fh_Buf;
+    UBYTE           *fh_Pos;
+    UBYTE           *fh_End;
 
-    /* The following four fields have different names and a different
-       function than their AmigaOS equivalents. The original names were:
-       fh_Funcs/fh_Func1, fh_Func2, fh_Func3, fh_Args/fh_Arg1 and fh_Arg2 */
-    ULONG	    fh_Size;
-    ULONG	    fh_Flags;   /* see below */
-      /* This is a pointer to a filesystem handler. See <dos/filesystems.h> for
-         more information. */
-    struct Device * fh_Device;
+    /* Size of the buffer. AROS-specific. This was LONG fh_Funcs/fh_Func1 on
+     * AmigaOS */
+    ULONG           fh_Size;
 
-    /* SDuvan: Added this and removed the #if below. This field allows us
-               to emulate packets -- specifically it makes it possible
-	       to implement the ***Pkt() functions */
-    struct FileHandle *fh_CompatibilityHack;
+    /* Flags. See FHF_ flags below. AROS-specific. This was LONG fh_Func2 on
+     * AmigaOS. */
+    ULONG           fh_Flags;
 
-      /* A private pointer to a device specific filehandle structure. See
-         <dos/filesystems.h> for more information. */
-    struct Unit   * fh_Unit;
-#if (AROS_FLAVOUR & AROS_FLAVOUR_BINCOMPAT)
-    LONG            fh_NoAROS3; /* not used by AROS */
-#endif
+    LONG            fh_Arg2;    /* unused */
+
+    LONG            fh_Arg1;    /* underlying lock from handler. BPTR to a
+                                 * struct FileLock */
+
+    LONG            fh_Arg2;    /* unused */
 };
-
-#define  fh_Arg1  fh_CompatibilityHack
 
 /* fh_Flags. The flags are AROS specific and therefore PRIVATE.. */
 #define FHF_WRITE (~0UL/2+1)
@@ -368,9 +362,21 @@ struct FileHandle
 #define FHF_LINEBUF 4
 #define FHF_NOBUF   8
 
-/* Structure of a lock. This is provided as it may be required internally by
- * packet-based filesystems, but it is not used by dos.library and the rest of
- * AROS. Lock() returns a struct FileHandle! */
+/* Structure of a lock, as returned by Lock() etc. AROS has two filesystem
+ * types available: traditional "packet" filesystems (ie a task that receives
+ * DosPacket messages) and AROS-specific "IOFS" filesystems that are Exec
+ * devices (see dos/filesystem.h).
+ *
+ * To tell what type of filesystem the lock belongs to (and from there get a
+ * handle on the device or task), check fl_Task. If its NULL, then this is a
+ * AROS IOFS filesystem, and the device and unit can be obtained from
+ * fl_Device and fl_Key, respectively.
+ *
+ * If fl_Task is not NULL, then this is a packet filesystem, and fl_Task has
+ * the handlers' message port as normal. In this case you should not try to
+ * look at fl_Device, as under binary compatibility the memory allocated to
+ * this structure may not actually be large enough for this field to be
+ * included. */
 struct FileLock
 {
     BPTR             fl_Link;   /* (struct FileLock *) Pointer to next lock. */
@@ -378,6 +384,7 @@ struct FileLock
     LONG             fl_Access;
     struct MsgPort * fl_Task;
     BPTR             fl_Volume; /* (struct DeviceList * - see below) */
+    struct Device  * fl_Device;
 };
 
 
