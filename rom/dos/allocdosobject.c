@@ -59,21 +59,10 @@
     {
     case DOS_FILEHANDLE:
 	mem = AllocMem(sizeof(struct FileHandle), MEMF_CLEAR);
+        if (mem == NULL)
+            SetIoErr(ERROR_NO_FREE_STORE);
 
-	if (mem != NULL)
-	{
-	    struct FileHandle *fh = (struct FileHandle *)mem;
-
-	    /* We set fh->fh_Arg1 to point back to 'fh' to make packet
-	       emulation possible */
-	    fh->fh_CompatibilityHack = fh;
-	}
-	else
-	{
-	    SetIoErr(ERROR_NO_FREE_STORE);
-	}
-
-	return mem;
+        return mem;
 
     case DOS_FIB:
 	mem = AllocMem(sizeof(struct FileInfoBlock), MEMF_CLEAR);
