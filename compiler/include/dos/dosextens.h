@@ -347,12 +347,12 @@ struct FileHandle
      * AmigaOS. */
     ULONG           fh_Flags;
 
-    LONG            fh_Arg2;    /* unused */
+    IPTR            fh_Func2;   /* unused */
 
-    LONG            fh_Arg1;    /* underlying lock from handler. BPTR to a
+    IPTR            fh_Arg1;    /* underlying lock from handler. BPTR to a
                                  * struct FileLock */
 
-    LONG            fh_Arg2;    /* unused */
+    IPTR            fh_Arg2;    /* unused */
 };
 
 /* fh_Flags. The flags are AROS specific and therefore PRIVATE.. */
@@ -380,12 +380,15 @@ struct FileHandle
 struct FileLock
 {
     BPTR             fl_Link;   /* (struct FileLock *) Pointer to next lock. */
-    LONG             fl_Key;
+    IPTR             fl_Key;
     LONG             fl_Access;
     struct MsgPort * fl_Task;
     BPTR             fl_Volume; /* (struct DeviceList * - see below) */
     struct Device  * fl_Device;
 };
+
+/* A define to aid readability */
+#define fl_Unit fl_Key
 
 
 /* Constants, defining of what kind a file is. These constants are used in
