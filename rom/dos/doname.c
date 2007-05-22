@@ -32,7 +32,7 @@ LONG DoName(struct IOFileSys *iofs, CONST_STRPTR name,
     struct DosList *dl;
     struct Device *device;
     struct Unit *unit;
-    struct FileHandle *fh;
+    struct FileLock *fl;
     struct Process *me = (struct Process *)FindTask(NULL);
 
         STRPTR
@@ -156,12 +156,12 @@ LONG DoName(struct IOFileSys *iofs, CONST_STRPTR name,
     	{
     	    lock = Lock(dl->dol_misc.dol_assign.dol_AssignName, SHARED_LOCK);
 
-    	    fh = (struct FileHandle *)BADDR(lock);
+    	    fl = (struct FileLock *)BADDR(lock);
     
-    	    if (fh != NULL)
+    	    if (fl != NULL)
     	    {
-        		device = fh->fh_Device;
-        		unit = fh->fh_Unit;
+        		device = fl->fl_Device;
+        		unit = fl->fl_Unit;
     	    }
     	    else
     	    {
@@ -181,9 +181,9 @@ LONG DoName(struct IOFileSys *iofs, CONST_STRPTR name,
     }
     else if (cur)
     {
-    	fh       = (struct FileHandle *)BADDR(cur);
-    	device   = fh->fh_Device;
-    	unit     = fh->fh_Unit;
+    	fl       = (struct FileLock *)BADDR(cur);
+    	device   = fl->fl_Device;
+    	unit     = fl->fl_Unit;
     }
     else
     {
@@ -192,9 +192,9 @@ LONG DoName(struct IOFileSys *iofs, CONST_STRPTR name,
     	device = DOSBase->dl_NulHandler;
     	unit = DOSBase->dl_NulLock;
         #else
-    	fh = (struct FileHandle *)BADDR(DOSBase->dl_SYSLock);
-    	device = fh->fh_Device;
-    	unit = fh->fh_Unit;
+    	fl = (struct FileHandle *)BADDR(DOSBase->dl_SYSLock);
+    	device = fl->fl_Device;
+    	unit = fl->fl_Unit;
         #endif
     }
 
@@ -214,10 +214,10 @@ LONG DoName(struct IOFileSys *iofs, CONST_STRPTR name,
     	     al && iofs->io_DosError == ERROR_OBJECT_NOT_FOUND;
     	     al = al->al_Next)
     	{
-    	    fh = BADDR(al->al_Lock);
+    	    fl = BADDR(al->al_Lock);
 
-    	    iofs->IOFS.io_Device = fh->fh_Device;
-    	    iofs->IOFS.io_Unit = fh->fh_Unit;
+    	    iofs->IOFS.io_Device = fl->fl_Device;
+    	    iofs->IOFS.io_Unit = fl->fl_Unit;
 
     	    DosDoIO(&iofs->IOFS);
     	}
