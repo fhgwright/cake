@@ -46,7 +46,7 @@
 {
     AROS_LIBFUNC_INIT
 
-    struct FIleHandle *fh;
+    struct FileHandle *fh;
 
     /* XXX add checking. lock must not be a directory, etc. */
     /* XXX with packets, this would call ACTION_FH_FROM_LOCK */
@@ -55,7 +55,7 @@
 
     fh->fh_Arg1 = lock;
 
-    return MKBADDR(fl);
+    return MKBADDR(fh);
 
     AROS_LIBFUNC_EXIT
 } /* OpenFromLock */
