@@ -62,7 +62,7 @@
 
     struct Process *pr = (struct Process *)FindTask(NULL);
     struct DosList *dl = NULL;
-    struct FileHandle *fh;
+    struct FileLock *fl;
     STRPTR volname = NULL, s1 = NULL;
     BPTR cur = NULL, lock = (BPTR)0;
 
@@ -176,8 +176,8 @@ if (volname)
 	{
 	    /* We have the lock in cur */
 /* kprintf("lock in cur\n");
-*/	    fh = BADDR(cur);
-	    dp->dvp_Port = (struct MsgPort *)fh->fh_Device;
+*/	    fl = BADDR(cur);
+	    dp->dvp_Port = (struct MsgPort *)fl->fl_Device;
 	    dp->dvp_Lock = cur;
 	    dp->dvp_Flags = 0;
 	    dp->dvp_DevNode = NULL;
@@ -224,10 +224,10 @@ if (volname)
     {
 /* kprintf("nonbinding assign\n");    
 */	lock = Lock(dl->dol_misc.dol_assign.dol_AssignName, SHARED_LOCK);
-	fh = (struct FileHandle *)BADDR(lock);
-	if( fh != NULL )
+	fl = (struct FileHandle *)BADDR(lock);
+	if( fl != NULL )
 	{
-	    dp->dvp_Port = (struct MsgPort *)fh->fh_Device;
+	    dp->dvp_Port = (struct MsgPort *)fl->fl_Device;
 	    dp->dvp_Lock = lock;
 	    dp->dvp_Flags = DVPF_UNLOCK;
 	    dp->dvp_DevNode = dl;

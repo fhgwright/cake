@@ -24,35 +24,35 @@ LONG DevName(CONST_STRPTR name, struct Device **devptr,
     STRPTR volname;
     CONST_STRPTR s1 = NULL;
     struct DosList *dl;
-    struct FileHandle *fh;
+    struct FileLock *fl;
     struct Process *me = (struct Process *)FindTask(NULL);
 
     /* If file is "PROGDIR:" or relative to current directory, just return
        device from pr_HomeDir or pr_CurrentDir. */
     if(!Strnicmp(name, "PROGDIR:", 8))
     {
-    	struct FileHandle *fh = (struct FileHandle *)BADDR(me->pr_HomeDir);
+    	struct FileLock *fl = (struct FileLock *)BADDR(me->pr_HomeDir);
 	
-	if (!fh)
+	if (!fl)
 	{
 	    *devptr = (struct Device *)0xBADC0DE;
 	    return ERROR_DEVICE_NOT_MOUNTED;
 	}
 	else
 	{
-	    *devptr = fh->fh_Device;
+	    *devptr = fl->fl_Device;
 	    return 0;
 	}
     }
     else if(*name == ':')
     {
-    	struct FileHandle *fh = (struct FileHandle *)BADDR(me->pr_CurrentDir);
+    	struct FileLock *fl = (struct FileLock *)BADDR(me->pr_CurrentDir);
 	
-	if (!fh) fh = (struct FileHandle *)BADDR(DOSBase->dl_SYSLock);
+	if (!fl) fl = (struct FileLock *)BADDR(DOSBase->dl_SYSLock);
 
-	if (fh)
+	if (fl)
 	{
-	    *devptr = fh->fh_Device;
+	    *devptr = fl->fl_Device;
 	    return 0;
  	}
 	else
@@ -88,13 +88,13 @@ LONG DevName(CONST_STRPTR name, struct Device **devptr,
        pr_CurrentDir. */
     if(volname == NULL)
     {
-    	struct FileHandle *fh = (struct FileHandle *)BADDR(me->pr_CurrentDir);
+    	struct FileLock *fl = (struct FileHandle *)BADDR(me->pr_CurrentDir);
 	
-	if (!fh) fh = (struct FileHandle *)BADDR(DOSBase->dl_SYSLock);
+	if (!fl) fl = (struct FileHandle *)BADDR(DOSBase->dl_SYSLock);
 
-	if (fh)
+	if (fl)
 	{
-	    *devptr = fh->fh_Device;
+	    *devptr = fl->fl_Device;
 	    return 0;
  	}
 	else
@@ -141,11 +141,11 @@ LONG DevName(CONST_STRPTR name, struct Device **devptr,
             BPTR lock = Lock(dl->dol_misc.dol_assign.dol_AssignName,
 			     SHARED_LOCK);
             UnLockDosList(LDF_ALL | LDF_READ);
-            fh = (struct FileHandle *)BADDR(lock);
+            fl = (struct FileLock *)BADDR(lock);
 
-            if(fh != NULL)
+            if(fl != NULL)
             {
-                *devptr = fh->fh_Device;
+                *devptr = fl->fl_Device;
                 UnLock(lock);
             }
 	    else
