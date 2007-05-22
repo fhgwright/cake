@@ -47,38 +47,6 @@ struct MyExAllData
 	give additional information in that case.
 
 *****************************************************************************/
-
-/*****************************************************************************
-
-    NAME
-#include <clib/dos_protos.h>
-
-	AROS_LH3(LONG, NameFromFH,
-
-    SYNOPSIS
-	AROS_LHA(BPTR  , fh, D1),
-	AROS_LHA(STRPTR, buffer, D2),
-	AROS_LHA(LONG  , len, D3),
-
-    LOCATION
-	struct DosLibrary *, DOSBase, 68, Dos)
-
-    FUNCTION
-	Get the full path name associated with file-handle into a
-	user supplied buffer.
-
-    INPUTS
-	fh     - File-handle to file or directory.
-	buffer - Buffer to fill. Contains a NUL terminated string if
-		 all went well.
-	length - Size of the buffer in bytes.
-
-    RESULT
-	!=0 if all went well, 0 in case of an error. IoErr() will
-	give additional information in that case.
-
-*****************************************************************************/
-/*AROS alias NameFromFH NameFromLock */
 {
     AROS_LIBFUNC_INIT
 
@@ -88,8 +56,8 @@ struct MyExAllData
     struct ExAllData 	*ead = &stackead.ead;
     LONG    	    	 error;
 
-    /* Get pointer to filehandle */
-    struct FileHandle 	*fh = (struct FileHandle *)BADDR(DupLock(lock));
+    /* Get pointer to lock */
+    struct FileLock 	*fl = (struct FileLock *)BADDR(DupLock(lock));
 
     /* Get pointer to process structure */
     struct Process  	*me = (struct Process *)FindTask(NULL);
@@ -112,14 +80,14 @@ struct MyExAllData
     iofs->IOFS.io_Message.mn_ReplyPort	  = &me->pr_MsgPort;
     iofs->IOFS.io_Message.mn_Length	  = sizeof(struct IOFileSys);
 
-    iofs->IOFS.io_Device = (fh == NULL)
+    iofs->IOFS.io_Device = (fl == NULL)
                                 ? DOSBase->dl_NulHandler
-                                : fh->fh_Device;
+                                : fl->fl_Device;
 
     /* Construct the name from top to bottom */
     name = buffer + length;
     *--name = 0;
-    curlock = fh->fh_Unit;
+    curlock = fl->fl_Unit;
     
     /* Loop over path */
     do
@@ -235,7 +203,7 @@ struct MyExAllData
         while (c);
     }
      
-    UnLock((BPTR)MKBADDR(fh));
+    UnLock((BPTR)MKBADDR(fl));
 
     /* All done. */
 
