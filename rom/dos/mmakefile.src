@@ -35,7 +35,7 @@ FUNCTIONS := abortpkt addbuffers adddosentry addpart addprocess addsegment \
 	     setcurrentdirname setfiledate setfilesize setfilesystask \
 	     setioerr setmode setowner setprogramdir setprogramname \
 	     setprompt setprotection setvar setvbuf splitname startnotify \
-	     strtodate strtolong systemtaglist ungetc unloadseg \
+	     strtodate strtolong systemtaglist ungetc unloadseg unlock \
 	     unlockdoslist unlockrecord unlockrecords vfprintf vfwritef \
 	     vprintf waitforchar waitpkt write writechars
 
