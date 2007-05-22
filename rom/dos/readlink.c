@@ -58,12 +58,12 @@
     AROS_LIBFUNC_INIT
 
     struct IOFileSys iofs;
-    struct FileHandle *fh = BADDR(lock);	
+    struct FileLock *fl = (struct FileLock *) BADDR(lock);
     ULONG error = 0;
 
     InitIOFS(&iofs, FSA_OPEN, DOSBase);
-    iofs.IOFS.io_Device	= fh->fh_Device;
-    iofs.IOFS.io_Unit   = fh->fh_Unit;
+    iofs.IOFS.io_Device	= ((struct FileLock *) fh->fh_Arg1)->fh_Device;
+    iofs.IOFS.io_Unit   = ((struct FileLock *) fh->fh_Arg1)->fh_Unit;
 
     iofs.io_Union.io_OPEN.io_FileMode = FMF_READ;
 
