@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
     iofs.IOFS.io_Message.mn_Length = sizeof(struct IOFileSys);
 
     iofs.IOFS.io_Device = ((struct FileLock *) ((struct FileHandle *) BADDR(fh))->fh_Arg1)->fl_Device;
-    iofs.IOFS.io_Unit = ((struct FileLock *) ((struct FileHandle *) BADDR(fh))->fh_Arg1)->fh_Unit;
+    iofs.IOFS.io_Unit = ((struct FileLock *) ((struct FileHandle *) BADDR(fh))->fh_Arg1)->fl_Unit;
     iofs.IOFS.io_Command = FSA_CONSOLE_MODE;
     iofs.IOFS.io_Flags = 0;
 
