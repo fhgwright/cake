@@ -69,6 +69,10 @@
 struct DosPacket *internal_WaitPkt(struct MsgPort *msgPort,
 				   struct DosLibrary *DOSBase)
 {
+    /* XXX this whole function is broken and needs to be reimplemented */
+    return NULL;
+
+#if 0
     struct Message   *msg;
     struct DosPacket *packet;
     struct Process   *me = (struct Process *)FindTask(NULL);
@@ -298,4 +302,5 @@ struct DosPacket *internal_WaitPkt(struct MsgPort *msgPort,
     }
 
     return packet;
+#endif
 }

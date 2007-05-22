@@ -80,6 +80,12 @@ LONG DoNameAsynch(struct IOFileSys *iofs, STRPTR name,
 {
     AROS_LIBFUNC_INIT
 
+    /* XXX this whole function is broken and needs to be reimplemented */
+    SetIoErr(ERROR_NOT_IMPLEMENTED);
+    return;
+
+#if 0
+
     /*
      * Trying to emulate the packet system by rewriting the
      * packets to IO Requests. Sometimes there are too many
@@ -925,4 +931,5 @@ LONG DoNameAsynch(struct IOFileSys *iofs, STRPTR name,
     }
 
     return 0;
+#endif
 }
