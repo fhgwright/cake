@@ -42,8 +42,8 @@
     AROS_LIBFUNC_INIT
     
     struct IOFileSys iofs;
-    struct FileHandle *fl1;
-    struct FileHandle *fl2;
+    struct FileLock *fl1;
+    struct FileLock *fl2;
 
     if(!SameDevice(lock1, lock2))
     	return LOCK_DIFFERENT;
