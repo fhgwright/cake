@@ -66,7 +66,7 @@
     iofs.IOFS.io_Device = (struct Device *) dvp->dvp_Port;
 
     if (dvp->dvp_Lock != NULL)
-        iofs.IOFS.io_Unit = ((struct FileHandle *) BADDR(dvp->dvp_Lock))->fh_Unit;
+        iofs.IOFS.io_Unit = ((struct FileLock *) BADDR(dvp->dvp_Lock))->fl_Unit;
     else
         iofs.IOFS.io_Unit = dvp->dvp_DevNode->dol_Ext.dol_AROS.dol_Unit;
 
