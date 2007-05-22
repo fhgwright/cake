@@ -68,8 +68,10 @@
     InitIOFS(&iofs, FSA_CREATE_DIR, DOSBase);
     iofs.io_Union.io_CREATE_DIR.io_Protection = 0;
 
-    if(DoName(&iofs, name, DOSBase) != 0)
+    if(DoName(&iofs, name, DOSBase) != 0) {
+        FreeMem(fl, sizeof(struct FileLock));
         return NULL;
+    }
 
     fl->fl_Unit   = iofs.IOFS.io_Unit;
     fl->fl_Device = iofs.IOFS.io_Device;
