@@ -61,6 +61,7 @@ AROS_UFH3(void, boot,
     struct emulbase *emulbase;
     struct TagItem fhtags[]= { { TAG_END, 0 } };
     struct FileHandle *fh_stdin, *fh_stdout;
+    struct FileLock *fl;
 
     DOSBase = (struct DosLibrary *)OpenLibrary("dos.library", 0);
     if( DOSBase == NULL )
@@ -92,10 +93,15 @@ AROS_UFH3(void, boot,
     	Alert(AT_DeadEnd | AN_BootStrap | AG_NoMemory);
     }
 
-    fh_stdin->fh_Device  =&emulbase->eb_device;
-    fh_stdin->fh_Unit    =emulbase->eb_stdin;
-    fh_stdout->fh_Device =&emulbase->eb_device;
-    fh_stdout->fh_Unit   =emulbase->eb_stdout;
+    fl = AllocMem(sizeof(struct FileLock), MEMF_CLEAR);
+    fl->fl_Device = &emulbase->eb_device;
+    fl->fl_Unit   = emulbase->eb_stdin;
+    fh_stdin->fh_Arg1 = MKBADDR(fl);
+
+    fl = AllocMem(sizeof(struct FileLock), MEMF_CLEAR);
+    fl->fl_Device = &emulbase->eb_device;
+    fl->fl_Unit   = emulbase->eb_stdout;
+    fh_stdout->fh_Arg1 = MKBADDR(fl);
 
     if(Input())
     	Close(Input());
