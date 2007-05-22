@@ -41,16 +41,16 @@
 {
     AROS_LIBFUNC_INIT
     
-    struct FileHandle *fh1, *fh2;
+    struct FileLock *fl1, *fl2;
     
     if (lock1 == NULL || lock2 == NULL)
     	return DOSFALSE;
 	
-    fh1 = (struct FileHandle *)BADDR(lock1);
-    fh2 = (struct FileHandle *)BADDR(lock2);
+    fl1 = (struct FileLock *)BADDR(lock1);
+    fl2 = (struct FileLock *)BADDR(lock2);
 
-#warning Is this check good enough ?
-    if (fh1->fh_Device == fh2->fh_Device)
+    /* XXX is this check good enough? */
+    if (fl1->fl_Device == fl2->fl_Device)
     	return DOSTRUE;
     
 
