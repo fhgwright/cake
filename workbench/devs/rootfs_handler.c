@@ -386,13 +386,13 @@ static struct filehandle * getFileHandle_1(struct rootfsbase * rootfsbase, struc
 
 	/* send the request to the proprer device */
 	{
-	    struct FileHandle *fh = (struct FileHandle *)BADDR(lock);
+	    struct FileHandle *fl = (struct FileLock *)BADDR(lock);
 	    STRPTR oldfilename = iofs->io_Union.io_OPEN_FILE.io_Filename;
 	    struct Unit   *unit;
 
             iofs->io_Union.io_OPEN_FILE.io_Filename = "";
 
-	    redirect(rootfsbase, iofs, fh->fh_Device, fh->fh_Unit, &unit);
+	    redirect(rootfsbase, iofs, fl->fl_Device, fl->fl_Unit, &unit);
 
     	    iofs->io_Union.io_OPEN_FILE.io_Filename = oldfilename;
 
@@ -414,7 +414,7 @@ static struct filehandle * getFileHandle_1(struct rootfsbase * rootfsbase, struc
 		{
 		    struct IOFileSys dummy;
 		    dummy.IOFS.io_Command = FSA_CLOSE;
-		    redirect(rootfsbase, &dummy, fh->fh_Device, fh->fh_Unit, NULL);
+		    redirect(rootfsbase, &dummy, fl->fl_Device, fl->fl_Unit, NULL);
 		}
 	    }
 
@@ -435,9 +435,9 @@ static struct filehandle * getFileHandle_1(struct rootfsbase * rootfsbase, struc
 
     if (iofs->IOFS.io_Command == FSA_OPEN)
     {
-	struct FileHandle *fh = (struct FileHandle *)BADDR(curdir->lock);
-	struct Device *device = fh?fh->fh_Device:NULL;
-	struct Unit   *unit   = fh?fh->fh_Unit  :NULL;
+	struct FileLock *fl = (struct FileLock *)BADDR(curdir->lock);
+	struct Device *device = fl?fl->fl_Device:NULL;
+	struct Unit   *unit   = fl?fl->fl_Unit  :NULL;
 
         handle = allocFHandle(rootfsbase, curdir, device, unit);
 
