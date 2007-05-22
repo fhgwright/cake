@@ -54,8 +54,8 @@
 
     BOOL success = DOSTRUE;
 
-    struct DosList    *dl, *newdl = NULL;
-    struct FileHandle *fh = (struct FileHandle *)BADDR(lock);
+    struct DosList  *dl, *newdl = NULL;
+    struct FileLock *fl = (struct FileLock *)BADDR(lock);
 
     if (lock != NULL)
     {
@@ -66,8 +66,8 @@
 	    return DOSFALSE;
 	}
 
-	newdl->dol_Ext.dol_AROS.dol_Unit   = fh->fh_Unit;
-	newdl->dol_Ext.dol_AROS.dol_Device = fh->fh_Device;
+	newdl->dol_Ext.dol_AROS.dol_Unit   = fl->fl_Unit;
+	newdl->dol_Ext.dol_AROS.dol_Device = fl->fl_Device;
 	newdl->dol_Lock                    = lock;
     }
 
