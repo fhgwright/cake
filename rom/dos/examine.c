@@ -65,7 +65,7 @@
     ULONG i;
 
     /* Get pointer to filehandle */
-    struct FileHandle *fl = (struct FileLock *)BADDR(lock);
+    struct FileLock *fl = (struct FileLock *)BADDR(lock);
 
     /* Get pointer to I/O request. Use stackspace for now. */
     struct IOFileSys iofs;

@@ -65,7 +65,7 @@
 
     if (((struct InternalExAllControl *)control)->fib == NULL)
     {
-        /* Get pointer to filehandle */
+        /* Get pointer to lock */
         struct FileLock *fl = (struct FileLock *)BADDR(lock);
 
         /* Get pointer to I/O request. Use stackspace for now. */
