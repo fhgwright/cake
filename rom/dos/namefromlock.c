@@ -65,7 +65,7 @@ struct MyExAllData
     /* Get pointer to I/O request. Use stackspace for now. */
     struct IOFileSys 	 io, *iofs = &io;
 
-    if (fh == 0)
+    if (fl == 0)
 	return DOSFALSE;
 	
     if (length < 1)
