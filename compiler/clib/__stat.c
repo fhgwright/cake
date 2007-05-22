@@ -41,7 +41,7 @@ int __stat(BPTR lock, struct stat *sb)
         return -1;
     }
 
-    sb->st_dev     = (dev_t)((struct FileHandle *)lock)->fh_Device;
+    sb->st_dev     = (dev_t)((struct FileLock *)BADDR(lock))->fl_Device;
     sb->st_ino     = (ino_t)fib->fib_DiskKey;
     sb->st_size    = (off_t)fib->fib_Size;
     sb->st_blocks  = (long)fib->fib_NumBlocks;
