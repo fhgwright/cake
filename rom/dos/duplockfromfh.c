@@ -1,6 +1,6 @@
 /*
     Copyright © 1995-2007, The AROS Development Team. All rights reserved.
-    $Id$
+    $Id: /aros/lock/src/rom/dos/duplock.c 26332 2007-05-07T19:49:07.534739Z verhaegs  $
 
     Desc: dos.library function DupLock()
     Lang: english
@@ -13,27 +13,26 @@
     NAME */
 #include <proto/dos.h>
 
-	AROS_LH1(BPTR, DupLock,
+	AROS_LH1(BPTR, DupLockFromFH,
 
-/*  SYNOPSIS */
-	AROS_LHA(BPTR, lock, D1),
+ /* SYNOPSIS */
+	AROS_LHA(BPTR, fh, D1),
 
-/*  LOCATION */
-	struct DosLibrary *, DOSBase, 16, Dos)
+ /* LOCATION */
+	struct DosLibrary *, DOSBase, 62, Dos)
 
-/*  FUNCTION
-	Clone a lock on a file or directory. This will only work on shared
-	locks.
+ /* FUNCTION
+	Try to get a lock on the object selected by the filehandle.
 
     INPUTS
-	lock - Old lock.
+	fh - filehandle.
 
     RESULT
-	The new lock or NULL in case of an error. IoErr() will give additional
+	The new lock or 0 in case of an error. IoErr() will give additional
 	information in that case.
 
     NOTES
-	This function is identical to DupLockFromFH().
+	This function is identical to DupLock().
 
     EXAMPLE
 
@@ -47,12 +46,7 @@
 {
     AROS_LIBFUNC_INIT
 
-    BPTR old, new;
+    return DupLock(((struct FileHandle *) BADDR(fh))->fh_Arg1);
 
-    /* Use Lock() to clone the handle. cd to it first. */
-    old = CurrentDir(lock);
-    new=Lock("",SHARED_LOCK);
-    CurrentDir(old);
-    return new;
     AROS_LIBFUNC_EXIT
-} /* DupLock */
+} /* DupLockFromFH */
