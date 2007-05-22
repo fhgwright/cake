@@ -59,7 +59,7 @@
     AROS_LIBFUNC_INIT
 
     struct FileHandle *ret;
-    struct FIleLock *fl;
+    struct FileLock *fl;
     BPTR con, ast;
     LONG error;
     struct Process *me;
