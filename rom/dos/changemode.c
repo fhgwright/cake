@@ -53,54 +53,25 @@
 {
     AROS_LIBFUNC_INIT
 
-    /* Get pointer to filehandle */
-    struct FileHandle *fh = (struct FileHandle *)BADDR(object);
-
-    /* Get pointer to I/O request. Use stackspace for now. */
+    struct FileLock *fl;
     struct IOFileSys iofs;
 
-    /* Convert Open() and Lock() constants to filehandler flags. */
-    ULONG newflags, mask;
-
-    if(newmode == MODE_OLDFILE || newmode == MODE_READWRITE ||
-       newmode == ACCESS_READ)
-    {
-        newflags = 0;
-        mask     = FMF_LOCK;
-    }
-    else if(newmode == MODE_NEWFILE || newmode == ACCESS_WRITE)
-    {
-        newflags = FMF_LOCK;
-        mask     = FMF_LOCK;
-    }
+    if (type == CHANGE_FH)
+        fl = (struct FileLock *) ((struct FileHandle *) BADDR(object))->fh_Arg1;
     else
-    {
-	if (newmode & FMF_APPEND)
-	{
-	    /* See if the handler supports FSA_SEEK */
-	    if (!(fh->fh_Flags & FHF_APPEND) && Seek(MKBADDR(fh), 0, OFFSET_END) != -1)
-	    {
-		/* if so then set the proper flag in the FileHandle struct */
-		 fh->fh_Flags |= FHF_APPEND;
-	    }
-	}
-	else
-	    fh->fh_Flags &= ~FHF_APPEND;
+        fl = (struct FileLock *) BADDR(object);
 
-	newmode &= ~FMF_APPEND;
-
-	newflags = newmode;
-        mask     = 0xFFFFFFFF;
-    }
-
-    /* Prepare I/O request. */
     InitIOFS(&iofs, FSA_FILE_MODE, DOSBase);
 
-    iofs.IOFS.io_Device = fh->fh_Device;
-    iofs.IOFS.io_Unit   = fh->fh_Unit;
+    iofs.IOFS.io_Device = fl->fl_Device;
+    iofs.IOFS.io_Unit   = fl->fl_Unit;
 
-    iofs.io_Union.io_FILE_MODE.io_FileMode = newflags;
-    iofs.io_Union.io_FILE_MODE.io_Mask     = mask;
+    if (newmode == EXCLUSIVE_LOCK)
+        iofs.io_Union.io_FILE_MODE.io_FileMode = FMF_LOCK;
+    else
+        iofs.io_Union.io_FILE_MODE.io_FileMode = 0;
+
+    iofs.io_Union.io_FILE_MODE.io_Mask = FMF_LOCK;
 
     /* Send the request. */
     DosDoIO(&iofs.IOFS);
