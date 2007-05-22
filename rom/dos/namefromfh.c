@@ -44,7 +44,7 @@
 {
     AROS_LIBFUNC_INIT
 
-    return NameFromLock(((struct FileHandle *) file)->fh_Arg1);
+    return NameFromLock(((struct FileHandle *) fh)->fh_Arg1, buffer, len);
 
     AROS_LIBFUNC_EXIT
     
