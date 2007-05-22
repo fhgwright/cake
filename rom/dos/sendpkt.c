@@ -15,6 +15,7 @@
 #include <string.h>
 #include <proto/utility.h>
 
+#if 0
 /* TODO: This can be done much better! */
 #ifndef AROS_FAST_BPTR
 #define  BStrtoCStr(bstr) ({ \
@@ -33,6 +34,7 @@
 
 LONG DoNameAsynch(struct IOFileSys *iofs, STRPTR name, 
 		  struct DosLibrary *DOSBase);
+#endif
 
 /*****************************************************************************
 
@@ -774,11 +776,12 @@ LONG DoNameAsynch(struct IOFileSys *iofs, STRPTR name,
 	
 	SendIO((struct IORequest *)iofs);
     }        
- 
+#endif
    AROS_LIBFUNC_EXIT
 } /* SendPkt */
 
 
+#if 0
 LONG DoNameAsynch(struct IOFileSys *iofs, STRPTR name, 
 		  struct DosLibrary *DOSBase)
 {
@@ -931,5 +934,5 @@ LONG DoNameAsynch(struct IOFileSys *iofs, STRPTR name,
     }
 
     return 0;
-#endif
 }
+#endif
