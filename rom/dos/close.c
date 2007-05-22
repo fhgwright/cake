@@ -36,7 +36,6 @@
 	0 if there was an error. != 0 on success.
 
     NOTES
-	This function is identical to UnLock().
 
     EXAMPLE
 
@@ -47,41 +46,6 @@
     INTERNALS
 
 *****************************************************************************/
-
-/*****************************************************************************
-
-    NAME
-#include <clib/dos_protos.h>
-
-	AROS_LH1(BOOL, UnLock,
-
-    SYNOPSIS
-	AROS_LHA(BPTR, lock, D1),
-
-    LOCATION
-	struct DosLibrary *, DOSBase, 15, Dos)
-
-    FUNCTION
-	Free a lock created with Lock().
-
-    INPUTS
-	lock -- The lock to free
-
-    RESULT
-
-    NOTES
-	This function is identical to Close() - see there.
-
-    EXAMPLE
-
-    BUGS
-
-    SEE ALSO
-
-    INTERNALS
-
-*****************************************************************************/
-/*AROS alias UnLock Close */
 {
     AROS_LIBFUNC_INIT
 
@@ -102,17 +66,10 @@
     if(fh->fh_Flags & FHF_WRITE)
 	ret = Flush(file);
 
-    /* Prepare I/O request. */
-    InitIOFS(&iofs, FSA_CLOSE, DOSBase);
+    /* Free the underlying lock */
+    UnLock(fh->fh_Arg1);
 
-    iofs.IOFS.io_Device = fh->fh_Device;
-    iofs.IOFS.io_Unit	= fh->fh_Unit;
-
-    /* Send the request. No errors possible. */
-    DosDoIO(&iofs.IOFS);
-
-    /* Free the filehandle which was allocated in Open(), CreateDir()
-       and such. */
+    /* Free the filehandle which was allocated in Open() */
     FreeDosObject(DOS_FILEHANDLE, fh);
 
     return ret;
