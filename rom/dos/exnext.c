@@ -72,7 +72,7 @@
     AROS_LIBFUNC_INIT
 
     /* Get pointer to filehandle */
-    struct FileHandle *fh = (struct FileHandle *)BADDR(lock);
+    struct FileLock *fl = (struct FileLock *)BADDR(lock);
 
     /* Get pointer to I/O request. Use stackspace for now. */
     struct IOFileSys iofs;
@@ -80,8 +80,8 @@
     /* Prepare I/O request. */
     InitIOFS(&iofs, FSA_EXAMINE_NEXT, DOSBase);
 
-    iofs.IOFS.io_Device = fh->fh_Device;
-    iofs.IOFS.io_Unit   = fh->fh_Unit;
+    iofs.IOFS.io_Device = fl->fl_Device;
+    iofs.IOFS.io_Unit   = fl->fl_Unit;
 
     iofs.io_Union.io_EXAMINE_NEXT.io_fib = fileInfoBlock;
 

@@ -66,7 +66,7 @@
     if (((struct InternalExAllControl *)control)->fib == NULL)
     {
         /* Get pointer to filehandle */
-        struct FileHandle *fh = (struct FileHandle *)BADDR(lock);
+        struct FileLock *fl = (struct FileLock *)BADDR(lock);
 
         /* Get pointer to I/O request. Use stackspace for now. */
         struct IOFileSys iofs;
@@ -74,8 +74,8 @@
         /* Prepare I/O request. */
         InitIOFS(&iofs, FSA_EXAMINE_ALL_END, DOSBase);
 
-        iofs.IOFS.io_Device = fh->fh_Device;
-        iofs.IOFS.io_Unit   = fh->fh_Unit;
+        iofs.IOFS.io_Device = fl->fl_Device;
+        iofs.IOFS.io_Unit   = fl->fl_Unit;
 
         /* Send the request. May not fail. */
         DosDoIO(&iofs.IOFS);
