@@ -63,10 +63,11 @@
     struct IOFileSys iofs;
 
     /* Make sure the input parameters are sane. */
-    ASSERT_VALID_PTR( fh );
-    ASSERT_VALID_PTR( fh->fh_Device );
-    ASSERT_VALID_PTR( fh->fh_Unit );
-    ASSERT_VALID_PTR( buffer );
+    ASSERT_VALID_PTR(fh);
+    ASSERT_VALID_PTR(fh->fh_Arg1);
+    ASSERT_VALID_PTR(((struct FileLock *) fh->fh_Arg1)->fl_Unit);
+    ASSERT_VALID_PTR(((struct FileLock *) fh->fh_Arg1)->fl_Device);
+    ASSERT_VALID_PTR(buffer);
 
     /* Handle append mode. */
     if( fh->fh_Flags & FHF_APPEND )
@@ -77,8 +78,8 @@
     /* Prepare I/O request */
     InitIOFS( &iofs, FSA_WRITE, DOSBase );
 
-    iofs.IOFS.io_Device = fh->fh_Device;
-    iofs.IOFS.io_Unit   = fh->fh_Unit;
+    iofs.IOFS.io_Device = ((struct FileLock *) fh->fh_Arg1)->fl_Device;
+    iofs.IOFS.io_Unit   = ((struct FileLock *) fh->fh_Arg1)->fl_Unit;
 
     iofs.io_Union.io_WRITE.io_Buffer = (APTR)buffer;
     iofs.io_Union.io_WRITE.io_Length = length;
