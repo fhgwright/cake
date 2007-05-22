@@ -45,7 +45,7 @@
 {
     AROS_LIBFUNC_INIT
 
-    return Examine(((struct FileHandle *) file)->fh_Arg1, fib);
+    return Examine(((struct FileHandle *) fh)->fh_Arg1, fib);
 
     AROS_LIBFUNC_EXIT
 } /* ExamineFH */
