@@ -48,4 +48,4 @@
 
     AROS_LIBFUNC_EXIT
     
-} /* NameFromLock */
+} /* NameFromFH */

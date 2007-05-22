@@ -48,4 +48,4 @@
     return Examine(((struct FileHandle *) file)->fh_Arg1, fib);
 
     AROS_LIBFUNC_EXIT
-} /* Examine */
+} /* ExamineFH */
