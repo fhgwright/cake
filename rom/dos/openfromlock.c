@@ -33,9 +33,6 @@
 	additional information in that case.
 
     NOTES
-	Since locks and filehandles in AROS are identical this function
-	is just the (useless) identity operator and thus can never fail.
-	It's there for compatibility to Amiga OS.
 
     EXAMPLE
 
@@ -49,7 +46,16 @@
 {
     AROS_LIBFUNC_INIT
 
-    /* Warning: Some very tricky operation ahead ;-). */
-    return lock;
+    struct FIleHandle *fh;
+
+    /* XXX add checking. lock must not be a directory, etc. */
+    /* XXX with packets, this would call ACTION_FH_FROM_LOCK */
+
+    fh = AllocDosObject(DOS_FILEHANDLE, NULL);
+
+    fh->fh_Arg1 = lock;
+
+    return MKBADDR(fl);
+
     AROS_LIBFUNC_EXIT
 } /* OpenFromLock */
