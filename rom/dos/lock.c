@@ -70,9 +70,6 @@
         return NULL;
     }
     
-    BPTR con = NULL, ast = NULL;
-    LONG error;
-
     /* Get pointer to process structure */
     me = (struct Process *)FindTask(NULL);
 
