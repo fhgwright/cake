@@ -42,24 +42,24 @@
     AROS_LIBFUNC_INIT
     
     struct IOFileSys iofs;
-    struct FileHandle *fh1;
-    struct FileHandle *fh2;
+    struct FileHandle *fl1;
+    struct FileHandle *fl2;
 
     if(!SameDevice(lock1, lock2))
     	return LOCK_DIFFERENT;
 	
-    fh1 = (struct FileHandle *)BADDR(lock1);
-    fh2 = (struct FileHandle *)BADDR(lock2);
+    fl1 = (struct FileLock *)BADDR(lock1);
+    fl2 = (struct FileLock *)BADDR(lock2);
 	
     /* Check if it is the same lock */
 
     /* Prepare I/O request. */
     InitIOFS(&iofs, FSA_SAME_LOCK, DOSBase);
 
-    iofs.IOFS.io_Device = fh1->fh_Device;
-    iofs.IOFS.io_Unit   = fh1->fh_Unit;
-    iofs.io_Union.io_SAME_LOCK.io_Lock[0] = fh1->fh_Unit;
-    iofs.io_Union.io_SAME_LOCK.io_Lock[1] = fh2->fh_Unit;
+    iofs.IOFS.io_Device = fl1->fl_Device;
+    iofs.IOFS.io_Unit   = fl1->fl_Unit;
+    iofs.io_Union.io_SAME_LOCK.io_Lock[0] = fl1->fl_Unit;
+    iofs.io_Union.io_SAME_LOCK.io_Lock[1] = fl2->fl_Unit;
     iofs.io_Union.io_SAME_LOCK.io_Same = LOCK_DIFFERENT;
 
     /* Send the request. */
