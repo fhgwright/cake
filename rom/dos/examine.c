@@ -56,39 +56,6 @@
     INTERNALS
 
 *****************************************************************************/
-
-/*****************************************************************************
-
-    NAME
-#include <clib/dos_protos.h>
-
-	AROS_LH2(BOOL, ExamineFH,
-
-    SYNOPSIS
-	AROS_LHA(BPTR                  , fh, D1),
-	AROS_LHA(struct FileInfoBlock *, fib, D2),
-
-    LOCATION
-	struct DosLibrary *, DOSBase, 65, Dos)
-
-    FUNCTION
-
-    INPUTS
-
-    RESULT
-
-    NOTES
-
-    EXAMPLE
-
-    BUGS
-
-    SEE ALSO
-
-    INTERNALS
-
-*****************************************************************************/
-/*AROS alias ExamineFH Examine */
 {
     AROS_LIBFUNC_INIT
 
@@ -98,7 +65,7 @@
     ULONG i;
 
     /* Get pointer to filehandle */
-    struct FileHandle *fh = (struct FileHandle *)BADDR(lock);
+    struct FileHandle *fl = (struct FileLock *)BADDR(lock);
 
     /* Get pointer to I/O request. Use stackspace for now. */
     struct IOFileSys iofs;
@@ -106,8 +73,8 @@
     /* Prepare I/O request. */
     InitIOFS(&iofs, FSA_EXAMINE, DOSBase);
 
-    iofs.IOFS.io_Device = fh->fh_Device;
-    iofs.IOFS.io_Unit	= fh->fh_Unit;
+    iofs.IOFS.io_Device = fl->fl_Device;
+    iofs.IOFS.io_Unit	= fl->fl_Unit;
 
     iofs.io_Union.io_EXAMINE.io_ead  = (struct ExAllData *)buffer;
     iofs.io_Union.io_EXAMINE.io_Size = sizeof(buffer);
