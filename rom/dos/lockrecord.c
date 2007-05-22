@@ -64,7 +64,7 @@
     AROS_LIBFUNC_INIT
 
     struct IOFileSys iofs;
-    struct FileHandle *fileH = fh;
+    struct FileHandle *fileH = BADDR(fh);
 
     if (fh == NULL)
     {
@@ -73,8 +73,8 @@
 
     InitIOFS(&iofs, FSA_LOCK_RECORD, DOSBase);
 
-    iofs.IOFS.io_Device = fileH->fh_Device;
-    iofs.IOFS.io_Unit = fileH->fh_Unit;
+    iofs.IOFS.io_Device = ((struct FileLock *) fileH->fh_Arg1)->fh_Device;
+    iofs.IOFS.io_Unit = ((struct FileLock *) fileH->fh_Arg1)->fh_Unit;
 
     iofs.io_Union.io_RECORD.io_Offset = offset;
     iofs.io_Union.io_RECORD.io_Size = length;
