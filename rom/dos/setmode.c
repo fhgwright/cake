@@ -56,8 +56,8 @@
 
     InitIOFS(&iofs, FSA_CONSOLE_MODE, DOSBase);
 
-    iofs.IOFS.io_Device = fha->fh_Device;
-    iofs.IOFS.io_Unit   = fha->fh_Unit;
+    iofs.IOFS.io_Device = ((struct FileLock *) fha->fh_Arg1)->fl_Device;
+    iofs.IOFS.io_Unit   = ((struct FileLock *) fha->fh_Arg1)->fl_Unit;
 
     iofs.io_Union.io_CONSOLE_MODE.io_ConsoleMode = mode;
 
