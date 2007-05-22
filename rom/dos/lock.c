@@ -56,6 +56,12 @@
 {
     AROS_LIBFUNC_INIT
 
+    struct Process *me;
+    struct FileLock *fl;
+    struct IOFileSys iofs;
+    BPTR con = NULL, ast = NULL;
+    LONG error;
+
     ASSERT_VALID_PTR(name);
 
     /* Sanity check */
@@ -68,127 +74,115 @@
     LONG error;
 
     /* Get pointer to process structure */
-        struct Process *
     me = (struct Process *)FindTask(NULL);
 
-    /* Create filehandle */
-        struct FileHandle *
-    ret = (struct FileHandle *)AllocDosObject(DOS_FILEHANDLE, NULL);
+    /* Create lock */
+    fl = (struct FileLock *) AllocMem(sizeof(struct FileLock), MEMF_CLEAR);
+    if (fl == NULL) {
+        SetIoErr(ERROR_NO_FREE_STORE);
+        return NULL;
+    }
 
-    if (ret != NULL)
+    /* Prepare I/O request. */
+    InitIOFS(&iofs, FSA_OPEN, DOSBase);
+    
+    /* io_Args[0] is the name which is set by DoName(). */
+    switch (accessMode)
     {
-    	/* Get pointer to I/O request. Use stackspace for now. */
-    	struct IOFileSys iofs;
-    
-    	/* Prepare I/O request. */
-    	InitIOFS(&iofs, FSA_OPEN, DOSBase);
-    
-    	/* io_Args[0] is the name which is set by DoName(). */
-    	switch (accessMode)
-    	{
-        	case EXCLUSIVE_LOCK:
-        	    iofs.io_Union.io_OPEN.io_FileMode = FMF_LOCK | FMF_READ;
-        	    con = me->pr_COS;
-        	    ast = me->pr_CES ? me->pr_CES : me->pr_COS;
-        	    break;
+        case EXCLUSIVE_LOCK:
+            iofs.io_Union.io_OPEN.io_FileMode = FMF_LOCK | FMF_READ;
+            con = me->pr_COS;
+            ast = me->pr_CES ? me->pr_CES : me->pr_COS;
+            break;
         
-        	case SHARED_LOCK:
-        	    iofs.io_Union.io_OPEN.io_FileMode = FMF_READ;
-        	    con = ast = me->pr_CIS;
-        	    break;
-        
-        	default:
-        	    iofs.io_Union.io_OPEN.io_FileMode = accessMode;
-        	    con = ast = me->pr_CIS;
-        	    break;
-    	}
+        case SHARED_LOCK:
+            iofs.io_Union.io_OPEN.io_FileMode = FMF_READ;
+            con = ast = me->pr_CIS;
+            break;
     
-#define iofs_SetDeviceUnit(_iofs, _fh) \
+        default:
+            iofs.io_Union.io_OPEN.io_FileMode = accessMode;
+            con = ast = me->pr_CIS;
+            break;
+    }
+    
+#define iofs_SetDeviceUnit(_iofs, _fl) \
 { \
-     (_iofs).IOFS.io_Device = ((struct FileHandle *)BADDR((_fh)))->fh_Device; \
-     (_iofs).IOFS.io_Unit   = ((struct FileHandle *)BADDR((_fh)))->fh_Unit; \
+     (_iofs).IOFS.io_Device = ((struct FileLock *)BADDR((_fl)))->fl_Device; \
+     (_iofs).IOFS.io_Unit   = ((struct FileLock *)BADDR((_fl)))->fl_Unit; \
 }
     
-    	if(!Stricmp(name, "IN:") || !Stricmp(name, "STDIN:"))
-    	{
-            iofs_SetDeviceUnit(iofs, me->pr_CIS);
+    if(!Stricmp(name, "IN:") || !Stricmp(name, "STDIN:"))
+    {
+        iofs_SetDeviceUnit(iofs, me->pr_CIS);
+
+        iofs.io_Union.io_OPEN_FILE.io_Filename = "";
     
-    	    iofs.io_Union.io_OPEN_FILE.io_Filename = "";
+        DosDoIO(&iofs.IOFS);
     
-    	    DosDoIO(&iofs.IOFS);
+        error = me->pr_Result2 = iofs.io_DosError;
+    }
+    else if(!Stricmp(name, "OUT:") || !Stricmp(name, "STDOUT:"))
+    {
+        iofs_SetDeviceUnit(iofs, me->pr_COS);
     
-    	    error = me->pr_Result2 = iofs.io_DosError;
-    	}
-    	else if(!Stricmp(name, "OUT:") || !Stricmp(name, "STDOUT:"))
-    	{
-            iofs_SetDeviceUnit(iofs, me->pr_COS);
+        iofs.io_Union.io_OPEN_FILE.io_Filename = "";
     
-    	    iofs.io_Union.io_OPEN_FILE.io_Filename = "";
+        DosDoIO(&iofs.IOFS);
     
-    	    DosDoIO(&iofs.IOFS);
-    
-    	    error = me->pr_Result2 = iofs.io_DosError;
-    	}
-    	else if(!Stricmp(name, "ERR:") || !Stricmp(name, "STDERR:"))
-    	{
-            if (NULL != me->pr_CES)
-            {
-                iofs_SetDeviceUnit(iofs, me->pr_CES);
-            }
-            else
-            {
-                iofs_SetDeviceUnit(iofs, me->pr_COS);
-            }
-    
-    	    iofs.io_Union.io_OPEN_FILE.io_Filename = "";
-    
-    	    DosDoIO(&iofs.IOFS);
-    
-    	    error = me->pr_Result2 = iofs.io_DosError;
-    	}
-    	else if(!Stricmp(name, "CONSOLE:"))
-    	{
-            iofs_SetDeviceUnit(iofs, con);
-    
-    	    iofs.io_Union.io_OPEN_FILE.io_Filename = "";
-    
-    	    DosDoIO(&iofs.IOFS);
-    
-    	    error = me->pr_Result2 = iofs.io_DosError;
-    	}
-    	else if(!Stricmp(name, "*"))
-    	{
-            iofs_SetDeviceUnit(iofs, ast);
-    
-    	    iofs.io_Union.io_OPEN_FILE.io_Filename = "";
-    
-    	    DosDoIO(&iofs.IOFS);
-    
-    	    error = me->pr_Result2 = iofs.io_DosError;
-    	}
-    	else
+        error = me->pr_Result2 = iofs.io_DosError;
+    }
+    else if(!Stricmp(name, "ERR:") || !Stricmp(name, "STDERR:"))
+    {
+        if (NULL != me->pr_CES)
         {
-    	    error = DoName(&iofs, name, DOSBase);
+            iofs_SetDeviceUnit(iofs, me->pr_CES);
         }
-    
-    	if (!error)
-    	{
-    	    ret->fh_Device = iofs.IOFS.io_Device;
-    	    ret->fh_Unit   = iofs.IOFS.io_Unit;
-    
-    	    return MKBADDR(ret);
-    	}
         else
         {
-            FreeDosObject(DOS_FILEHANDLE, ret);
+            iofs_SetDeviceUnit(iofs, me->pr_COS);
         }
+    
+        iofs.io_Union.io_OPEN_FILE.io_Filename = "";
+    
+        DosDoIO(&iofs.IOFS);
+    
+        error = me->pr_Result2 = iofs.io_DosError;
+    }
+    else if(!Stricmp(name, "CONSOLE:"))
+    {
+        iofs_SetDeviceUnit(iofs, con);
+    
+        iofs.io_Union.io_OPEN_FILE.io_Filename = "";
+    
+        DosDoIO(&iofs.IOFS);
+    
+        error = me->pr_Result2 = iofs.io_DosError;
+        }
+    else if(!Stricmp(name, "*"))
+    {
+        iofs_SetDeviceUnit(iofs, ast);
+
+        iofs.io_Union.io_OPEN_FILE.io_Filename = "";
+    
+        DosDoIO(&iofs.IOFS);
+    
+        error = me->pr_Result2 = iofs.io_DosError;
     }
     else
     {
-    	SetIoErr(ERROR_NO_FREE_STORE);
+        error = DoName(&iofs, name, DOSBase);
     }
 
-    return NULL;
+    if (error != 0) {
+        FreeMem(fl, sizeof(struct FileLock));
+        return NULL;
+    }
+    
+    fl->fl_Device = iofs.IOFS.io_Device;
+    fl->fl_Unit   = iofs.IOFS.io_Unit;
+    
+    return MKBADDR(fl);
 
     AROS_LIBFUNC_EXIT
 } /* Lock */
