@@ -7,7 +7,7 @@
 
 #include <assert.h>
 
-static struct IOFileSys *CreateIOFS(ULONG type, struct MsgPort *port, struct FileHandle *fh)
+static struct IOFileSys *CreateIOFS(ULONG type, struct MsgPort *port, BPTR *fh)
 {
     struct IOFileSys *iofs = (struct IOFileSys *)AllocMem(sizeof(struct IOFileSys), MEMF_PUBLIC|MEMF_CLEAR);
 
@@ -19,8 +19,9 @@ static struct IOFileSys *CreateIOFS(ULONG type, struct MsgPort *port, struct Fil
     iofs->IOFS.io_Message.mn_Length       = sizeof(struct IOFileSys);
     iofs->IOFS.io_Command                 = type;
     iofs->IOFS.io_Flags                   = 0;
-    iofs->IOFS.io_Device                  = fh->fh_Device;
-    iofs->IOFS.io_Unit                    = fh->fh_Unit;
+
+    iofs->IOFS.io_Device = ((struct FileLock *) ((struct FileHandle *) BADDR(fh))->fh_Arg1)->fl_Device;
+    iofs->IOFS.io_Unit   = ((struct FileLock *) ((struct FileHandle *) BADDR(fh))->fh_Arg1)->fl_Unit;
   
     return iofs;
 }
@@ -30,12 +31,7 @@ static BPTR DupFH(BPTR fh, LONG mode)
     BPTR ret = NULL;
 
     if (fh)
-    {
-        BPTR olddir = CurrentDir(fh);
-        ret    = Open("", mode);
-
-        CurrentDir(olddir);
-    }
+        ret = OpenFromLock(DupLockFromFH(fh));
 
     return ret;
 }

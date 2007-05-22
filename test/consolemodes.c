@@ -11,7 +11,6 @@ int main(int argc, char **argv) {
     TEXT something[64];
     int i;
     struct IOFileSys iofs;
-    struct FileHandle *fh;
 
     in = Input();
     out = Output();
@@ -49,14 +48,12 @@ int main(int argc, char **argv) {
 
     Printf("\nyou typed: %s\n", something);
 
-    fh = (struct FileHandle *) in;
-
     iofs.IOFS.io_Message.mn_Node.ln_Type = NT_REPLYMSG;
     iofs.IOFS.io_Message.mn_ReplyPort = &(((struct Process *) FindTask(NULL))->pr_MsgPort);
     iofs.IOFS.io_Message.mn_Length = sizeof(struct IOFileSys);
 
-    iofs.IOFS.io_Device = fh->fh_Device;
-    iofs.IOFS.io_Unit = fh->fh_Unit;
+    iofs.IOFS.io_Device = ((struct FileLock *) ((struct FileHandle *) BADDR(fh))->fh_Arg1)->fh_Device;
+    iofs.IOFS.io_Unit = ((struct FileLock *) ((struct FileHandle *) BADDR(fh))->fh_Arg1)->fh_Unit;
     iofs.IOFS.io_Command = FSA_CONSOLE_MODE;
     iofs.IOFS.io_Flags = 0;
 
