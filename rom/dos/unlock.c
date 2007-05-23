@@ -69,4 +69,4 @@
     FreeMem(fl, sizeof(struct FileLock));
 
     AROS_LIBFUNC_EXIT
-} /* Close */
+} /* UnLock */
