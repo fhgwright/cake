@@ -241,11 +241,7 @@ static BPTR DupFHFromfd(int fd, ULONG mode)
     BPTR ret = MKBADDR(NULL);
 
     if (fdesc != NULL && fdesc->fh != MKBADDR(NULL))
-    {
-        BPTR olddir = CurrentDir(fdesc->fh);
-        ret = Open("", mode);
-        CurrentDir(olddir);
-    }
+        ret = OpenFromLock(DupLockFromFH(fdesc->fh));
 
     return ret;
 }
