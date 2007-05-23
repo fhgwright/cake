@@ -172,7 +172,7 @@
             fl->fl_Device = iofs.IOFS.io_Device;
             fl->fl_Unit   = iofs.IOFS.io_Unit;
 
-            ret->fh_Arg1 = fl;
+            ret->fh_Arg1 = MKBADDR(fl);
 
 	    if (doappend)
 	    {

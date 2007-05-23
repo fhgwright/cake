@@ -55,8 +55,8 @@
     /* Prepare I/O request. */
     InitIOFS(&iofs, FSA_IS_INTERACTIVE, DOSBase);
 
-    iofs.IOFS.io_Device = ((struct FileLock *) fh->fh_Arg1)->fl_Device;
-    iofs.IOFS.io_Unit   = ((struct FileLock *) fh->fh_Arg1)->fl_Unit;
+    iofs.IOFS.io_Device = ((struct FileLock *) BADDR(fh->fh_Arg1))->fl_Device;
+    iofs.IOFS.io_Unit   = ((struct FileLock *) BADDR(fh->fh_Arg1))->fl_Unit;
 
     /* Send the request. */
     DosDoIO(&iofs.IOFS);

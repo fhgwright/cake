@@ -75,13 +75,13 @@ AROS_UFHA(struct ExecBase *,SysBase,A6))
 
 	    iofs.io_Union.io_CHANGE_SIGNAL.io_Task = (struct Task *)me;
 
-            iofs.IOFS.io_Device = ((struct FileLock *) fhin->fh_Arg1)->fl_Device;
-            iofs.IOFS.io_Unit   = ((struct FileLock *) fhin->fh_Arg1)->fl_Unit;
+            iofs.IOFS.io_Device = ((struct FileLock *) BADDR(fhin->fh_Arg1))->fl_Device;
+            iofs.IOFS.io_Unit   = ((struct FileLock *) BADDR(fhin->fh_Arg1))->fl_Unit;
 
 	    DoIO(&iofs.IOFS);
 
-            iofs.IOFS.io_Device = ((struct FileLock *) fhout->fh_Arg1)->fl_Device;
-            iofs.IOFS.io_Unit   = ((struct FileLock *) fhout->fh_Arg1)->fl_Unit;
+            iofs.IOFS.io_Device = ((struct FileLock *) BADDR(fhout->fh_Arg1))->fl_Device;
+            iofs.IOFS.io_Unit   = ((struct FileLock *) BADDR(fhout->fh_Arg1))->fl_Unit;
 
 	    DoIO(&iofs.IOFS);
         }

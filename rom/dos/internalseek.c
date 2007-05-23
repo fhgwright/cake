@@ -35,8 +35,8 @@ LONG InternalSeek
     /* Prepare I/O request. */
     InitIOFS( &iofs, FSA_SEEK, DOSBase );
 
-    iofs.IOFS.io_Device = ((struct FileLock *) fh->fh_Arg1)->fl_Device;
-    iofs.IOFS.io_Unit   = ((struct FileLock *) fh->fh_Arg1)->fl_Unit;
+    iofs.IOFS.io_Device = ((struct FileLock *) BADDR(fh->fh_Arg1))->fl_Device;
+    iofs.IOFS.io_Unit   = ((struct FileLock *) BADDR(fh->fh_Arg1))->fl_Unit;
 
     iofs.io_Union.io_SEEK.io_Offset   = (QUAD)position;
     iofs.io_Union.io_SEEK.io_SeekMode = mode;
