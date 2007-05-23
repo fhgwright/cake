@@ -327,12 +327,7 @@ static BPTR DupFH(BPTR fh, LONG mode, struct DosLibrary * DOSBase)
     BPTR ret = NULL;
 
     if (fh)
-    {
-        BPTR olddir = CurrentDir(fh);
-        ret    = Open("", mode);
-
-        CurrentDir(olddir);
-    }
+        ret = OpenFromLock(DupLockFromFH(fh));
 
     return ret;
 }
