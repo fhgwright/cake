@@ -79,18 +79,14 @@ AROS_SHA(STRPTR, ,COMMAND,/F,NULL))
 	else
 	    toclone = cli->cli_StandardInput;
 
-	olddir = CurrentDir(toclone);
-	cis = Open("", FMF_READ);
-	CurrentDir(olddir);
+        cis = OpenFromLock(DupLockFromFH(toclone));
 
 	if (IsInteractive(Output()))
 	    toclone = Output();
 	else
 	    toclone = cli->cli_StandardOutput;
 
-	olddir = CurrentDir(toclone);
-	cos = Open("", FMF_WRITE);
-	CurrentDir(olddir);
+        cos = OpenFromLock(DupLockFromFH(toclone));
 
 	/* This is sort of a hack, needed because the original AmigaOS shell didn't allow
 	   Error() redirection, so all the scripts written so far assume that only Input() and
@@ -99,9 +95,7 @@ AROS_SHA(STRPTR, ,COMMAND,/F,NULL))
 	{
 	    toclone = Error();
 
-	    olddir = CurrentDir(toclone);
-	    ces = Open("", FMF_WRITE);
-	    CurrentDir(olddir);
+            ces = OpenFromLock(DupLockFromFH(toclone));
 	}
     }
 
