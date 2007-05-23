@@ -7,6 +7,7 @@
 */
 #include <proto/exec.h>
 #include <dos/dosextens.h>
+#include <dos/stdio.h>
 
 /*****************************************************************************
 
@@ -48,12 +49,15 @@
 
     struct FileHandle *fh;
 
-    /* XXX add checking. lock must not be a directory, etc. */
-    /* XXX with packets, this would call ACTION_FH_FROM_LOCK */
-
-    fh = AllocDosObject(DOS_FILEHANDLE, NULL);
+    if ((fh = AllocDosObject(DOS_FILEHANDLE, NULL)) == NULL) {
+        SetIoErr(ERROR_NO_FREE_STORE);
+        return NULL;
+    }
 
     fh->fh_Arg1 = lock;
+
+    if (IsInteractive(MKBADDR(fh)))
+        SetVBuf(MKBADDR(fh), NULL, BUF_LINE, -1);
 
     return MKBADDR(fh);
 
