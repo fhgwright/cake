@@ -349,11 +349,18 @@ struct FileHandle
 
     IPTR            fh_Func2;   /* unused */
 
-    IPTR            fh_Arg1;    /* underlying lock from handler. BPTR to a
-                                 * struct FileLock */
+    /* Handler-private data for this file. This is the "lock" argument for
+     * packets and io_Unit for IOFS calls.
+    IPTR            fh_Arg1;
 
-    IPTR            fh_Arg2;    /* unused */
+    /* Device for IOFS calls (struct Device *). Unused for packet-based
+     * handlers.
+    IPTR            fh_Arg2;
 };
+
+/* defines to aid readbility when working with IOFS handlers */
+#define fh_Unit   fh_Arg1
+#define fh_Device fh_Arg2
 
 /* fh_Flags. The flags are AROS specific and therefore PRIVATE.. */
 #define FHF_WRITE (~0UL/2+1)
@@ -387,7 +394,7 @@ struct FileLock
     struct Device  * fl_Device;
 };
 
-/* A define to aid readability */
+/* A define to aid readability when working with IOFS handlers */
 #define fl_Unit fl_Key
 
 
