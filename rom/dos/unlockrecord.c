@@ -18,7 +18,7 @@
 	AROS_LH3(BOOL, UnLockRecord,
 
 /*  SYNOPSIS */
-	AROS_LHA(BPTR , fh, D1),
+	AROS_LHA(BPTR , file, D1),
 	AROS_LHA(ULONG, offset, D2),
 	AROS_LHA(ULONG, length, D3),
 
@@ -57,7 +57,7 @@
     AROS_LIBFUNC_INIT
 
     struct IOFileSys iofs;
-    struct FileHandle *fileH = BADDR(fh);
+    struct FileHandle *fh = BADDR(file);
 
     if (fh == NULL)
     {
@@ -66,8 +66,8 @@
 
     InitIOFS(&iofs, FSA_UNLOCK_RECORD, DOSBase);
 
-    iofs.IOFS.io_Device = ((struct FileLock *) BADDR(fileH->fh_Arg1))->fl_Device;
-    iofs.IOFS.io_Unit = ((struct FileLock *) BADDR(fileH->fh_Arg1))->fl_Unit;
+    iofs.IOFS.io_Device = fh->fh_Device;
+    iofs.IOFS.io_Unit = fh->fh_Unit;
     
     iofs.io_Union.io_RECORD.io_Offset = offset;
     iofs.io_Union.io_RECORD.io_Size = length;
