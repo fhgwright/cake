@@ -25,7 +25,7 @@
 	Try to get a lock on the object selected by the filehandle.
 
     INPUTS
-	fh - filehandle.
+	file - filehandle.
 
     RESULT
 	The new lock or 0 in case of an error. IoErr() will give additional

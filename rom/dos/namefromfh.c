@@ -19,7 +19,7 @@
 	AROS_LH3(LONG, NameFromFH,
 
  /* SYNOPSIS */
-	AROS_LHA(BPTR  , fh, D1),
+	AROS_LHA(BPTR  , file, D1),
 	AROS_LHA(STRPTR, buffer, D2),
 	AROS_LHA(LONG  , len, D3),
 
@@ -31,7 +31,7 @@
 	user supplied buffer.
 
     INPUTS
-	fh     - File-handle to file or directory.
+	file   - File-handle to file or directory.
 	buffer - Buffer to fill. Contains a NUL terminated string if
 		 all went well.
 	length - Size of the buffer in bytes.
@@ -44,7 +44,19 @@
 {
     AROS_LIBFUNC_INIT
 
-    return NameFromLock(((struct FileHandle *) fh)->fh_Arg1, buffer, len);
+    struct FileHandle *fh = (struct FileHandle *) BADDR(file);
+    struct FileLock *fl;
+    LONG err;
+
+    fl = AllocMem(sizeof(struct FileLock *), MEMF_CLEAR);
+    fl->fl_Device = fh->fh_Device;
+    fl->fl_Unit = fh->fh_Unit;
+
+    err = NameFromLock(MKBADDR(fl), buffer, len);
+
+    FreeMem(fl);
+
+    return err;
 
     AROS_LIBFUNC_EXIT
     
