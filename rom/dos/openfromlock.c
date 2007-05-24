@@ -47,6 +47,7 @@
 {
     AROS_LIBFUNC_INIT
 
+    struct FileLock *fl = BADDR(lock);
     struct FileHandle *fh;
 
     if ((fh = AllocDosObject(DOS_FILEHANDLE, NULL)) == NULL) {
@@ -54,7 +55,10 @@
         return NULL;
     }
 
-    fh->fh_Arg1 = lock;
+    fh->fh_Device = fl->fl_Device;
+    fh->fh_Unit = fl->fl_Unit;
+
+    FreeMem(fl, sizeof(struct FileLock));
 
     if (IsInteractive(MKBADDR(fh)))
         SetVBuf(MKBADDR(fh), NULL, BUF_LINE, -1);
