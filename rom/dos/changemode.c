@@ -53,18 +53,20 @@
 {
     AROS_LIBFUNC_INIT
 
-    struct FileLock *fl;
     struct IOFileSys iofs;
-
-    if (type == CHANGE_FH)
-        fl = (struct FileLock *) ((struct FileHandle *) BADDR(object))->fh_Arg1;
-    else
-        fl = (struct FileLock *) BADDR(object);
 
     InitIOFS(&iofs, FSA_FILE_MODE, DOSBase);
 
-    iofs.IOFS.io_Device = fl->fl_Device;
-    iofs.IOFS.io_Unit   = fl->fl_Unit;
+    if (type == CHANGE_FH) {
+        struct FileHandle *fh = (struct FileHandle *) BADDR(object);
+        iofs.IOFS.io_Device = fh->fh_Device;
+        iofs.IOFS.io_Unit   = fh->fh_Unit;
+    }
+    else {
+        struct FileLock *fl = (struct FileLock *) BADDR(object);
+        iofs.IOFS.io_Device = fl->fl_Device;
+        iofs.IOFS.io_Unit   = fl->fl_Unit;
+    }
 
     if (newmode == EXCLUSIVE_LOCK)
         iofs.io_Union.io_FILE_MODE.io_FileMode = FMF_LOCK;
