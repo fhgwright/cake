@@ -350,11 +350,11 @@ struct FileHandle
     IPTR            fh_Func2;   /* unused */
 
     /* Handler-private data for this file. This is the "lock" argument for
-     * packets and io_Unit for IOFS calls.
+     * packets and io_Unit for IOFS calls. */
     IPTR            fh_Arg1;
 
     /* Device for IOFS calls (struct Device *). Unused for packet-based
-     * handlers.
+     * handlers. */
     IPTR            fh_Arg2;
 };
 
