@@ -15,7 +15,7 @@
 	AROS_LH2(LONG, SetMode,
 
 /*  SYNOPSIS */
-	AROS_LHA(BPTR, fh, D1),
+	AROS_LHA(BPTR, file, D1),
 	AROS_LHA(LONG, mode, D2),
 
 /*  LOCATION */
@@ -26,7 +26,7 @@
 	RAW: mode and CON: mode.
 
     INPUTS
-	fh      -   The filehandle describing the console.
+	file    -   The filehandle describing the console.
 	mode    -   The new mode of the console:
 			1   - RAW: mode
 			0   - CON: mode
@@ -52,12 +52,12 @@
     AROS_LIBFUNC_INIT
 
     struct IOFileSys     iofs;
-    struct FileHandle   *fha = (struct FileHandle *)BADDR(fh);
+    struct FileHandle   *fh = (struct FileHandle *)BADDR(file);
 
     InitIOFS(&iofs, FSA_CONSOLE_MODE, DOSBase);
 
-    iofs.IOFS.io_Device = ((struct FileLock *) BADDR(fha->fh_Arg1))->fl_Device;
-    iofs.IOFS.io_Unit   = ((struct FileLock *) BADDR(fha->fh_Arg1))->fl_Unit;
+    iofs.IOFS.io_Device = fh->fh_Device;
+    iofs.IOFS.io_Unit   = fh->fh_Unit;
 
     iofs.io_Union.io_CONSOLE_MODE.io_ConsoleMode = mode;
 
