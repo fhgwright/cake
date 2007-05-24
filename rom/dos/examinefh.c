@@ -19,8 +19,8 @@
 	AROS_LH2(BOOL, ExamineFH,
 
  /* SYNOPSIS */
-	AROS_LHA(BPTR                  , fh, D1),
-	AROS_LHA(struct FileInfoBlock *, fib, D2),
+	AROS_LHA(BPTR                  , file, D1),
+	AROS_LHA(struct FileInfoBlock *, fib,  D2),
 
  /* LOCATION */
 	struct DosLibrary *, DOSBase, 65, Dos)
@@ -45,7 +45,15 @@
 {
     AROS_LIBFUNC_INIT
 
-    return Examine(((struct FileHandle *) fh)->fh_Arg1, fib);
+    LONG err;
+
+    BPTR lock = BADDR(DupLockFromFH(file));
+
+    err = Examine(lock, fib);
+
+    UnLock(lock);
+
+    return err;
 
     AROS_LIBFUNC_EXIT
 } /* ExamineFH */
