@@ -16,7 +16,7 @@
 	AROS_LH1(BPTR, DupLockFromFH,
 
  /* SYNOPSIS */
-	AROS_LHA(BPTR, fh, D1),
+	AROS_LHA(BPTR, file, D1),
 
  /* LOCATION */
 	struct DosLibrary *, DOSBase, 62, Dos)
@@ -46,7 +46,18 @@
 {
     AROS_LIBFUNC_INIT
 
-    return DupLock(((struct FileHandle *) BADDR(fh))->fh_Arg1);
+    struct FileHandle *fh = (struct FileHandle *) BADDR(file);
+    struct FileLock *temp_fl, *fl;
+
+    temp_fl = AllocMem(sizeof(struct FileLock *), MEMF_CLEAR);
+    temp_fl->fl_Device = fh->fh_Device;
+    temp_fl->fl_Unit = fh->fh_Unit;
+
+    fl = DupLock(MKBADDR(temp_fl));
+
+    FreeMem(temp_fl, sizeof(struct FileLock *));
+
+    return MKBADDR(fl);
 
     AROS_LIBFUNC_EXIT
 } /* DupLockFromFH */
