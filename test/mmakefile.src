@@ -82,7 +82,8 @@ FILES := \
     rwverify \
     notify \
     setfilesize \
-    timeport
+    timeport \
+    dosleak
 
 EXEDIR := $(AROS_TESTS)
 

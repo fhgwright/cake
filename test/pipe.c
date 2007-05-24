@@ -20,8 +20,8 @@ static struct IOFileSys *CreateIOFS(ULONG type, struct MsgPort *port, BPTR *fh)
     iofs->IOFS.io_Command                 = type;
     iofs->IOFS.io_Flags                   = 0;
 
-    iofs->IOFS.io_Device = ((struct FileLock *) ((struct FileHandle *) BADDR(fh))->fh_Arg1)->fl_Device;
-    iofs->IOFS.io_Unit   = ((struct FileLock *) ((struct FileHandle *) BADDR(fh))->fh_Arg1)->fl_Unit;
+    iofs->IOFS.io_Device = ((struct FileHandle *) BADDR(fh))->fh_Device;
+    iofs->IOFS.io_Unit   = ((struct FileHandle *) BADDR(fh))->fh_Unit;
   
     return iofs;
 }
