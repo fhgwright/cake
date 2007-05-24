@@ -18,7 +18,7 @@
 	AROS_LH5(BOOL, LockRecord,
 
 /*  SYNOPSIS */
-	AROS_LHA(BPTR , fh, D1),
+	AROS_LHA(BPTR , file, D1),
 	AROS_LHA(ULONG, offset, D2),
 	AROS_LHA(ULONG, length, D3),
 	AROS_LHA(ULONG, mode, D4),
@@ -34,7 +34,7 @@
 
     INPUTS
 
-    fh       --  file handle for the file to lock a record of
+    file     --  file handle for the file to lock a record of
     offset   --  starting position of the lock
     length   --  length of the record in bytes
     mode     --  lock type
@@ -64,7 +64,7 @@
     AROS_LIBFUNC_INIT
 
     struct IOFileSys iofs;
-    struct FileHandle *fileH = BADDR(fh);
+    struct FileHandle *fh = BADDR(file);
 
     if (fh == NULL)
     {
@@ -73,8 +73,8 @@
 
     InitIOFS(&iofs, FSA_LOCK_RECORD, DOSBase);
 
-    iofs.IOFS.io_Device = ((struct FileLock *) BADDR(fileH->fh_Arg1))->fl_Device;
-    iofs.IOFS.io_Unit = ((struct FileLock *) BADDR(fileH->fh_Arg1))->fl_Unit;
+    iofs.IOFS.io_Device = fh->fh_Device;
+    iofs.IOFS.io_Unit = fh->fh_Unit;
 
     iofs.io_Union.io_RECORD.io_Offset = offset;
     iofs.io_Union.io_RECORD.io_Size = length;
