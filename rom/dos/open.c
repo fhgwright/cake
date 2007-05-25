@@ -58,8 +58,7 @@
 {
     AROS_LIBFUNC_INIT
 
-    struct FileHandle *ret;
-    struct FileLock *fl;
+    struct FileHandle *fh;
     BPTR con, ast;
     LONG error;
     struct Process *me;
@@ -71,9 +70,9 @@
     me = (struct Process *)FindTask(NULL);
 
     /* Create filehandle */
-    ret = (struct FileHandle *)AllocDosObject(DOS_FILEHANDLE,NULL);
+    fh = (struct FileHandle *)AllocDosObject(DOS_FILEHANDLE,NULL);
 
-    if(ret != NULL)
+    if(fh != NULL)
     {
         LONG doappend = 0;
 
@@ -172,19 +171,19 @@
 	    if (doappend)
 	    {
 		 /* See if the handler supports FSA_SEEK */
-		 if (Seek(MKBADDR(ret), 0, OFFSET_END) != -1)
+		 if (Seek(MKBADDR(fh), 0, OFFSET_END) != -1)
 		 {
 		     /* if so then set the proper flag in the FileHandle struct */
-		     ret->fh_Flags |= FHF_APPEND;
+		     fh->fh_Flags |= FHF_APPEND;
 		 }
 	    }
-	    if (IsInteractive(MKBADDR(ret)))
-	        SetVBuf(MKBADDR(ret), NULL, BUF_LINE, -1);
+	    if (IsInteractive(MKBADDR(fh)))
+	        SetVBuf(MKBADDR(fh), NULL, BUF_LINE, -1);
 
-	    return MKBADDR(ret);
+	    return MKBADDR(fh);
 	}
 
-	FreeDosObject(DOS_FILEHANDLE,ret);
+	FreeDosObject(DOS_FILEHANDLE,fh);
     }
 
     else

@@ -49,13 +49,13 @@
     struct FileHandle *fh = (struct FileHandle *) BADDR(file);
     struct FileLock *temp_fl, *fl;
 
-    temp_fl = AllocMem(sizeof(struct FileLock *), MEMF_CLEAR);
+    temp_fl = AllocMem(sizeof(struct FileLock), MEMF_CLEAR);
     temp_fl->fl_Device = fh->fh_Device;
     temp_fl->fl_Unit = fh->fh_Unit;
 
     fl = DupLock(MKBADDR(temp_fl));
 
-    FreeMem(temp_fl, sizeof(struct FileLock *));
+    FreeMem(temp_fl, sizeof(struct FileLock));
 
     return MKBADDR(fl);
 

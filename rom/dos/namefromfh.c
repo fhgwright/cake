@@ -48,13 +48,13 @@
     struct FileLock *fl;
     LONG err;
 
-    fl = AllocMem(sizeof(struct FileLock *), MEMF_CLEAR);
+    fl = AllocMem(sizeof(struct FileLock), MEMF_CLEAR);
     fl->fl_Device = fh->fh_Device;
     fl->fl_Unit = fh->fh_Unit;
 
     err = NameFromLock(MKBADDR(fl), buffer, len);
 
-    FreeMem(fl);
+    FreeMem(fl, sizeof(struct FileLock));
 
     return err;
 
