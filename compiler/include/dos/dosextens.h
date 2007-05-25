@@ -326,7 +326,10 @@ struct DevProc
    access files. Note the differences from AmigaOS - you'll run into trouble
    if you assume that things work the same as they do there. Treat this
    structure as PRIVATE.  If you want to create this structure nevertheless,
-   use AllocDosObject(). */
+   use AllocDosObject().
+
+   See the notes for struct FileLock below. fh_Type can be a Device or a
+   MsgPort. fh_Arg1 holds the IOFS unit or the packet lock. */
 struct FileHandle
 {
     /* The next three are used with packet-based filesystems */
@@ -353,14 +356,8 @@ struct FileHandle
      * packets and io_Unit for IOFS calls. */
     IPTR            fh_Arg1;
 
-    /* Device for IOFS calls (struct Device *). Unused for packet-based
-     * handlers. */
-    IPTR            fh_Arg2;
+    IPTR            fh_Arg2;    /* unused */
 };
-
-/* defines to aid readbility when working with IOFS handlers */
-#define fh_Unit   fh_Arg1
-#define fh_Device fh_Arg2
 
 /* fh_Flags. The flags are AROS specific and therefore PRIVATE.. */
 #define FHF_WRITE (~0UL/2+1)
@@ -375,15 +372,10 @@ struct FileHandle
  * devices (see dos/filesystem.h).
  *
  * To tell what type of filesystem the lock belongs to (and from there get a
- * handle on the device or task), check fl_Task. If its NULL, then this is a
- * AROS IOFS filesystem, and the device and unit can be obtained from
- * fl_Device and fl_Key, respectively.
- *
- * If fl_Task is not NULL, then this is a packet filesystem, and fl_Task has
- * the handlers' message port as normal. In this case you should not try to
- * look at fl_Device, as under binary compatibility the memory allocated to
- * this structure may not actually be large enough for this field to be
- * included. */
+ * handle on the device or task), check fl_Task->mp_Node.ln_Type. If its
+ * NT_MSGPORT, then this lock belongs to a packet-based filesystem. If its
+ * NT_DEVICE, then this lock belongs to a AROS IOFS filesystem. In this case
+ * fl_Task is actually a struct Device *, and the unit is in fl_Key. */
 struct FileLock
 {
     BPTR             fl_Link;   /* (struct FileLock *) Pointer to next lock. */
@@ -391,12 +383,7 @@ struct FileLock
     LONG             fl_Access;
     struct MsgPort * fl_Task;
     BPTR             fl_Volume; /* (struct DeviceList * - see below) */
-    struct Device  * fl_Device;
 };
-
-/* A define to aid readability when working with IOFS handlers */
-#define fl_Unit fl_Key
-
 
 /* Constants, defining of what kind a file is. These constants are used in
    many structures, including FileInfoBlock (<dos/dos.h>) and ExAllData
