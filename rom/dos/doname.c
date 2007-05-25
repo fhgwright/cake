@@ -160,8 +160,8 @@ LONG DoName(struct IOFileSys *iofs, CONST_STRPTR name,
     
     	    if (fl != NULL)
     	    {
-        		device = fl->fl_Device;
-        		unit = fl->fl_Unit;
+        		device = FL_DEVICE(fl);
+        		unit = FL_UNIT(fl);
     	    }
     	    else
     	    {
@@ -182,8 +182,8 @@ LONG DoName(struct IOFileSys *iofs, CONST_STRPTR name,
     else if (cur)
     {
     	fl       = (struct FileLock *)BADDR(cur);
-    	device   = fl->fl_Device;
-    	unit     = fl->fl_Unit;
+    	device   = FL_DEVICE(fl);
+    	unit     = FL_UNIT(fl);
     }
     else
     {
@@ -193,8 +193,8 @@ LONG DoName(struct IOFileSys *iofs, CONST_STRPTR name,
     	unit = DOSBase->dl_NulLock;
         #else
     	fl = (struct FileHandle *)BADDR(DOSBase->dl_SYSLock);
-    	device = fl->fl_Device;
-    	unit = fl->fl_Unit;
+    	device = FL_DEVICE(fl);
+    	unit = FL_UNIT(fl);
         #endif
     }
 
@@ -216,8 +216,8 @@ LONG DoName(struct IOFileSys *iofs, CONST_STRPTR name,
     	{
     	    fl = BADDR(al->al_Lock);
 
-    	    iofs->IOFS.io_Device = fl->fl_Device;
-    	    iofs->IOFS.io_Unit = fl->fl_Unit;
+    	    iofs->IOFS.io_Device = FL_DEVICE(fl);
+    	    iofs->IOFS.io_Unit = FL_UNIT(fl);
 
     	    DosDoIO(&iofs->IOFS);
     	}

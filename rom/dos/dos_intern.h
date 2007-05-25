@@ -235,5 +235,11 @@ void vbuf_free(FileHandlePtr fh);
 IPTR vbuf_alloc(FileHandlePtr fh, ULONG size, struct DosLibrary *DOSBase);
 
 LONG FWriteChars(BPTR file, CONST UBYTE* buffer, ULONG length, struct DosLibrary *DOSBase);
+
+#define FL_DEVICE(fl) ((struct Device *) fl->fl_Task)
+#define FL_UNIT(fl)   ((struct Unit *)   fl->fl_Key)
+
+#define FH_DEVICE(fh) ((struct Device *) fh->fh_Type)
+#define FH_UNIT(fh)   ((struct Unit *)   fh->fh_Arg1)
     
 #endif /* DOS_INTERN_H */

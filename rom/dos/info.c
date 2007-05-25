@@ -62,8 +62,8 @@
     /* Prepare I/O request. */
     InitIOFS(&iofs, FSA_DISK_INFO, DOSBase);
 
-    iofs.IOFS.io_Device = fl->fl_Device;
-    iofs.IOFS.io_Unit   = fl->fl_Unit;
+    iofs.IOFS.io_Device = FL_DEVICE(fl);
+    iofs.IOFS.io_Unit   = FL_UNIT(fl);
 
     iofs.io_Union.io_INFO.io_Info = parameterBlock;
 

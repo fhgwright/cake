@@ -88,13 +88,13 @@
         /* We check, if name and dest are on the same device. */
         if (DevName(name, &dev, DOSBase))
 	    return DOSFALSE;
-	if (dev != fl->fl_Device)
+	if (dev != FL_DEVICE(fl))
 	{
 	    SetIoErr(ERROR_RENAME_ACROSS_DEVICES);
 	    return DOSFALSE;
 	}
 	io.IOFS.io_Command = FSA_CREATE_HARDLINK;
-	io.io_Union.io_CREATE_HARDLINK.io_OldFile = fl->fl_Unit;
+	io.io_Union.io_CREATE_HARDLINK.io_OldFile = FL_UNIT(fl);
     }
 
     error = DoName(&io, name, DOSBase);

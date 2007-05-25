@@ -55,8 +55,8 @@
         return NULL;
     }
 
-    fh->fh_Device = fl->fl_Device;
-    fh->fh_Unit = fl->fl_Unit;
+    fh->fh_Device = FL_DEVICE(fl);
+    fh->fh_Unit = FL_UNIT(fl);
 
     FreeMem(fl, sizeof(struct FileLock));
 

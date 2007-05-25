@@ -66,8 +66,8 @@
 	    return DOSFALSE;
 	}
 
-	newdl->dol_Ext.dol_AROS.dol_Unit   = fl->fl_Unit;
-	newdl->dol_Ext.dol_AROS.dol_Device = fl->fl_Device;
+	newdl->dol_Ext.dol_AROS.dol_Device = FL_DEVICE(fl);
+	newdl->dol_Ext.dol_AROS.dol_Unit   = FL_UNIT(fl);
 	newdl->dol_Lock                    = lock;
     }
 

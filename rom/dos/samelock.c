@@ -56,10 +56,10 @@
     /* Prepare I/O request. */
     InitIOFS(&iofs, FSA_SAME_LOCK, DOSBase);
 
-    iofs.IOFS.io_Device = fl1->fl_Device;
-    iofs.IOFS.io_Unit   = fl1->fl_Unit;
-    iofs.io_Union.io_SAME_LOCK.io_Lock[0] = fl1->fl_Unit;
-    iofs.io_Union.io_SAME_LOCK.io_Lock[1] = fl2->fl_Unit;
+    iofs.IOFS.io_Device = FL_DEVICE(fl1);
+    iofs.IOFS.io_Unit   = FL_UNIT(fl1);
+    iofs.io_Union.io_SAME_LOCK.io_Lock[0] = FL_UNIT(fl1);
+    iofs.io_Union.io_SAME_LOCK.io_Lock[1] = FL_UNIT(fl2);
     iofs.io_Union.io_SAME_LOCK.io_Same = LOCK_DIFFERENT;
 
     /* Send the request. */

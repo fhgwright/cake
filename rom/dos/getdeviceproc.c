@@ -177,7 +177,7 @@ if (volname)
 	    /* We have the lock in cur */
 /* kprintf("lock in cur\n");
 */	    fl = BADDR(cur);
-	    dp->dvp_Port = (struct MsgPort *)fl->fl_Device;
+	    dp->dvp_Port = (struct MsgPort *)FL_DEVICE(fl);
 	    dp->dvp_Lock = cur;
 	    dp->dvp_Flags = 0;
 	    dp->dvp_DevNode = NULL;
@@ -227,7 +227,7 @@ if (volname)
 	fl = (struct FileHandle *)BADDR(lock);
 	if( fl != NULL )
 	{
-	    dp->dvp_Port = (struct MsgPort *)fl->fl_Device;
+	    dp->dvp_Port = (struct MsgPort *)FL_DEVICE(fl);
 	    dp->dvp_Lock = lock;
 	    dp->dvp_Flags = DVPF_UNLOCK;
 	    dp->dvp_DevNode = dl;

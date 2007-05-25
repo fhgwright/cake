@@ -50,7 +50,7 @@
     fl2 = (struct FileLock *)BADDR(lock2);
 
     /* XXX is this check good enough? */
-    if (fl1->fl_Device == fl2->fl_Device)
+    if (FL_DEVICE(fl1) != FL_DEVICE(fl2))
     	return DOSTRUE;
     
 

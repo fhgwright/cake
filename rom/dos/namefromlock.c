@@ -82,12 +82,12 @@ struct MyExAllData
 
     iofs->IOFS.io_Device = (fl == NULL)
                                 ? DOSBase->dl_NulHandler
-                                : fl->fl_Device;
+                                : FL_DEVICE(fl);
 
     /* Construct the name from top to bottom */
     name = buffer + length;
     *--name = 0;
-    curlock = fl->fl_Unit;
+    curlock = FL_UNIT(fl);
     
     /* Loop over path */
     do

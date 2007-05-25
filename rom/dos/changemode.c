@@ -59,13 +59,13 @@
 
     if (type == CHANGE_FH) {
         struct FileHandle *fh = (struct FileHandle *) BADDR(object);
-        iofs.IOFS.io_Device = fh->fh_Device;
-        iofs.IOFS.io_Unit   = fh->fh_Unit;
+        iofs.IOFS.io_Device = FH_DEVICE(fh);
+        iofs.IOFS.io_Unit   = FH_UNIT(fh);
     }
     else {
         struct FileLock *fl = (struct FileLock *) BADDR(object);
-        iofs.IOFS.io_Device = fl->fl_Device;
-        iofs.IOFS.io_Unit   = fl->fl_Unit;
+        iofs.IOFS.io_Device = FL_DEVICE(fl);
+        iofs.IOFS.io_Unit   = FL_UNIT(fl);
     }
 
     if (newmode == EXCLUSIVE_LOCK)

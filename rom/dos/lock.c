@@ -176,8 +176,8 @@
         return NULL;
     }
     
-    fl->fl_Device = iofs.IOFS.io_Device;
-    fl->fl_Unit   = iofs.IOFS.io_Unit;
+    FL_DEVICE(fl) = iofs.IOFS.io_Device;
+    FL_UNIT(fl)   = iofs.IOFS.io_Unit;
     
     return MKBADDR(fl);
 

@@ -40,7 +40,7 @@ LONG DevName(CONST_STRPTR name, struct Device **devptr,
 	}
 	else
 	{
-	    *devptr = fl->fl_Device;
+	    *devptr = FL_DEVICE(fl);
 	    return 0;
 	}
     }
@@ -52,7 +52,7 @@ LONG DevName(CONST_STRPTR name, struct Device **devptr,
 
 	if (fl)
 	{
-	    *devptr = fl->fl_Device;
+	    *devptr = FL_DEVICE(fl);
 	    return 0;
  	}
 	else
@@ -94,7 +94,7 @@ LONG DevName(CONST_STRPTR name, struct Device **devptr,
 
 	if (fl)
 	{
-	    *devptr = fl->fl_Device;
+	    *devptr = FL_DEVICE(fl);
 	    return 0;
  	}
 	else
@@ -145,7 +145,7 @@ LONG DevName(CONST_STRPTR name, struct Device **devptr,
 
             if(fl != NULL)
             {
-                *devptr = fl->fl_Device;
+                *devptr = FL_DEVICE(fl);
                 UnLock(lock);
             }
 	    else

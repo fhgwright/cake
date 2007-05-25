@@ -59,8 +59,8 @@
     /* Prepare I/O request. */
     InitIOFS(&iofs, FSA_CLOSE, DOSBase);
 
-    iofs.IOFS.io_Device = fl->fl_Device;
-    iofs.IOFS.io_Unit	= fl->fl_Unit;
+    iofs.IOFS.io_Device = FL_DEVICE(fl);
+    iofs.IOFS.io_Unit	= FL_UNIT(fl);
 
     /* Send the request. No errors possible. */
     DosDoIO(&iofs.IOFS);
