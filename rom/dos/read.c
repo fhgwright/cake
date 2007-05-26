@@ -65,15 +65,15 @@
     struct IOFileSys iofs;
 
     ASSERT_VALID_PTR(fh);
-    ASSERT_VALID_PTR(fh->fh_Device);
-    ASSERT_VALID_PTR(fh->fh_Unit);
+    ASSERT_VALID_PTR(FH_DEVICE(fh));
+    ASSERT_VALID_PTR(FH_UNIT(fh));
     ASSERT_VALID_PTR(buffer);
 
     /* Prepare I/O request. */
     InitIOFS(&iofs, FSA_READ, DOSBase);
 
-    iofs.IOFS.io_Device = fh->fh_Device;
-    iofs.IOFS.io_Unit   = fh->fh_Unit;
+    iofs.IOFS.io_Device = FH_DEVICE(fh);
+    iofs.IOFS.io_Unit   = FH_UNIT(fh);
 
     iofs.io_Union.io_READ.io_Buffer = buffer;
     iofs.io_Union.io_READ.io_Length = length;

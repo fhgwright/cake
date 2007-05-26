@@ -105,8 +105,8 @@
     
 #define iofs_SetDeviceUnit(_iofs, _fl) \
 { \
-     (_iofs).IOFS.io_Device = ((struct FileLock *)BADDR((_fl)))->fl_Device; \
-     (_iofs).IOFS.io_Unit   = ((struct FileLock *)BADDR((_fl)))->fl_Unit; \
+     (_iofs).IOFS.io_Device = FL_DEVICE(BADDR(_fl)); \
+     (_iofs).IOFS.io_Unit   = FL_UNIT(BADDR(_fl));   \
 }
     
     if(!Stricmp(name, "IN:") || !Stricmp(name, "STDIN:"))
@@ -176,8 +176,8 @@
         return NULL;
     }
     
-    FL_DEVICE(fl) = iofs.IOFS.io_Device;
-    FL_UNIT(fl)   = iofs.IOFS.io_Unit;
+    fl->fl_Task = (struct MsgPort *) iofs.IOFS.io_Device;
+    fl->fl_Key  =                    iofs.IOFS.io_Unit;
     
     return MKBADDR(fl);
 

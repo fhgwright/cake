@@ -50,8 +50,8 @@
     struct FileLock *temp_fl, *fl;
 
     temp_fl = AllocMem(sizeof(struct FileLock), MEMF_CLEAR);
-    FL_DEVICE(temp_fl) = FH_DEVICE(fh);
-    FL_UNIT(temp_fl) = FH_UNIT(fh);
+    temp_fl->fl_Task = (struct MsgPort *) FH_DEVICE(fh);
+    temp_fl->fl_Key  =                    FH_UNIT(fh);
 
     fl = DupLock(MKBADDR(temp_fl));
 

@@ -118,8 +118,8 @@
 
 	if(!Stricmp(name, "IN:") || !Stricmp(name, "STDIN:"))
 	{
-	    iofs.IOFS.io_Device = ((struct FileHandle *)BADDR(me->pr_CIS))->fh_Device;
-	    iofs.IOFS.io_Unit   = ((struct FileHandle *)BADDR(me->pr_CIS))->fh_Unit;
+	    iofs.IOFS.io_Device = FH_DEVICE(BADDR(me->pr_CIS));
+	    iofs.IOFS.io_Unit   = FH_UNIT(BADDR(me->pr_CIS));
 	    iofs.io_Union.io_OPEN_FILE.io_Filename = "";
 	    DosDoIO(&iofs.IOFS);
 	    error = me->pr_Result2 = iofs.io_DosError;
@@ -127,8 +127,8 @@
 	else
 	if(!Stricmp(name, "OUT:") || !Stricmp(name, "STDOUT:"))
 	{
-	    iofs.IOFS.io_Device = ((struct FileHandle *)BADDR(me->pr_COS))->fh_Device;
-	    iofs.IOFS.io_Unit   = ((struct FileHandle *)BADDR(me->pr_COS))->fh_Unit;
+	    iofs.IOFS.io_Device = FH_DEVICE(BADDR(me->pr_COS));
+	    iofs.IOFS.io_Unit   = FH_UNIT(BADDR(me->pr_COS));
 	    iofs.io_Union.io_OPEN_FILE.io_Filename = "";
 	    DosDoIO(&iofs.IOFS);
 	    error = me->pr_Result2 = iofs.io_DosError;
@@ -136,8 +136,8 @@
 	else
 	if(!Stricmp(name, "ERR:") || !Stricmp(name, "STDERR:"))
 	{
-	    iofs.IOFS.io_Device = ((struct FileHandle *)BADDR(me->pr_CES ? me->pr_CES : me->pr_COS))->fh_Device;
-	    iofs.IOFS.io_Unit   = ((struct FileHandle *)BADDR(me->pr_CES ? me->pr_CES : me->pr_COS))->fh_Unit;
+	    iofs.IOFS.io_Device = FH_DEVICE(BADDR(me->pr_CES ? me->pr_CES : me->pr_COS));
+	    iofs.IOFS.io_Unit   = FH_UNIT(BADDR(me->pr_CES ? me->pr_CES : me->pr_COS));
 	    iofs.io_Union.io_OPEN_FILE.io_Filename = "";
 	    DosDoIO(&iofs.IOFS);
 	    error = me->pr_Result2 = iofs.io_DosError;
@@ -145,8 +145,8 @@
 	else
 	if(!Stricmp(name, "CONSOLE:"))
 	{
-	    iofs.IOFS.io_Device = ((struct FileHandle *)BADDR(con))->fh_Device;
-	    iofs.IOFS.io_Unit   = ((struct FileHandle *)BADDR(con))->fh_Unit;
+	    iofs.IOFS.io_Device = FH_DEVICE(BADDR(con));
+	    iofs.IOFS.io_Unit   = FH_UNIT(BADDR(con));
 	    iofs.io_Union.io_OPEN_FILE.io_Filename = "";
 	    DosDoIO(&iofs.IOFS);
 	    error = me->pr_Result2 = iofs.io_DosError;
@@ -154,8 +154,8 @@
 	else
 	if(!Stricmp(name, "*"))
 	{
-	    iofs.IOFS.io_Device = ((struct FileHandle *)BADDR(ast))->fh_Device;
-	    iofs.IOFS.io_Unit   = ((struct FileHandle *)BADDR(ast))->fh_Unit;
+	    iofs.IOFS.io_Device = FH_DEVICE(BADDR(ast));
+	    iofs.IOFS.io_Unit   = FH_UNIT(BADDR(ast));
 	    iofs.io_Union.io_OPEN_FILE.io_Filename = "";
 	    DosDoIO(&iofs.IOFS);
 	    error = me->pr_Result2 = iofs.io_DosError;
@@ -165,8 +165,8 @@
 
 	if(error == 0)
 	{
-            fh->fh_Device = iofs.IOFS.io_Device;
-            fh->fh_Unit   = iofs.IOFS.io_Unit;
+            fh->fh_Type = (struct MsgPort *) iofs.IOFS.io_Device;
+            fh->fh_Arg1 = iofs.IOFS.io_Unit;
 
 	    if (doappend)
 	    {

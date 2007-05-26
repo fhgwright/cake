@@ -56,8 +56,8 @@
 
     InitIOFS(&iofs, FSA_CONSOLE_MODE, DOSBase);
 
-    iofs.IOFS.io_Device = fh->fh_Device;
-    iofs.IOFS.io_Unit   = fh->fh_Unit;
+    iofs.IOFS.io_Device = FH_DEVICE(fh);
+    iofs.IOFS.io_Unit   = FH_UNIT(fh);
 
     iofs.io_Union.io_CONSOLE_MODE.io_ConsoleMode = mode;
 

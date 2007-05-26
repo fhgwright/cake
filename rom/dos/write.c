@@ -64,8 +64,8 @@
 
     /* Make sure the input parameters are sane. */
     ASSERT_VALID_PTR(fh);
-    ASSERT_VALID_PTR(fh->fh_Device);
-    ASSERT_VALID_PTR(fh->fh_Unit);
+    ASSERT_VALID_PTR(FH_DEVICE(fh));
+    ASSERT_VALID_PTR(FH_UNIT(fh));
     ASSERT_VALID_PTR(buffer);
 
     /* Handle append mode. */
@@ -77,8 +77,8 @@
     /* Prepare I/O request */
     InitIOFS( &iofs, FSA_WRITE, DOSBase );
 
-    iofs.IOFS.io_Device = fh->fh_Device;
-    iofs.IOFS.io_Unit   = fh->fh_Unit;
+    iofs.IOFS.io_Device = FH_DEVICE(fh);
+    iofs.IOFS.io_Unit   = FH_UNIT(fh);
 
     iofs.io_Union.io_WRITE.io_Buffer = (APTR)buffer;
     iofs.io_Union.io_WRITE.io_Length = length;

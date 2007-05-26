@@ -8,6 +8,7 @@
 #include <proto/exec.h>
 #include <dos/dosextens.h>
 #include <dos/stdio.h>
+#include "dos_intern.h"
 
 /*****************************************************************************
 
@@ -55,8 +56,8 @@
         return NULL;
     }
 
-    fh->fh_Device = FL_DEVICE(fl);
-    fh->fh_Unit = FL_UNIT(fl);
+    fh->fh_Type = (struct MsgPort *) FL_DEVICE(fl);
+    fh->fh_Arg1 =                    FL_UNIT(fl);
 
     FreeMem(fl, sizeof(struct FileLock));
 

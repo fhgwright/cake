@@ -73,8 +73,8 @@
 
     InitIOFS(&iofs, FSA_LOCK_RECORD, DOSBase);
 
-    iofs.IOFS.io_Device = fh->fh_Device;
-    iofs.IOFS.io_Unit = fh->fh_Unit;
+    iofs.IOFS.io_Device = FH_DEVICE(fh);
+    iofs.IOFS.io_Unit = FH_UNIT(fh);
 
     iofs.io_Union.io_RECORD.io_Offset = offset;
     iofs.io_Union.io_RECORD.io_Size = length;

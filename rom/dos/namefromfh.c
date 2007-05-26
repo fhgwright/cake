@@ -49,8 +49,8 @@
     LONG err;
 
     fl = AllocMem(sizeof(struct FileLock), MEMF_CLEAR);
-    FL_DEVICE(fl) = fh->fh_Device;
-    FL_UNIT(fl) = fh->fh_Unit;
+    fl->fl_Task = (struct MsgPort *) FH_DEVICE(fh);
+    fl->fl_Key  =                    FH_UNIT(fh);
 
     err = NameFromLock(MKBADDR(fl), buffer, len);
 

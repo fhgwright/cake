@@ -13,6 +13,7 @@
 
 #include "dos_newcliproc.h"
 #include "dos_dosdoio.h"
+#include "dos_intern.h"
 
 AROS_UFH3(LONG, NewCliProc,
 AROS_UFHA(char *,argstr,A0),
@@ -75,13 +76,13 @@ AROS_UFHA(struct ExecBase *,SysBase,A6))
 
 	    iofs.io_Union.io_CHANGE_SIGNAL.io_Task = (struct Task *)me;
 
-            iofs.IOFS.io_Device = fhin->fh_Device;
-            iofs.IOFS.io_Unit   = fhin->fh_Unit;
+            iofs.IOFS.io_Device = FH_DEVICE(fhin);
+            iofs.IOFS.io_Unit   = FH_UNIT(fhin);
 
 	    DoIO(&iofs.IOFS);
 
-            iofs.IOFS.io_Device = fhout->fh_Device;
-            iofs.IOFS.io_Unit   = fhout->fh_Unit;
+            iofs.IOFS.io_Device = FH_DEVICE(fhout);
+            iofs.IOFS.io_Unit   = FH_UNIT(fhout);
 
 	    DoIO(&iofs.IOFS);
         }

@@ -110,7 +110,7 @@
         CopyMem(p, buf2 + len, len2 + 1);
         notify->nr_FullName = buf2;
 
-        iofs.IOFS.io_Unit = ((struct FileLock *) BADDR(dvp->dvp_Lock))->fl_Unit;
+        iofs.IOFS.io_Unit = FL_UNIT(BADDR(dvp->dvp_Lock));
     }
 
     else

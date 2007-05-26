@@ -73,8 +73,8 @@
         return NULL;
     }
 
-    fl->fl_Unit   = iofs.IOFS.io_Unit;
-    fl->fl_Device = iofs.IOFS.io_Device;
+    fl->fl_Task = (struct MsgPort *) iofs.IOFS.io_Device;
+    fl->fl_Key =                     iofs.IOFS.io_Unit;
 
     return MKBADDR(fl);
 

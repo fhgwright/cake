@@ -35,8 +35,8 @@ LONG InternalSeek
     /* Prepare I/O request. */
     InitIOFS( &iofs, FSA_SEEK, DOSBase );
 
-    iofs.IOFS.io_Device = fh->fh_Device;
-    iofs.IOFS.io_Unit   = fh->fh_Unit;
+    iofs.IOFS.io_Device = FH_DEVICE(fh);
+    iofs.IOFS.io_Unit   = FH_UNIT(fh);
 
     iofs.io_Union.io_SEEK.io_Offset   = (QUAD)position;
     iofs.io_Union.io_SEEK.io_SeekMode = mode;
