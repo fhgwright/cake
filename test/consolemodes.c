@@ -52,8 +52,8 @@ int main(int argc, char **argv) {
     iofs.IOFS.io_Message.mn_ReplyPort = &(((struct Process *) FindTask(NULL))->pr_MsgPort);
     iofs.IOFS.io_Message.mn_Length = sizeof(struct IOFileSys);
 
-    iofs.IOFS.io_Device = ((struct FileHandle *) BADDR(in))->fh_Device;
-    iofs.IOFS.io_Unit = ((struct FileHandle *) BADDR(in))->fh_Unit;
+    iofs.IOFS.io_Device = (struct Device *) ((struct FileHandle *) BADDR(in))->fh_Type;
+    iofs.IOFS.io_Unit   = (struct Unit *)   ((struct FileHandle *) BADDR(in))->fh_Arg1;
     iofs.IOFS.io_Command = FSA_CONSOLE_MODE;
     iofs.IOFS.io_Flags = 0;
 
