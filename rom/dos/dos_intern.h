@@ -242,4 +242,7 @@ LONG FWriteChars(BPTR file, CONST UBYTE* buffer, ULONG length, struct DosLibrary
 #define FH_DEVICE(fh) ((struct Device *) ((struct FileHandle *) fh)->fh_Type)
 #define FH_UNIT(fh)   ((struct Unit *)   ((struct FileHandle *) fh)->fh_Arg1)
 
+#define FL_IS_IOFS(fl) ((((struct FileLock *)   fl)->fl_Task->mp_Node.ln_Type) == NT_DEVICE)
+#define FH_IS_IOFS(fh) ((((struct FileHandle *) fh)->fh_Type->mp_Node.ln_Type) == NT_DEVICE)
+    
 #endif /* DOS_INTERN_H */
