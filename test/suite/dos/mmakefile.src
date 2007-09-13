@@ -1,0 +1,11 @@
+include $(TOP)/config/make.cfg
+
+FILES := test
+
+EXEDIR := $(AROSDIR)/Tests/Suite
+
+%build_prog mmake=test-suite-dos \
+    progname=DOS targetdir=$(EXEDIR) \
+    files="$(FILES)" uselibs="test amiga arosc m"
+
+%common

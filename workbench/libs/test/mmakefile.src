@@ -1,0 +1,27 @@
+include $(TOP)/config/make.cfg
+
+FILES := test_init
+
+FUNCS := \
+        createtestsuite \
+        runtestsuite \
+        destroytestsuite \
+        recordtestsuccess \
+        recordtestfailure \
+        recordtestfailurefileline \
+        outputexpectedlong \
+        outputexpectedstring \
+        outputunwantedlong \
+        outputunwantedstring
+
+#MM workbench-libs-test-includes : \
+#MM    kernel-exec-includes \
+#MM    includes-copy
+#MM- workbench-libs-test : linklibs
+
+%build_module mmake=workbench-libs-test \
+    modname=test modtype=library \
+    files="$(FILES) $(FUNCS)" \
+    uselibs="amiga rom"
+
+%common
