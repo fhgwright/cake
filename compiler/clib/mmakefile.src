@@ -103,6 +103,7 @@ SHARED	:= \
 	__open \
 	__rand48 \
 	__spawnv \
+        __stack_chk_fail \
 	__stat \
 	__stdio \
 	__upath \
