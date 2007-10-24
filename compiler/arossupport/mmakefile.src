@@ -28,6 +28,7 @@ FILES	:= \
     rt_dos \
     rt_exec \
     rt_intuition \
+    stackprot \
     strrncasecmp \
     writebyte \
     writedouble \
