@@ -428,13 +428,14 @@ ignore_undefined_symbols=""
 # with it then.
 #
 
-AC_MSG_CHECKING([whether ${CC} accepts -fstack-protector])
-CFLAGS="$CFLAGS -fstack-protector"
+AC_MSG_CHECKING([whether ${CC} accepts -fstack-protector-all])
+save_cflags="$CFLAGS"
+CFLAGS="$CFLAGS -fstack-protector-all"
 AC_TRY_COMPILE(,, use_stack_protector="yes", use_stack_protector="no")
 AC_MSG_RESULT($use_stack_protector)
 if test "x-$use_stack_protector" = "x-yes" ; then
-    aros_config_cflags="$aros_config_cflags -fstack-protector"
-    aros_target_cc_options="-fstack-protector"
+    aros_config_cflags="$aros_config_cflags -fstack-protector-all"
+    aros_target_cc_options="-fstack-protector-all"
     aros_stack_protector="1"
 else
     aros_stack_protector="0"

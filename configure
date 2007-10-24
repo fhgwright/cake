@@ -7856,9 +7856,10 @@ ignore_undefined_symbols=""
 # with it then.
 #
 
-{ echo "$as_me:$LINENO: checking whether ${CC} accepts -fstack-protector" >&5
-echo $ECHO_N "checking whether ${CC} accepts -fstack-protector... $ECHO_C" >&6; }
-CFLAGS="$CFLAGS -fstack-protector"
+{ echo "$as_me:$LINENO: checking whether ${CC} accepts -fstack-protector-all" >&5
+echo $ECHO_N "checking whether ${CC} accepts -fstack-protector-all... $ECHO_C" >&6; }
+save_cflags="$CFLAGS"
+CFLAGS="$CFLAGS -fstack-protector-all"
 cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
@@ -7903,8 +7904,8 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 { echo "$as_me:$LINENO: result: $use_stack_protector" >&5
 echo "${ECHO_T}$use_stack_protector" >&6; }
 if test "x-$use_stack_protector" = "x-yes" ; then
-    aros_config_cflags="$aros_config_cflags -fstack-protector"
-    aros_target_cc_options="-fstack-protector"
+    aros_config_cflags="$aros_config_cflags -fstack-protector-all"
+    aros_target_cc_options="-fstack-protector-all"
     aros_stack_protector="1"
 else
     aros_stack_protector="0"
