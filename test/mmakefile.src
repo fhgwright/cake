@@ -83,7 +83,8 @@ COMMONTESTFILES := \
     setfilesize \
     timeport \
     getdeviceproc \
-    minicat
+    minicat \
+    stackprot
 
 HOSTEDTESTFILES :=  \
     hostlib
