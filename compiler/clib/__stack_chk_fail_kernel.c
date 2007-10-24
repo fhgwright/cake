@@ -10,7 +10,7 @@
 void __stack_chk_fail(void) {
     struct AROSSupportBase *AROSSupportBase = (struct AROSSupportBase *) SysBase->DebugData;
 
-    AROSSupportBase->kprintf("[kernel] stack smashing detected\n");
+    AROSSupportBase->kprintf("stack smashing detected\n");
 
     Alert(AG_BadParm);
 }
