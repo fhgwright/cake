@@ -39,6 +39,8 @@ extern BPTR AROS_SLIB_ENTRY(close,arosc)();
 extern BPTR AROS_SLIB_ENTRY(expunge,arosc)();
 extern int AROS_SLIB_ENTRY(null,arosc)();
 
+extern void __stack_chk_fail(void);
+
 void *const arosc_functable[]=
 {
     &AROS_SLIB_ENTRY(open,arosc),
