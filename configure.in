@@ -113,6 +113,7 @@ esac
 
 dnl Despite the name, this is really a host configuration variable.
 aros_target_cc_includes=""
+aros_target_cc_options=""
 
 # This is the main host configuration section. It is where the host
 # can change the values of any variables it needs to change. We do
@@ -427,13 +428,16 @@ ignore_undefined_symbols=""
 # with it then.
 #
 
-AC_MSG_CHECKING([whether ${CC} accepts -fno-stack-protector])
-save_cflags="$CFLAGS"
-CFLAGS="$CFLAGS -fno-stack-protector"
-AC_TRY_COMPILE(,, use_no_stack_protector="yes", use_no_stack_protector="no")
-AC_MSG_RESULT($use_no_stack_protector)
-if test "x-$use_no_stack_protector" = "x-yes" ; then
-    aros_config_cflags="$aros_config_cflags -fno-stack-protector"
+AC_MSG_CHECKING([whether ${CC} accepts -fstack-protector])
+CFLAGS="$CFLAGS -fstack-protector"
+AC_TRY_COMPILE(,, use_stack_protector="yes", use_stack_protector="no")
+AC_MSG_RESULT($use_stack_protector)
+if test "x-$use_stack_protector" = "x-yes" ; then
+    aros_config_cflags="$aros_config_cflags -fstack-protector"
+    aros_target_cc_options="-fstack-protector"
+    aros_stack_protector="1"
+else
+    aros_stack_protector="0"
 fi
 CFLAGS="$save_cflags"
 
@@ -1348,6 +1352,7 @@ AC_SUBST(aros_target_as)
 AC_SUBST(aros_target_ld)
 AC_SUBST(aros_kernel_ld)
 AC_SUBST(aros_target_cc_includes)
+AC_SUBST(aros_target_cc_options)
 AC_SUBST(aros_target_cc_path)
 AC_SUBST(aros_target_objdump)
 AC_SUBST(aros_target_objcopy)
@@ -1410,6 +1415,8 @@ AC_SUBST(aros_debug)
 AC_SUBST(aros_mungwall_debug)
 AC_SUBST(aros_stack_debug)
 AC_SUBST(aros_modules_debug)
+
+AC_SUBST(aros_stack_protector)
 
 # Collect-aros stuff: "-ius" to ignore undefined symbols
 AC_SUBST(ignore_undefined_symbols)

@@ -34,4 +34,6 @@
 
 #define ENABLE_DBUS			@ENABLE_DBUS@
 
+#define AROS_STACK_PROTECTOR            @aros_stack_protector@
+
 #endif /* AROS_CONFIG_H */
