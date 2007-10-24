@@ -2,14 +2,12 @@
 
 #if AROS_STACK_PROTECTOR
 
-#include <aros/debug.h>
-
-#include <exec/alerts.h>
-#include <proto/exec.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 void __stack_chk_fail(void) {
-    kprintf("stack smashing detected\n");
-    Alert(AT_DeadEnd);
+    fprintf(stderr, "stack smashing detected\n");
+    exit(10);
 }
 
 #endif

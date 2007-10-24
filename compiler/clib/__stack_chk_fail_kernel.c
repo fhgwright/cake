@@ -2,14 +2,17 @@
 
 #if AROS_STACK_PROTECTOR
 
-#include <aros/debug.h>
-
+#include <exec/execbase.h>
 #include <exec/alerts.h>
 #include <proto/exec.h>
+#include <aros/arossupportbase.h>
 
 void __stack_chk_fail(void) {
-    kprintf("[kernel] stack smashing detected\n");
-    Alert(AT_DeadEnd);
+    struct AROSSupportBase *AROSSupportBase = (struct AROSSupportBase *) SysBase->DebugData;
+
+    AROSSupportBase->kprintf("[kernel] stack smashing detected\n");
+
+    Alert(AG_BadParm);
 }
 
 #endif
