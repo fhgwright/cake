@@ -303,7 +303,8 @@ SHARED	:= \
 	write
 
 ROM_ONLY := \
-	__assert_kernel
+	__assert_kernel \
+        __stack_chk_fail_kernel
 
 ROM_COMMON := \
 	bcmp \
