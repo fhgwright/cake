@@ -36,7 +36,8 @@ LIBHANDLINGFILES := \
 	libraries
 
 MISCFILES := \
-	detach
+	detach \
+        stackprot
 
 FILES := $(LIBBASEFILES) $(LIBHANDLINGFILES) $(MISCFILES)
 
