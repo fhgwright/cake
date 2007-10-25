@@ -36,6 +36,7 @@ LIB	    := $(SHARED_LIB) $(ROM_LIB) $(AROS_LIBS)/$(MODULE)
 COMMON	:= \
 	__alloca \
 	__isinf \
+        __stack_chk_fail \
 	bcmp \
 	bcopy \
 	bzero \
@@ -103,7 +104,6 @@ SHARED	:= \
 	__open \
 	__rand48 \
 	__spawnv \
-        __stack_chk_fail \
 	__stat \
 	__stdio \
 	__upath \
