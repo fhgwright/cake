@@ -41,9 +41,8 @@ AROS_LH2(void, WaitForThreadCondition,
     /* condition signaled, retake the mutex */
     LockMutex(mutex);
 
-    /* and return. note that we're not removing ourselves from the list of
-     * waiters, that has been done by the signalling task */
-    return;
+    /* done. note that we're not removing ourselves from the list of waiters,
+     * that has been done by the signalling task */
 
     AROS_LIBFUNC_EXIT
 }
