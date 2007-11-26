@@ -14,10 +14,11 @@
 
 typedef struct SignalSemaphore  *_Mutex;
 typedef struct _ThreadCondition *_ThreadCondition;
+typedef struct _ThreadWaiter    *_ThreadWaiter;
 
 struct _ThreadCondition {
     struct SignalSemaphore  lock;
-    struct List             waiting;
+    struct List             waiters;
     int                     count;
 };
 
