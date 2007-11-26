@@ -16,16 +16,17 @@ typedef struct SignalSemaphore  *_Mutex;
 typedef struct _ThreadCondition *_ThreadCondition;
 
 struct _ThreadCondition {
-    struct List waiting;
+    struct List     waiting;
+    int             count;
 };
 
 struct _ThreadWaiter {
-    struct Node node;
-    struct Task *task;
+    struct Node     node;
+    struct Task     *task;
 };
 
 struct ThreadBase {
-    struct Library library;
+    struct Library  library;
 };
 
 #endif
