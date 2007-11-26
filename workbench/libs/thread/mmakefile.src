@@ -1,0 +1,31 @@
+include $(TOP)/config/make.cfg
+
+FILES := thread_init
+
+FUNCS := \
+        createthread \
+        waitforthreadcompletion \
+        detachthread \
+        currentthread \
+        createmutex \
+        destroymutex \
+        lockmutex \
+        trylockmutex \
+        unlockmutex \
+        createthreadcondition \
+        destroythreadcondition \
+        waitforthreadcondition \
+        signalthreadcondition \
+        broadcastthreadcondition
+
+#MM workbench-libs-thread-includes : \
+#MM    kernel-exec-includes \
+#MM    includes-copy
+#MM- workbench-libs-thread : linklibs
+
+%build_module mmake=workbench-libs-thread \
+    modname=thread modtype=library \
+    files="$(FILES) $(FUNCS)" \
+    uselibs="rom"
+
+%common
