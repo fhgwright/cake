@@ -7,7 +7,7 @@
 #include <proto/thread.h>
 #include <assert.h>
 
-AROS_LH2(void, WaitForThreadCondition,
+AROS_LH2(BOOL, WaitForThreadCondition,
          AROS_LHA(_ThreadCondition, cond, A0),
          AROS_LHA(_Mutex,           mutex,     A1),
          struct ThreadBase *, ThreadBase, 16, Thread)
@@ -21,8 +21,7 @@ AROS_LH2(void, WaitForThreadCondition,
 
     /* setup a new waiter */
     if ((waiter = AllocMem(sizeof(struct _ThreadWaiter), MEMF_CLEAR)) == NULL) {
-        /* XXX return failure */
-        return;
+        return FALSE;
     }
     waiter->task = FindTask(NULL);
 
@@ -43,6 +42,7 @@ AROS_LH2(void, WaitForThreadCondition,
 
     /* done. note that we're not removing ourselves from the list of waiters,
      * that has been done by the signalling task */
+    return TRUE;
 
     AROS_LIBFUNC_EXIT
 }
