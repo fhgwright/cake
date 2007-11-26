@@ -22,6 +22,10 @@ AROS_LH1(void, SignalThreadCondition,
         cond->count--;
     ReleaseSemaphore(&cond->lock);
 
+    /* noone waiting */
+    if (waiter == NULL)
+        return;
+
     /* signal the task */
     Signal(waiter->task, SIGF_SINGLE);
 
