@@ -1,6 +1,7 @@
 #include "thread_intern.h"
 
 #include <exec/memory.h>
+#include <exec/lists.h>
 #include <proto/exec.h>
 
 AROS_LH0(_ThreadCondition, CreateThreadCondition,
@@ -12,6 +13,8 @@ AROS_LH0(_ThreadCondition, CreateThreadCondition,
 
     if ((cond = AllocMem(sizeof(struct _ThreadCondition), MEMF_PUBLIC | MEMF_CLEAR)) == NULL)
         return NULL;
+
+    NEWLIST(&cond->waiting);
 
     return cond;
 
