@@ -26,9 +26,9 @@ struct _Thread {
 
     struct Task             *task;
 
-    ThreadFunction          entry;
-    void                    *data;
     void                    *result;
+
+    _ThreadCondition        exit;
 
     BOOL                    detached;
 };

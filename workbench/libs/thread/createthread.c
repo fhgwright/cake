@@ -5,11 +5,21 @@
 #include <dos/dosextens.h>
 #include <proto/exec.h>
 #include <proto/dos.h>
+#include <proto/thread.h>
 #include <assert.h>
+
+struct trampoline_data {
+    struct _Thread      thread;
+    struct ThreadBase   *ThreadBase;
+    ThreadFunction      entry;
+    void                *data;
+};
 
 static void entry_trampoline(void) {
     struct Task *task = FindTask(NULL);
-    _Thread thread = task->tc_UserData;
+    struct trampoline_data *td = task->tc_UserData;
+    struct ThreadBase *ThreadBase = td->ThreadBase;
+    _Thread thread = &td->thread;
     void *result;
     BOOL detached;
 
@@ -19,17 +29,16 @@ static void entry_trampoline(void) {
     ReleaseSemaphore(&thread->lock);
 
     /* call the actual thread entry */
-    result = AROS_UFC1(void *, thread->entry,
-                       AROS_UFCA(void *, thread->data, A0));
+    result = AROS_UFC1(void *, td->entry,
+                       AROS_UFCA(void *, td->data, A0));
 
     /* thread finished. find out if it was detached */
     ObtainSemaphoreShared(&thread->lock);
     detached = thread->detached;
     ReleaseSemaphore(&thread->lock);
 
-    /* it wasn't, so wait for someone to join us */
-    if (!detached)
-        Wait(SIGF_SINGLE);
+    /* let anyone waiting for us know that we're gone */
+    BroadcastThreadCondition(thread->exit);
 
     /* all done, cleanup and we're outta here */
     FreeMem(thread, sizeof(struct _Thread));
@@ -42,14 +51,22 @@ AROS_LH2(ThreadIdentifier, CreateThread,
 {
     AROS_LIBFUNC_INIT
 
+    struct trampoline_data *td;
     _Thread thread;
     ThreadIdentifier id;
 
     assert(entry != NULL);
 
-    /* make a new thread */
-    if ((thread = AllocMem(sizeof(struct _Thread), MEMF_PUBLIC | MEMF_CLEAR)) == NULL)
+    /* allocate some space for the thread and stuff the trampoline needs */
+    if ((td = AllocMem(sizeof(struct trampoline_data), MEMF_PUBLIC | MEMF_CLEAR)) == NULL)
         return -1;
+
+    thread = &td->thread;
+    td->ThreadBase = ThreadBase;
+
+    /* entry point info for the trampoline */
+    td->entry = entry;
+    td->data = data;
 
     /* setup the lock */
     InitSemaphore(&thread->lock);
@@ -60,18 +77,14 @@ AROS_LH2(ThreadIdentifier, CreateThread,
     thread->task = (struct Task *) CreateNewProcTags(
         NP_Name,        (IPTR) "thread.library thread",
         NP_Entry,       (IPTR) entry_trampoline,
-        NP_UserData,    (IPTR) thread,
+        NP_UserData,    (IPTR) td,
         TAG_DONE);
 
     /* failure, shut it down */
     if (thread->task == NULL) {
-        FreeMem(thread, sizeof(struct _Thread));
+        FreeMem(td, sizeof(struct trampoline_data));
         return -1;
     }
-
-    /* entry point info for the trampoline */
-    thread->entry = entry;
-    thread->data = data;
 
     ObtainSemaphore(&ThreadBase->lock);
 
@@ -82,6 +95,9 @@ AROS_LH2(ThreadIdentifier, CreateThread,
     ADDTAIL(&ThreadBase->threads, thread);
 
     ReleaseSemaphore(&ThreadBase->lock);
+
+    /* make a condition so other threads can wait for us to exit */
+    thread->exit = CreateThreadCondition();
 
     /* unlock the thread to kick it off */
     ReleaseSemaphore(&thread->lock);
