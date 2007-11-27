@@ -29,8 +29,11 @@ struct _Thread {
     void                    *result;
 
     _ThreadCondition        exit;
+    _Mutex                  exit_mutex;
+    int                     exit_count;
 
     BOOL                    detached;
+    BOOL                    completed;
 };
 
 struct _ThreadCondition {

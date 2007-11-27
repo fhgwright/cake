@@ -22,6 +22,7 @@ static void entry_trampoline(void) {
     _Thread thread = &td->thread;
     void *result;
     BOOL detached;
+    int exit_count;
 
     /* get the thread lock. we'll block here until CreateThread() releases the
      * lock before it exits */
@@ -32,16 +33,25 @@ static void entry_trampoline(void) {
     result = AROS_UFC1(void *, td->entry,
                        AROS_UFCA(void *, td->data, A0));
 
-    /* thread finished. find out if it was detached */
-    ObtainSemaphoreShared(&thread->lock);
+    /* thread finished. save the result */
+    ObtainSemaphore(&thread->lock);
+    thread->result = result;
+
+    /* get data we need to figure out how to clean up */
     detached = thread->detached;
+    exit_count = thread->exit_count;
     ReleaseSemaphore(&thread->lock);
 
-    /* let anyone waiting for us know that we're gone */
-    BroadcastThreadCondition(thread->exit);
+    /* if we're detached or noone is waiting, the we have to cleanup ourselves */
+    if (detached || exit_count == 0) {
+        DestroyThreadCondition(thread->exit);
+        DestroyMutex(thread->exit_mutex);
+        FreeVec(td);
+    }
 
-    /* all done, cleanup and we're outta here */
-    FreeMem(thread, sizeof(struct _Thread));
+    /* otherwise tell them, and they'll clean us up */
+    else
+        BroadcastThreadCondition(thread->exit);
 }
 
 AROS_LH2(ThreadIdentifier, CreateThread,
@@ -58,7 +68,7 @@ AROS_LH2(ThreadIdentifier, CreateThread,
     assert(entry != NULL);
 
     /* allocate some space for the thread and stuff the trampoline needs */
-    if ((td = AllocMem(sizeof(struct trampoline_data), MEMF_PUBLIC | MEMF_CLEAR)) == NULL)
+    if ((td = AllocVec(sizeof(struct trampoline_data), MEMF_PUBLIC | MEMF_CLEAR)) == NULL)
         return -1;
 
     thread = &td->thread;
@@ -98,6 +108,7 @@ AROS_LH2(ThreadIdentifier, CreateThread,
 
     /* make a condition so other threads can wait for us to exit */
     thread->exit = CreateThreadCondition();
+    thread->exit_mutex = CreateMutex();
 
     /* unlock the thread to kick it off */
     ReleaseSemaphore(&thread->lock);
