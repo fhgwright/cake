@@ -54,4 +54,22 @@ struct ThreadBase {
     struct List             threads;
 };
 
+static inline _Thread _getthreadbyid(ThreadIdentifier id, struct ThreadBase *ThreadBase) {
+    _Thread _thread;
+    ForeachNode(&ThreadBase->threads, _thread) {
+        if (_thread->id == id)
+            return _thread;
+    }
+    return NULL;
+}
+
+static inline _Thread _getthreadbytask(struct Task *task, struct ThreadBase *ThreadBase) {
+    _Thread _thread;
+    ForeachNode(&ThreadBase->threads, _thread) {
+        if (_thread->task == task)
+            return _thread;
+    }
+    return NULL;
+}
+
 #endif
