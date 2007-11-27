@@ -18,6 +18,8 @@ typedef struct _ThreadCondition *_ThreadCondition;
 typedef struct _ThreadWaiter    *_ThreadWaiter;
 
 struct _Thread {
+    struct Node             node;
+
     struct SignalSemaphore  lock;
 
     ThreadIdentifier        id;

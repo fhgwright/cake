@@ -48,23 +48,15 @@ AROS_LH2(ThreadIdentifier, CreateThread,
     assert(entry != NULL);
 
     /* make a new thread */
-    if ((thread = AllocMem(sizeof(struct _Thread), MEMF_PUBLIC)) == NULL)
+    if ((thread = AllocMem(sizeof(struct _Thread), MEMF_PUBLIC | MEMF_CLEAR)) == NULL)
         return -1;
 
     /* setup the lock */
     InitSemaphore(&thread->lock);
     ObtainSemaphore(&thread->lock);
 
-    /* get an id */
-    ObtainSemaphore(&ThreadBase->lock);
-    id = thread->id = ThreadBase->nextid++;
-    ReleaseSemaphore(&ThreadBase->lock);
-
-    /* entry point info for the trampoline */
-    thread->entry = entry;
-    thread->data = data;
-
-    /* create the new process and hand control to the trampoline */
+    /* create the new process and hand control to the trampoline. it will wait
+     * for us to finish setting up because we have the thread lock */
     thread->task = (struct Task *) CreateNewProcTags(
         NP_Name,        (IPTR) "thread.library thread",
         NP_Entry,       (IPTR) entry_trampoline,
@@ -77,7 +69,21 @@ AROS_LH2(ThreadIdentifier, CreateThread,
         return -1;
     }
 
-    /* unlock the thread to send it on its way */
+    /* entry point info for the trampoline */
+    thread->entry = entry;
+    thread->data = data;
+
+    ObtainSemaphore(&ThreadBase->lock);
+
+    /* get an id */
+    id = thread->id = ThreadBase->nextid++;
+
+    /* add the thread to the list */
+    ADDTAIL(&ThreadBase->threads, thread);
+
+    ReleaseSemaphore(&ThreadBase->lock);
+
+    /* unlock the thread to kick it off */
     ReleaseSemaphore(&thread->lock);
 
     return id;
