@@ -18,10 +18,17 @@ typedef struct _ThreadCondition *_ThreadCondition;
 typedef struct _ThreadWaiter    *_ThreadWaiter;
 
 struct _Thread {
+    struct SignalSemaphore  lock;
+
     ThreadIdentifier        id;
+
+    struct Task             *task;
+
     ThreadFunction          entry;
     void                    *data;
-    struct Task             *task;
+    void                    *result;
+
+    BOOL                    detached;
 };
 
 struct _ThreadCondition {
