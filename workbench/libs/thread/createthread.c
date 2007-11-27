@@ -96,6 +96,10 @@ AROS_LH2(ThreadIdentifier, CreateThread,
         return -1;
     }
 
+    /* make a condition so other threads can wait for us to exit */
+    thread->exit = CreateThreadCondition();
+    thread->exit_mutex = CreateMutex();
+
     ObtainSemaphore(&ThreadBase->lock);
 
     /* get an id */
@@ -105,10 +109,6 @@ AROS_LH2(ThreadIdentifier, CreateThread,
     ADDTAIL(&ThreadBase->threads, thread);
 
     ReleaseSemaphore(&ThreadBase->lock);
-
-    /* make a condition so other threads can wait for us to exit */
-    thread->exit = CreateThreadCondition();
-    thread->exit_mutex = CreateMutex();
 
     /* unlock the thread to kick it off */
     ReleaseSemaphore(&thread->lock);
