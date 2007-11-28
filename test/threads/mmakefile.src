@@ -1,0 +1,15 @@
+include $(TOP)/config/make.cfg
+
+FILES := \
+    twothreads
+
+EXEDIR := $(AROS_TESTS)/threads
+
+#MM test : test-threads
+#MM test : includes includes-copy workbench-datatypes-png-includes
+
+%build_progs mmake=test-threads \
+    files=$(FILES) targetdir=$(EXEDIR) \
+    uselibs="thread"
+
+%common
