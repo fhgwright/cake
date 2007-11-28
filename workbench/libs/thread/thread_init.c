@@ -16,6 +16,12 @@ static int GM_UNIQUENAME(Open)(struct ThreadBase *ThreadBase) {
 }
 
 static int GM_UNIQUENAME(Close)(struct ThreadBase *ThreadBase) {
+    int count;
+
+    ListLength(&ThreadBase->threads, count);
+    if (count > 0)
+        kprintf("%d threads outstanding! brace yourself...\n", count);
+
     return TRUE;
 }
 
