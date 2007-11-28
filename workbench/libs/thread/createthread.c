@@ -94,6 +94,9 @@ AROS_LH2(ThreadIdentifier, CreateThread,
         NP_Name,        (IPTR) "thread.library thread",
         NP_Entry,       (IPTR) entry_trampoline,
         NP_UserData,    (IPTR) td,
+        NP_Input,       (IPTR) OpenFromLock(DupLockFromFH(Input())),
+        NP_Output,      (IPTR) OpenFromLock(DupLockFromFH(Output())),
+        NP_Error,       (IPTR) OpenFromLock(DupLockFromFH(Error())),
         TAG_DONE);
 
     /* failure, shut it down */
