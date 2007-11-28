@@ -43,6 +43,9 @@ static void entry_trampoline(void) {
     ObtainSemaphore(&thread->lock);
     thread->result = result;
 
+    /* we're done */
+    thread->completed = TRUE;
+
     /* get data we need to figure out how to clean up */
     detached = thread->detached;
     exit_count = thread->exit_count;
