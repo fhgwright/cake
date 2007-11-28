@@ -49,6 +49,11 @@ AROS_LH2(BOOL, WaitForThreadCompletion,
         ReleaseSemaphore(&thread->lock);
 
     else {
+        /* remove it from the thread list */
+        ObtainSemaphore(&ThreadBase->lock);
+        REMOVE(thread);
+        ReleaseSemaphore(&ThreadBase->lock);
+
         DestroyThreadCondition(thread->exit);
         DestroyMutex(thread->exit_mutex);
         FreeVec(thread);
