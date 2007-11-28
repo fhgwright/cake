@@ -50,6 +50,8 @@ struct _ThreadWaiter {
 struct ThreadBase {
     struct Library          library;
 
+    struct ThreadBase       *rootbase;
+
     struct SignalSemaphore  lock;
 
     ThreadIdentifier        nextid;

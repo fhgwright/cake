@@ -7,7 +7,7 @@
 
 #include LC_LIBDEFS_FILE
 
-static int GM_UNIQUENAME(Init)(struct ThreadBase *ThreadBase) {
+static int GM_UNIQUENAME(Open)(struct ThreadBase *ThreadBase) {
     InitSemaphore(&ThreadBase->lock);
 
     NEWLIST(&ThreadBase->threads);
@@ -15,9 +15,9 @@ static int GM_UNIQUENAME(Init)(struct ThreadBase *ThreadBase) {
     return TRUE;
 }
 
-static int GM_UNIQUENAME(Expunge)(struct ThreadBase *ThreadBase) {
+static int GM_UNIQUENAME(Close)(struct ThreadBase *ThreadBase) {
     return TRUE;
 }
 
-ADD2INITLIB(GM_UNIQUENAME(Init), 0)
-ADD2EXPUNGELIB(GM_UNIQUENAME(Expunge), 0)
+ADD2OPENLIB(GM_UNIQUENAME(Open), 0)
+ADD2CLOSELIB(GM_UNIQUENAME(Close), 0)
