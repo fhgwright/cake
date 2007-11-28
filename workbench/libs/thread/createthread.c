@@ -1,5 +1,6 @@
 #include "thread_intern.h"
 
+#include <exec/libraries.h>
 #include <exec/tasks.h>
 #include <exec/memory.h>
 #include <dos/dosextens.h>
@@ -16,6 +17,7 @@ struct trampoline_data {
 };
 
 static void entry_trampoline(void) {
+    struct Library *aroscbase;
     struct Task *task = FindTask(NULL);
     struct trampoline_data *td = task->tc_UserData;
     struct ThreadBase *ThreadBase = td->ThreadBase;
@@ -29,9 +31,13 @@ static void entry_trampoline(void) {
     ObtainSemaphore(&thread->lock);
     ReleaseSemaphore(&thread->lock);
 
+    aroscbase = OpenLibrary("arosc.library", 0);
+
     /* call the actual thread entry */
     result = AROS_UFC1(void *, td->entry,
                        AROS_UFCA(void *, td->data, A0));
+
+    CloseLibrary(aroscbase);
 
     /* thread finished. save the result */
     ObtainSemaphore(&thread->lock);
