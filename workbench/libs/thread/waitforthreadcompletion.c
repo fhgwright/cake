@@ -18,7 +18,7 @@ AROS_LH2(BOOL, WaitForThreadCompletion,
 
     assert(thread_id >= 0);
 
-    if ((thread = _getthreadbyid(thread_id, ThreadBase)) < 0)
+    if ((thread = _getthreadbyid(thread_id, ThreadBase)) == NULL)
         return FALSE;
 
     if (thread->task == FindTask(NULL))
