@@ -1,7 +1,8 @@
 include $(TOP)/config/make.cfg
 
 FILES := \
-    twothreads
+    twothreads \
+    tenthreads
 
 EXEDIR := $(AROS_TESTS)/threads
 
