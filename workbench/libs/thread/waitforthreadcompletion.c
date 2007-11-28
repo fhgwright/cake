@@ -41,7 +41,8 @@ AROS_LH2(BOOL, WaitForThreadCompletion,
     UnlockMutex(thread->exit_mutex);
 
     ObtainSemaphore(&thread->lock);
-    *result = thread->result;
+    if (result != NULL)
+        *result = thread->result;
     thread->exit_count--;
 
     if (thread->exit_count > 0)
