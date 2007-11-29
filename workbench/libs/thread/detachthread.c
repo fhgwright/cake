@@ -6,16 +6,22 @@ AROS_LH1(BOOL, DetachThread,
 {
     AROS_LIBFUNC_INIT
 
+    /* get thread data */
     _Thread thread = _getthreadbyid(thread_id, ThreadBase);
     if (thread == NULL)
         return FALSE;
 
     ObtainSemaphore(&thread->lock);
+
+    /* can't detach if its already detached */
     if (thread->detached) {
         ReleaseSemaphore(&thread->lock);
         return FALSE;
     }
+
+    /* simple */
     thread->detached = TRUE;
+    
     ReleaseSemaphore(&thread->lock);
 
     return TRUE;

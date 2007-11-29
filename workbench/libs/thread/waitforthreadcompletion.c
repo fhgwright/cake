@@ -14,50 +14,57 @@ AROS_LH2(BOOL, WaitForThreadCompletion,
     AROS_LIBFUNC_INIT
 
     _Thread thread;
-    BOOL detached, completed;
 
     assert(thread_id >= 0);
 
+    /* get the thread */
     if ((thread = _getthreadbyid(thread_id, ThreadBase)) == NULL)
         return FALSE;
 
+    /* can't wait for ourselves, that would be silly */
     if (thread->task == FindTask(NULL))
         return FALSE;
 
     ObtainSemaphore(&thread->lock);
-    detached = thread->detached;
-    completed = thread->completed;
 
-    if (detached || completed) {
+    /* can't wait on a detached thread, or one thats already finished */
+    if (thread->detached || thread->completed) {
         ReleaseSemaphore(&thread->lock);
         return FALSE;
     }
 
+    /* one more waiter */
     thread->exit_count++;
     ReleaseSemaphore(&thread->lock);
 
+    /* wait for exit */
     LockMutex(thread->exit_mutex);
     WaitForThreadCondition(thread->exit, thread->exit_mutex);
     UnlockMutex(thread->exit_mutex);
 
     ObtainSemaphore(&thread->lock);
+
+    /* copy the result if the caller was interested */
     if (result != NULL)
         *result = thread->result;
+
+    /* no longer waiting */
     thread->exit_count--;
 
-    if (thread->exit_count > 0)
+    /* still more threads waiting, so we're done */
+    if (thread->exit_count > 0) {
         ReleaseSemaphore(&thread->lock);
-
-    else {
-        /* remove it from the thread list */
-        ObtainSemaphore(&ThreadBase->lock);
-        REMOVE(thread);
-        ReleaseSemaphore(&ThreadBase->lock);
-
-        DestroyThreadCondition(thread->exit);
-        DestroyMutex(thread->exit_mutex);
-        FreeVec(thread);
+        return TRUE;
     }
+
+    /* nobody else cares about this thread, so it can be cleaned up */
+    ObtainSemaphore(&ThreadBase->lock);
+    REMOVE(thread);
+    ReleaseSemaphore(&ThreadBase->lock);
+
+    DestroyThreadCondition(thread->exit);
+    DestroyMutex(thread->exit_mutex);
+    FreeVec(thread);
 
     return TRUE;
 

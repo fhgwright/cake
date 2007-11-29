@@ -11,9 +11,11 @@ AROS_LH0(_ThreadCondition, CreateThreadCondition,
 
     _ThreadCondition cond;
 
+    /* allocate */
     if ((cond = AllocMem(sizeof(struct _ThreadCondition), MEMF_PUBLIC)) == NULL)
         return NULL;
 
+    /* initialise */
     InitSemaphore(&cond->lock);
     NEWLIST(&cond->waiters);
     cond->count = 0;

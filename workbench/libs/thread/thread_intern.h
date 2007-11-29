@@ -12,53 +12,68 @@
 
 #include <libraries/thread.h>
 
-typedef struct _Thread          *_Thread;
+/* internal definitions of mutexes and conditions (they're void * in the
+ * public header */
 typedef struct SignalSemaphore  *_Mutex;
 typedef struct _ThreadCondition *_ThreadCondition;
+
+/* internal types */
+typedef struct _Thread          *_Thread;
 typedef struct _ThreadWaiter    *_ThreadWaiter;
 
+/* a single thread */
 struct _Thread {
-    struct Node             node;
+    struct Node             node;       /* node for ThreadBase->threads */
 
-    struct SignalSemaphore  lock;
+    struct SignalSemaphore  lock;       /* lock for the this thread data */
 
-    ThreadIdentifier        id;
+    ThreadIdentifier        id;         /* numerical thread id. read only,
+                                         * no need to acquire the lock */
 
-    struct Task             *task;
+    struct Task             *task;      /* the exec task for this thread */
 
-    void                    *result;
+    void                    *result;    /* storage for the thread exit value
+                                         * for thread completion waiters */
 
-    _ThreadCondition        exit;
-    _Mutex                  exit_mutex;
-    int                     exit_count;
+    _ThreadCondition        exit;       /* condition for threads waiting for
+                                         * this thread to finish */
+    _Mutex                  exit_mutex; /* associated mutex */
+    int                     exit_count; /* number of threads waitering */
 
-    BOOL                    detached;
-    BOOL                    completed;
+    BOOL                    detached;   /* flag, thread is detached */
+    BOOL                    completed;  /* flag, thread has completed */
 };
 
+/* a condition variable */
 struct _ThreadCondition {
-    struct SignalSemaphore  lock;
-    struct List             waiters;
-    int                     count;
+    struct SignalSemaphore  lock;       /* lock for this condition data */
+
+    struct List             waiters;    /* list of _ThreadWaiters */
+    int                     count;      /* number of waiters in the list */
 };
 
+/* a waiter for a condition */
 struct _ThreadWaiter {
-    struct Node             node;
-    struct Task             *task;
+    struct Node             node;       /* node for cond->waiters */
+    struct Task             *task;      /* task to signal when the condition
+                                         * is met */
 };
 
+/* the library base. this is a per-opener base */
 struct ThreadBase {
     struct Library          library;
 
-    struct ThreadBase       *rootbase;
+    struct ThreadBase       *rootbase;  /* pointer to the global base */
 
-    struct SignalSemaphore  lock;
+    struct SignalSemaphore  lock;       /* lock for this base */
 
-    ThreadIdentifier        nextid;
+    ThreadIdentifier        nextid;     /* numeric identifier to be issued to
+                                         * the next thread created */
 
-    struct List             threads;
+    struct List             threads;    /* list of threads */
 };
 
+/* helper functions for finding thread data */
 static inline _Thread _getthreadbyid(ThreadIdentifier id, struct ThreadBase *ThreadBase) {
     _Thread thread, next;
     ForeachNodeSafe(&ThreadBase->threads, thread, next) {

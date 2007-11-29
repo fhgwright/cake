@@ -31,6 +31,7 @@ static void entry_trampoline(void) {
     ObtainSemaphore(&thread->lock);
     ReleaseSemaphore(&thread->lock);
 
+    /* give each thread its own C library, so it can reliably printf() etc */
     aroscbase = OpenLibrary("arosc.library", 0);
 
     /* call the actual thread entry */

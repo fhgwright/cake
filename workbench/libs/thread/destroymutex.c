@@ -10,18 +10,15 @@ AROS_LH1(BOOL, DestroyMutex,
 {
     AROS_LIBFUNC_INIT
 
-    BOOL in_use = FALSE;
-
     assert(mutex != NULL);
 
     /* we can only destroy the mutex if its not held and noone is waiting */
     Forbid();
-    if (((struct SignalSemaphore *) mutex)->ss_QueueCount >= 0)
-        in_use = TRUE;
-    Permit();
-
-    if (in_use)
+    if (((struct SignalSemaphore *) mutex)->ss_QueueCount >= 0) {
+        Permit();
         return FALSE;
+    }
+    Permit();
 
     FreeMem(mutex, sizeof(struct SignalSemaphore));
 

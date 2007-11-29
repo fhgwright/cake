@@ -7,6 +7,7 @@ AROS_LH0(ThreadIdentifier, CurrentThread,
 {
     AROS_LIBFUNC_INIT
 
+    /* find it */
     _Thread thread = _getthreadbytask(FindTask(NULL), ThreadBase);
     if (thread == NULL)
         return -1;
