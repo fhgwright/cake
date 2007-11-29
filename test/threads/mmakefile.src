@@ -6,8 +6,7 @@ FILES := \
 
 EXEDIR := $(AROS_TESTS)/threads
 
-#MM test : test-threads
-#MM test : includes includes-copy workbench-datatypes-png-includes
+#MM- test : test-threads
 
 %build_progs mmake=test-threads \
     files=$(FILES) targetdir=$(EXEDIR) \
