@@ -12,7 +12,6 @@
 #include <exec/semaphores.h>
 #include <exec/lists.h>
 #include <proto/exec.h>
-#include <proto/thread.h>
 #include <aros/symbolsets.h>
 
 #include LC_LIBDEFS_FILE
@@ -26,12 +25,12 @@ static int GM_UNIQUENAME(Open)(struct ThreadBase *ThreadBase) {
 }
 
 static int GM_UNIQUENAME(Close)(struct ThreadBase *ThreadBase) {
-    _Thread thread, next;
+    _Thread thread;
 
     /* detach any remaining threads. its hard to know what the right thing to
      * do here is, but we have to do something */
-    ForeachNodeSafe(&ThreadBase->threads, thread, next)
-        DetachThread(thread->id);
+    ForeachNode(&ThreadBase->threads, thread)
+        thread->detached = TRUE;
 
     return TRUE;
 }
