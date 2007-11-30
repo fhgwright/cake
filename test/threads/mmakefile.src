@@ -3,7 +3,7 @@ include $(TOP)/config/make.cfg
 FILES := \
     twothreads \
     threadexit \
-    autodetach \
+    detachonexit \
     mutex
 
 EXEDIR := $(AROS_TESTS)/threads
