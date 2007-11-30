@@ -24,20 +24,26 @@
         struct ThreadBase *, ThreadBase, 9, Thread)
 
 /*  FUNCTION
+        Creates a mutual exclusion device (aka lock).
 
     INPUTS
+        None.
 
     RESULT
+        The newly created mutex, or NULL if a mutex couldn't be created.
 
     NOTES
 
     EXAMPLE
+        Mutex mutex = CreateMutex();
 
     BUGS
 
     SEE ALSO
+        DestroyMutex(), LockMutex(), TryLockMutex(), UnlockMutex()
 
     INTERNALS
+        Mutexes are implemented as thin wrappers around Exec semaphores.
 
 *****************************************************************************/
 {

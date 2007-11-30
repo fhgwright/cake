@@ -25,21 +25,27 @@
         struct ThreadBase *, ThreadBase, 12, Thread)
 
 /*  FUNCTION
+        Tries to lock a mutex. If the lock is already held, this function
+        fails.
 
     INPUTS
+        mutex - mutex to lock.
 
     RESULT
+        TRUE if the lock was acquired, FALSE if the lock is already held.
 
     NOTES
 
     EXAMPLE
+        TryLockMutex(mutex);
 
     BUGS
 
     SEE ALSO
+        CreateMutex(), DestroyMutex(), LockMutex(), UnlockMutex()
 
     INTERNALS
-
+        Mutexes are implemented as thin wrappers around Exec semaphores.
 *****************************************************************************/
 {
     AROS_LIBFUNC_INIT

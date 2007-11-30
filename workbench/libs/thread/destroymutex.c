@@ -25,20 +25,28 @@
         struct ThreadBase *, ThreadBase, 10, Thread)
 
 /*  FUNCTION
+        Destroys a mutex.
 
     INPUTS
+        mutex - the mutex to destroy.
 
     RESULT
+        TRUE if the mutex was destroyed, otherwise FALSE.
 
     NOTES
+        You cannot destroy a mutex that is currently locked or has tasks
+        waiting to lock it.
 
     EXAMPLE
+        DestroyMutex(mutex)
 
     BUGS
 
     SEE ALSO
+        CreateMutex(), LockMutex(), TryLockMutex(), UnlockMutex()
 
     INTERNALS
+        Mutexes are implemented as thin wrappers around Exec semaphores.
 
 *****************************************************************************/
 {

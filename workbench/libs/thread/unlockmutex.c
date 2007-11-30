@@ -25,20 +25,26 @@
         struct ThreadBase *, ThreadBase, 13, Thread)
 
 /*  FUNCTION
+        Unlocks a locked mutex.
 
     INPUTS
+        mutex - mutex to unlock.
 
     RESULT
+        This function always succeeds.
 
     NOTES
 
     EXAMPLE
+        UnlockMutex(mutex);
 
     BUGS
 
     SEE ALSO
+        CreateMutex(), DestroyMutex(), LockMutex(), TryLockMutex()
 
     INTERNALS
+        Mutexes are implemented as thin wrappers around Exec semaphores.
 
 *****************************************************************************/
 {
