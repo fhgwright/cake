@@ -40,20 +40,36 @@ static void entry_trampoline(void);
         struct ThreadBase *, ThreadBase, 5, Thread)
 
 /*  FUNCTION
+        Creates a new thread.
 
     INPUTS
+        entry - pointer to a function to run in the new thread
+        data  - pointer to pass in the first in the first argument to function
+                pointed to by entry
 
     RESULT
+        Numeric thread ID, or -1 if thread could not be started. 0 is a valid
+        thread ID.
 
     NOTES
 
     EXAMPLE
+        ThreadIdentifier id = CreateThread(entry, data);
+        if (id < 0)
+            printf("thread creation failed\n");
+        else
+            printf("thread %d created\n", id);
 
     BUGS
 
     SEE ALSO
+        CurrentThread(), DetachThread(), WaitForThreadCompletion()
 
     INTERNALS
+        Each thread gets its own instance of arosc.library, so it can safely
+        call functions like printf() without conflicting with other threads.
+        Similarly, each thread gets its own standard I/O streams, though they
+        start attached to the same place as the task that created the thread.
 
 *****************************************************************************/
 {

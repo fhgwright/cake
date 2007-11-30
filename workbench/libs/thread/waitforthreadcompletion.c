@@ -28,18 +28,33 @@
         struct ThreadBase *, ThreadBase, 6, Thread)
 
 /*  FUNCTION
+        Blocks the current task until the requests thread exits.
 
     INPUTS
+        thread_id - ID of thread to detach.
+        result    - pointer to storage for the thread's return value. You can
+                    pass NULL here if you don't care about the return value.
+                    if you don't care about the return value.
 
     RESULT
+        TRUE when the thread completed successfully. FALSE if thread could not
+        be waited on.
 
     NOTES
+        A thread cannot wait on itself. A thread cannot be waited on if it is
+        detached or has already finished.
+
+        Multiple threads can wait for a thread to complete. They will all
+        be notified when the thread completes, and will all receive the result.
 
     EXAMPLE
+        void *ret;
+        WaitForThreadCompletion(id, &ret);
 
     BUGS
 
     SEE ALSO
+        CreateThread(), CurrentThread(), DetachThread()
 
     INTERNALS
 

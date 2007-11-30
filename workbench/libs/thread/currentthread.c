@@ -22,18 +22,25 @@
         struct ThreadBase *, ThreadBase, 8, Thread)
 
 /*  FUNCTION
+        Get the ID of the running thread.
 
     INPUTS
+        None.
 
     RESULT
+        Numeric thread ID, or -1 if this is not a thread. 0 is a valid thread
+        ID.
 
     NOTES
 
     EXAMPLE
+        ThreadIdentifier id = CurrentThread();
+        printf("this is thread %d\n", id);
 
     BUGS
 
     SEE ALSO
+        CreateThread(), DetachThread(), WaitForThreadCompletion();
 
     INTERNALS
 
