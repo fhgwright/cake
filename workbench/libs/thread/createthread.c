@@ -173,7 +173,7 @@ static void entry_trampoline(void) {
     thread->result = result;
 
     /* mark it as done */
-    thread->completed = TRUE;
+    thread->task = NULL;
 
     ReleaseSemaphore(&thread->lock);
 

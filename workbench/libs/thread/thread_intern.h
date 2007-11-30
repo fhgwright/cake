@@ -39,7 +39,8 @@ struct _Thread {
     ThreadIdentifier        id;         /* numerical thread id. read only,
                                          * no need to acquire the lock */
 
-    struct Task             *task;      /* the exec task for this thread */
+    struct Task             *task;      /* the exec task for this thread, or 
+                                           NULL if the thread has completed */
 
     void                    *result;    /* storage for the thread exit value
                                          * for thread completion waiters */
@@ -50,7 +51,6 @@ struct _Thread {
     int                     exit_count; /* number of threads waitering */
 
     BOOL                    detached;   /* flag, thread is detached */
-    BOOL                    completed;  /* flag, thread has completed */
 };
 
 /* a condition variable */
@@ -95,7 +95,7 @@ static inline _Thread _getthreadbyid(ThreadIdentifier id, struct ThreadBase *Thr
 static inline _Thread _getthreadbytask(struct Task *task, struct ThreadBase *ThreadBase) {
     _Thread thread, next;
     ForeachNodeSafe(&ThreadBase->threads, thread, next) {
-        if (thread->task == task && !thread->completed)
+        if (thread->task == task)
             return thread;
     }
     return NULL;

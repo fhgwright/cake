@@ -77,7 +77,7 @@
     ObtainSemaphore(&thread->lock);
 
     /* we only want to wait if the thread is still running */
-    if (!thread->completed) {
+    if (thread->task != NULL) {
 
         /* one more waiter */
         thread->exit_count++;
