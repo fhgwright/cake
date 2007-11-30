@@ -2,7 +2,8 @@ include $(TOP)/config/make.cfg
 
 FILES := \
     twothreads \
-    tenthreads
+    tenthreads \
+    mutex
 
 EXEDIR := $(AROS_TESTS)/threads
 
