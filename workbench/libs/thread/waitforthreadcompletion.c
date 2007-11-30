@@ -76,29 +76,27 @@
 
     ObtainSemaphore(&thread->lock);
 
-    /* can't wait on a detached thread, or one thats already finished */
-    if (thread->detached || thread->completed) {
+    /* we only want to wait if the thread is still running */
+    if (!thread->completed) {
+
+        /* one more waiter */
+        thread->exit_count++;
         ReleaseSemaphore(&thread->lock);
-        return FALSE;
+
+        /* wait for exit */
+        LockMutex(thread->exit_mutex);
+        WaitForThreadCondition(thread->exit, thread->exit_mutex);
+        UnlockMutex(thread->exit_mutex);
+
+        ObtainSemaphore(&thread->lock);
+
+        /* no longer waiting */
+        thread->exit_count--;
     }
-
-    /* one more waiter */
-    thread->exit_count++;
-    ReleaseSemaphore(&thread->lock);
-
-    /* wait for exit */
-    LockMutex(thread->exit_mutex);
-    WaitForThreadCondition(thread->exit, thread->exit_mutex);
-    UnlockMutex(thread->exit_mutex);
-
-    ObtainSemaphore(&thread->lock);
 
     /* copy the result if the caller was interested */
     if (result != NULL)
         *result = thread->result;
-
-    /* no longer waiting */
-    thread->exit_count--;
 
     /* still more threads waiting, so we're done */
     if (thread->exit_count > 0) {

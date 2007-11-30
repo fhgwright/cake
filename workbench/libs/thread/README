@@ -43,10 +43,6 @@ TODO
  - A way to wait for all threads to finish (including detached threads, so
    this can be used usefully to wait for threads before exiting in main()).
 
- - Think about detached threads more. What does it mean to be detached in an
-   system that has no resource tracking? Do they need to survive after the main
-   process exits?
-
  - Can exiting the main process while threads are still running be handled
    better?
 

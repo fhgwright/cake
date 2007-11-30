@@ -142,8 +142,6 @@ static void entry_trampoline(void) {
     struct ThreadBase *ThreadBase = td->ThreadBase;
     _Thread thread = &td->thread;
     void *result;
-    BOOL detached;
-    int exit_count;
 
     /* get the thread lock. we'll block here until CreateThread() releases the
      * lock before it exits */
@@ -159,31 +157,29 @@ static void entry_trampoline(void) {
 
     CloseLibrary(aroscbase);
 
-    /* thread finished. save the result */
+    /* its over, update its state */
     ObtainSemaphore(&thread->lock);
-    thread->result = result;
 
-    /* we're done */
-    thread->completed = TRUE;
-
-    /* get data we need to figure out how to clean up */
-    detached = thread->detached;
-    exit_count = thread->exit_count;
-    ReleaseSemaphore(&thread->lock);
-
-    /* if we're detached or noone is waiting, the we have to cleanup ourselves */
-    if (detached || exit_count == 0) {
-        /* remove it from the thread list */
-        ObtainSemaphore(&ThreadBase->lock);
-        REMOVE(thread);
-        ReleaseSemaphore(&ThreadBase->lock);
-
+    /* if its detached, then we close it down right here and now */
+    if (thread->detached) {
         DestroyThreadCondition(thread->exit);
         DestroyMutex(thread->exit_mutex);
         FreeVec(td);
+        
+        return;
     }
 
-    /* otherwise tell them, and they'll clean us up */
-    else
-        BroadcastThreadCondition(thread->exit);
+    /* save the result */
+    thread->result = result;
+
+    /* mark it as done */
+    thread->completed = TRUE;
+
+    ReleaseSemaphore(&thread->lock);
+
+    /* tell anyone that cares. we'll be cleaned up in
+     * WaitForThreadCompletion() */
+    LockMutex(thread->exit_mutex);
+    BroadcastThreadCondition(thread->exit);
+    UnlockMutex(thread->exit_mutex);
 }
