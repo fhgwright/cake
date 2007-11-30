@@ -141,6 +141,9 @@ static void entry_trampoline(void) {
     _Thread thread;
     void *result;
 
+    /* wait for the parent to let us go */
+    Wait(SIGF_SINGLE);
+
     /* allocate space for the thread */
     if ((thread = AllocVec(sizeof(struct _Thread), MEMF_PUBLIC | MEMF_CLEAR)) == NULL) {
 
