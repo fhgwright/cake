@@ -21,12 +21,17 @@ void *thread_main(void *data) {
 
 int main (int argc, char **argv) {
     int i;
-    ThreadIdentifier id;
+    ThreadIdentifier id[10];
 
     for (i = 0; i < 10; i++) {
-        id = CreateThread(thread_main, NULL);
-        printf("created thread %d\n", id);
+        id[i] = CreateThread(thread_main, NULL);
+        printf("created thread %d\n", id[i]);
         Delay(100);
+    }
+
+    for (i = 0; i < 10; i++) {
+        printf("waiting for thread %d\n", id[i]);
+        WaitForThreadCompletion(id[i], NULL);
     }
 
     return 0;
