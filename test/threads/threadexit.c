@@ -5,14 +5,10 @@
 
 void *thread_main(void *data) {
     ThreadIdentifier id = CurrentThread();
-    int i;
 
     printf("[%d] starting\n", id);
 
-    for (i = 0; i < 10; i++) {
-        printf("[%d] count: %d\n", id, i);
-        Delay(25);
-    }
+    Delay(50);
 
     printf("[%d] exiting\n", id);
 
@@ -26,7 +22,7 @@ int main (int argc, char **argv) {
     for (i = 0; i < 10; i++) {
         id[i] = CreateThread(thread_main, NULL);
         printf("created thread %d\n", id[i]);
-        Delay(100);
+        Delay(25);
     }
 
     for (i = 0; i < 10; i++) {
