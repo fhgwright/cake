@@ -19,10 +19,11 @@
 #include <assert.h>
 
 struct trampoline_data {
-    struct _Thread      thread;
-    struct ThreadBase   *ThreadBase;
-    ThreadFunction      entry;
-    void                *data;
+    struct ThreadBase       *ThreadBase;
+    struct Task             *parent;
+    ThreadFunction          entry;
+    void                    *data;
+    ThreadIdentifier        id;
 };
 
 static void entry_trampoline(void);
@@ -76,7 +77,7 @@ static void entry_trampoline(void);
     AROS_LIBFUNC_INIT
 
     struct trampoline_data *td;
-    _Thread thread;
+    struct Task *task;
     ThreadIdentifier id;
 
     assert(entry != NULL);
@@ -85,20 +86,21 @@ static void entry_trampoline(void);
     if ((td = AllocVec(sizeof(struct trampoline_data), MEMF_PUBLIC | MEMF_CLEAR)) == NULL)
         return -1;
 
-    thread = &td->thread;
     td->ThreadBase = ThreadBase;
+
+    /* let the thread find us */
+    td->parent = FindTask(NULL);
 
     /* entry point info for the trampoline */
     td->entry = entry;
     td->data = data;
 
-    /* setup the lock */
-    InitSemaphore(&thread->lock);
-    ObtainSemaphore(&thread->lock);
+    /* assume failure */
+    td->id = -1;
 
     /* create the new process and hand control to the trampoline. it will wait
      * for us to finish setting up because we have the thread lock */
-    thread->task = (struct Task *) CreateNewProcTags(
+    task = (struct Task *) CreateNewProcTags(
         NP_Name,        (IPTR) "thread.library thread",
         NP_Entry,       (IPTR) entry_trampoline,
         NP_UserData,    (IPTR) td,
@@ -108,10 +110,56 @@ static void entry_trampoline(void);
         TAG_DONE);
 
     /* failure, shut it down */
-    if (thread->task == NULL) {
+    if (task == NULL) {
         FreeMem(td, sizeof(struct trampoline_data));
         return -1;
     }
+
+    /* signal the task to kick it off */
+    Signal(task, SIGF_SINGLE);
+
+    /* wait for them to tell us that they're ready */
+    Wait(SIGF_SINGLE);
+
+    /* get the new id of the thread that they passed back */
+    id = td->id;
+
+    /* free the trampoline data */
+    FreeVec(td);
+
+    /* done */
+    return id;
+
+    AROS_LIBFUNC_EXIT
+} /* CreateThread */
+
+static void entry_trampoline(void) {
+    struct Task *task = FindTask(NULL);
+    struct trampoline_data *td = task->tc_UserData;
+    struct ThreadBase *ThreadBase = td->ThreadBase;
+    struct Library *aroscbase;
+    _Thread thread;
+    void *result;
+
+    /* allocate space for the thread */
+    if ((thread = AllocVec(sizeof(struct _Thread), MEMF_PUBLIC | MEMF_CLEAR)) == NULL) {
+
+        /* in case of failure, set a negative id and tell the parent so they
+         * can inform the caller */
+        Signal(td->parent, SIGF_SINGLE);
+        return;
+    }
+
+    /* give each thread its own C library, so it can reliably printf() etc */
+    if ((aroscbase = OpenLibrary("arosc.library", 0)) == NULL) {
+        FreeVec(thread);
+        Signal(td->parent, SIGF_SINGLE);
+        return;
+    }
+
+    /* setup the thread */
+    InitSemaphore(&thread->lock);
+    thread->task = task;
 
     /* make a condition so other threads can wait for us to exit */
     thread->exit = CreateThreadCondition();
@@ -120,36 +168,15 @@ static void entry_trampoline(void);
     ObtainSemaphore(&ThreadBase->lock);
 
     /* get an id */
-    id = thread->id = ThreadBase->nextid++;
+    td->id = thread->id = ThreadBase->nextid++;
 
     /* add the thread to the list */
     ADDTAIL(&ThreadBase->threads, thread);
 
     ReleaseSemaphore(&ThreadBase->lock);
 
-    /* unlock the thread to kick it off */
-    ReleaseSemaphore(&thread->lock);
-
-    return id;
-
-    AROS_LIBFUNC_EXIT
-} /* CreateThread */
-
-static void entry_trampoline(void) {
-    struct Library *aroscbase;
-    struct Task *task = FindTask(NULL);
-    struct trampoline_data *td = task->tc_UserData;
-    struct ThreadBase *ThreadBase = td->ThreadBase;
-    _Thread thread = &td->thread;
-    void *result;
-
-    /* get the thread lock. we'll block here until CreateThread() releases the
-     * lock before it exits */
-    ObtainSemaphore(&thread->lock);
-    ReleaseSemaphore(&thread->lock);
-
-    /* give each thread its own C library, so it can reliably printf() etc */
-    aroscbase = OpenLibrary("arosc.library", 0);
+    /* inform the parent that we're ready to go */
+    Signal(td->parent, SIGF_SINGLE);
 
     /* call the actual thread entry */
     result = AROS_UFC1(void *, td->entry,
