@@ -22,27 +22,46 @@
         AROS_LH2(BOOL, WaitForThreadCondition,
 
 /*  SYNOPSIS */
-        AROS_LHA(_ThreadCondition, cond, A0),
-        AROS_LHA(_Mutex,           mutex,     A1),
+        AROS_LHA(_ThreadCondition, cond,  A0),
+        AROS_LHA(_Mutex,           mutex, A1),
 
 /*  LOCATION */
         struct ThreadBase *, ThreadBase, 16, Thread)
 
 /*  FUNCTION
+        Blocks until a condition is signaled.
 
     INPUTS
+        cond - the condition variable to wait on.
+        mutex - a mutex that protects the condition
 
     RESULT
+        TRUE if the condition was signaled, FALSE if an error occured.
 
     NOTES
+        This function will atomically unlock the mutex and wait on the
+        condition. The thread is suspended until the condition is signalled.
+        After the condition is signalled, the mutex is relocked before
+        returning to the caller.
+
+        The use of a mutex in conjunction with waiting on and signalling the
+        condition ensures that no signals are missed. See
+        SignalThreadCondition() for more details.
 
     EXAMPLE
+        LockMutex(mutex);
+        WaitForThreadCondition(cond, mutex);
+        UnlockMutex(mutex);
 
     BUGS
 
     SEE ALSO
+        CreateThreadCondition(), DestroyThreadCondition(),
+        SignalThreadCondition(), BroadcastThreadCondition()
 
     INTERNALS
+        Waiting on a condition causes the current thread to wait to receive
+        SIGF_SINGLE from the signalling task.
 
 *****************************************************************************/
 {

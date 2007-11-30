@@ -26,20 +26,38 @@
         struct ThreadBase *, ThreadBase, 17, Thread)
 
 /*  FUNCTION
+        Signals a thread waiting on condition variable.
 
     INPUTS
+        cond - the condition to signal.
 
     RESULT
+        This function always succeeds.
 
     NOTES
+        Before calling this function you should lock the mutex that protects
+        the condition. WaitForThreadCondition() atomically unlocks the mutex
+        and waits on the condition, so by locking the mutex first before
+        sending the signal, you ensure that the signal cannot be missed. See
+        WaitForThreadCondition() for more details.
+
+        If no threads are waiting on the condition, nothing happens. If more
+        than one thread is waiting, only one will be signalled. Which one is
+        undefined.
 
     EXAMPLE
+        LockMutex(mutex);
+        SignalThreadCondition(cond);
+        UnlockMutex(mutex);
 
     BUGS
 
     SEE ALSO
+        CreateThreadCondition(), DestroyThreadCondition(),
+        WaitForThreadCondition(), BroadcastThreadCondition()
 
     INTERNALS
+        SIGF_SIGNAL is used to signal the selected waiting thread.
 
 *****************************************************************************/
 {

@@ -24,18 +24,24 @@
         struct ThreadBase *, ThreadBase, 14, Thread)
 
 /*  FUNCTION
+        Creates a condition variable.
 
     INPUTS
+        None.
 
     RESULT
+        The newly created condition, or NULL if one couldn't be created.
 
     NOTES
+        ThreadCondition cond = CreateThreadCondition();
 
     EXAMPLE
 
     BUGS
 
     SEE ALSO
+        DestroyThreadCondition(), WaitForThreadCondition(),
+        SignalThreadCondition(), BroadcastThreadCondition()
 
     INTERNALS
 

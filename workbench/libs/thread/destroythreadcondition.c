@@ -25,18 +25,26 @@
         struct ThreadBase *, ThreadBase, 15, Thread)
 
 /*  FUNCTION
+        Destroys a condition variable.
 
     INPUTS
+        cond - the condition variable to destroy.
 
     RESULT
+        TRUE if the condition was destroyed, otherwise FALSE.
 
     NOTES
+        You cannot destroy a condition variable if other threads are waiting on
+        it.
 
     EXAMPLE
+        DestroyThreadCondition(cond);
 
     BUGS
 
     SEE ALSO
+        CreateThreadCondition(), WaitForThreadCondition(),
+        SignalThreadCondition(), BroadcastThreadCondition()
 
     INTERNALS
 
@@ -46,7 +54,7 @@
 
     assert(cond != NULL);
 
-    /* we can only destroy the cond if its not held and noone is waiting */
+    /* we can only destroy the cond if noone is waiting on it */
     ObtainSemaphoreShared(&cond->lock);
     if (cond->count > 0) {
         ReleaseSemaphore(&cond->lock);
