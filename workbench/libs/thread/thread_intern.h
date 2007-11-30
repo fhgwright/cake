@@ -95,7 +95,7 @@ static inline _Thread _getthreadbyid(ThreadIdentifier id, struct ThreadBase *Thr
 static inline _Thread _getthreadbytask(struct Task *task, struct ThreadBase *ThreadBase) {
     _Thread thread, next;
     ForeachNodeSafe(&ThreadBase->threads, thread, next) {
-        if (thread->task == task)
+        if (thread->task == task && !thread->completed)
             return thread;
     }
     return NULL;
