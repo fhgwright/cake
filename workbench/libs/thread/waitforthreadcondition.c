@@ -84,13 +84,22 @@
     cond->count++;
     ReleaseSemaphore(&cond->lock);
 
+    /* disable task switches. we must atomically unlock the mutex and wait for
+     * the signal, otherwise the signal may be missed */
+    Forbid();
+
     /* release the mutex that protects the condition */
     UnlockMutex(mutex);
 
-    /* and now wait for someone to hit the condition */
+    /* and now wait for someone to hit the condition. this will break the
+     * Forbid(), which is what we want */
     Wait(SIGF_SINGLE);
 
-    /* condition signaled, retake the mutex */
+    /* the Forbid() is restored when Wait() exits, so we have to turn task
+     * switches on again. */
+    Permit();
+
+    /* retake the mutex */
     LockMutex(mutex);
 
     /* done. note that we're not removing ourselves from the list of waiters,
