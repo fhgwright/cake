@@ -16,12 +16,12 @@ void *thread_main(void *data) {
 
     printf("[%d] exiting\n", id);
 
-    return NULL;
+    return (void *) id;
 }
 
 int main (int argc, char **argv) {
     int i;
-    ThreadIdentifier id[10];
+    ThreadIdentifier id[10], ret;
 
     for (i = 0; i < 10; i++) {
         id[i] = CreateThread(thread_main, NULL);
@@ -31,7 +31,8 @@ int main (int argc, char **argv) {
 
     for (i = 0; i < 10; i++) {
         printf("waiting for thread %d\n", id[i]);
-        WaitForThreadCompletion(id[i], NULL);
+        WaitForThreadCompletion(id[i], (void **) &ret);
+        printf("thread %d return %d\n", id[i], ret);
     }
 
     return 0;
