@@ -1,9 +1,43 @@
+/*
+ * thread.library - threading and synchronisation primitives
+ *
+ * Copyright © 2007 Robert Norris
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the same terms as AROS itself.
+ */
+
 #include "thread_intern.h"
 
 #include <proto/exec.h>
 
-AROS_LH0(ThreadIdentifier, CurrentThread,
-         struct ThreadBase *, ThreadBase, 8, Thread)
+/*****************************************************************************
+
+    NAME */
+        AROS_LH0(ThreadIdentifier, CurrentThread,
+
+/*  SYNOPSIS */
+
+/*  LOCATION */
+        struct ThreadBase *, ThreadBase, 8, Thread)
+
+/*  FUNCTION
+
+    INPUTS
+
+    RESULT
+
+    NOTES
+
+    EXAMPLE
+
+    BUGS
+
+    SEE ALSO
+
+    INTERNALS
+
+*****************************************************************************/
 {
     AROS_LIBFUNC_INIT
 
@@ -15,4 +49,4 @@ AROS_LH0(ThreadIdentifier, CurrentThread,
     return thread->id;
 
     AROS_LIBFUNC_EXIT
-}
+} /* CurrentThread */

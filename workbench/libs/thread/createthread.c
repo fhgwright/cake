@@ -1,3 +1,12 @@
+/*
+ * thread.library - threading and synchronisation primitives
+ *
+ * Copyright © 2007 Robert Norris
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the same terms as AROS itself.
+ */
+
 #include "thread_intern.h"
 
 #include <exec/libraries.h>
@@ -16,63 +25,37 @@ struct trampoline_data {
     void                *data;
 };
 
-static void entry_trampoline(void) {
-    struct Library *aroscbase;
-    struct Task *task = FindTask(NULL);
-    struct trampoline_data *td = task->tc_UserData;
-    struct ThreadBase *ThreadBase = td->ThreadBase;
-    _Thread thread = &td->thread;
-    void *result;
-    BOOL detached;
-    int exit_count;
+static void entry_trampoline(void);
 
-    /* get the thread lock. we'll block here until CreateThread() releases the
-     * lock before it exits */
-    ObtainSemaphore(&thread->lock);
-    ReleaseSemaphore(&thread->lock);
+/*****************************************************************************
 
-    /* give each thread its own C library, so it can reliably printf() etc */
-    aroscbase = OpenLibrary("arosc.library", 0);
+    NAME */
+        AROS_LH2(ThreadIdentifier, CreateThread,
 
-    /* call the actual thread entry */
-    result = AROS_UFC1(void *, td->entry,
-                       AROS_UFCA(void *, td->data, A0));
+/*  SYNOPSIS */
+        AROS_LHA(ThreadFunction, entry, A0),
+        AROS_LHA(void *,         data,  A1),
 
-    CloseLibrary(aroscbase);
+/*  LOCATION */
+        struct ThreadBase *, ThreadBase, 5, Thread)
 
-    /* thread finished. save the result */
-    ObtainSemaphore(&thread->lock);
-    thread->result = result;
+/*  FUNCTION
 
-    /* we're done */
-    thread->completed = TRUE;
+    INPUTS
 
-    /* get data we need to figure out how to clean up */
-    detached = thread->detached;
-    exit_count = thread->exit_count;
-    ReleaseSemaphore(&thread->lock);
+    RESULT
 
-    /* if we're detached or noone is waiting, the we have to cleanup ourselves */
-    if (detached || exit_count == 0) {
-        /* remove it from the thread list */
-        ObtainSemaphore(&ThreadBase->lock);
-        REMOVE(thread);
-        ReleaseSemaphore(&ThreadBase->lock);
+    NOTES
 
-        DestroyThreadCondition(thread->exit);
-        DestroyMutex(thread->exit_mutex);
-        FreeVec(td);
-    }
+    EXAMPLE
 
-    /* otherwise tell them, and they'll clean us up */
-    else
-        BroadcastThreadCondition(thread->exit);
-}
+    BUGS
 
-AROS_LH2(ThreadIdentifier, CreateThread,
-         AROS_LHA(ThreadFunction, entry, A0),
-         AROS_LHA(void *,         data,  A1),
-         struct ThreadBase *, ThreadBase, 5, Thread)
+    SEE ALSO
+
+    INTERNALS
+
+*****************************************************************************/
 {
     AROS_LIBFUNC_INIT
 
@@ -134,4 +117,57 @@ AROS_LH2(ThreadIdentifier, CreateThread,
     return id;
 
     AROS_LIBFUNC_EXIT
+} /* CreateThread */
+
+static void entry_trampoline(void) {
+    struct Library *aroscbase;
+    struct Task *task = FindTask(NULL);
+    struct trampoline_data *td = task->tc_UserData;
+    struct ThreadBase *ThreadBase = td->ThreadBase;
+    _Thread thread = &td->thread;
+    void *result;
+    BOOL detached;
+    int exit_count;
+
+    /* get the thread lock. we'll block here until CreateThread() releases the
+     * lock before it exits */
+    ObtainSemaphore(&thread->lock);
+    ReleaseSemaphore(&thread->lock);
+
+    /* give each thread its own C library, so it can reliably printf() etc */
+    aroscbase = OpenLibrary("arosc.library", 0);
+
+    /* call the actual thread entry */
+    result = AROS_UFC1(void *, td->entry,
+                       AROS_UFCA(void *, td->data, A0));
+
+    CloseLibrary(aroscbase);
+
+    /* thread finished. save the result */
+    ObtainSemaphore(&thread->lock);
+    thread->result = result;
+
+    /* we're done */
+    thread->completed = TRUE;
+
+    /* get data we need to figure out how to clean up */
+    detached = thread->detached;
+    exit_count = thread->exit_count;
+    ReleaseSemaphore(&thread->lock);
+
+    /* if we're detached or noone is waiting, the we have to cleanup ourselves */
+    if (detached || exit_count == 0) {
+        /* remove it from the thread list */
+        ObtainSemaphore(&ThreadBase->lock);
+        REMOVE(thread);
+        ReleaseSemaphore(&ThreadBase->lock);
+
+        DestroyThreadCondition(thread->exit);
+        DestroyMutex(thread->exit_mutex);
+        FreeVec(td);
+    }
+
+    /* otherwise tell them, and they'll clean us up */
+    else
+        BroadcastThreadCondition(thread->exit);
 }

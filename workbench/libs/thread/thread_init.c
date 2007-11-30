@@ -1,3 +1,12 @@
+/*
+ * thread.library - threading and synchronisation primitives
+ *
+ * Copyright © 2007 Robert Norris
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the same terms as AROS itself.
+ */
+
 #include "thread_intern.h"
 
 #include <exec/semaphores.h>

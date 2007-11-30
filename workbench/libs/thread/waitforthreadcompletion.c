@@ -1,3 +1,12 @@
+/*
+ * thread.library - threading and synchronisation primitives
+ *
+ * Copyright © 2007 Robert Norris
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the same terms as AROS itself.
+ */
+
 #include "thread_intern.h"
 
 #include <exec/types.h>
@@ -6,10 +15,35 @@
 #include <proto/thread.h>
 #include <assert.h>
 
-AROS_LH2(BOOL, WaitForThreadCompletion,
-         AROS_LHA(ThreadIdentifier, thread_id, D0),
-         AROS_LHA(void **,          result,    A1),
-         struct ThreadBase *, ThreadBase, 6, Thread)
+/*****************************************************************************
+
+    NAME */
+        AROS_LH2(BOOL, WaitForThreadCompletion,
+
+/*  SYNOPSIS */
+        AROS_LHA(ThreadIdentifier, thread_id, D0),
+        AROS_LHA(void **,          result,    A1),
+
+/*  LOCATION */
+        struct ThreadBase *, ThreadBase, 6, Thread)
+
+/*  FUNCTION
+
+    INPUTS
+
+    RESULT
+
+    NOTES
+
+    EXAMPLE
+
+    BUGS
+
+    SEE ALSO
+
+    INTERNALS
+
+*****************************************************************************/
 {
     AROS_LIBFUNC_INIT
 
@@ -69,4 +103,4 @@ AROS_LH2(BOOL, WaitForThreadCompletion,
     return TRUE;
 
     AROS_LIBFUNC_EXIT
-}
+} /* WaitForThreadCompletion */
