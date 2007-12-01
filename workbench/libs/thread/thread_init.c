@@ -11,7 +11,9 @@
 
 #include <exec/semaphores.h>
 #include <exec/lists.h>
+#include <exec/tasks.h>
 #include <proto/exec.h>
+#include <proto/thread.h>
 #include <aros/symbolsets.h>
 
 #include LC_LIBDEFS_FILE
@@ -25,12 +27,58 @@ static int GM_UNIQUENAME(Open)(struct ThreadBase *ThreadBase) {
 }
 
 static int GM_UNIQUENAME(Close)(struct ThreadBase *ThreadBase) {
+    int count;
     _Thread thread;
+    struct Task *task;
 
-    /* detach any remaining threads. its hard to know what the right thing to
-     * do here is, but we have to do something */
-    ForeachNode(&ThreadBase->threads, thread)
-        thread->detached = TRUE;
+    /* we're most likely here because main() exited. if there are remaining
+     * threads, we need to do something with them. we have the following
+     * options:
+     * 
+     * 1. leave them alone
+     * 2. wait for them to finish
+     * 3. kill them
+     *
+     * [1] is close to impossible. the main task exiting will cause all the
+     * resources that DOS has open for the task, including the program code
+     * itself, to be deallocated.
+     *
+     * [2] is fine, but there's no guarantee that they ever will finish;
+     * furthermore this Close function is inside Forbid() right now, which
+     * means we'd have to re-enable task switches. that's safe because this is
+     * a per-opener base, but its just a little bit tricky.
+     *
+     * [3] ensures that the threads are gone and the main task can exit right
+     * now, but AROS really doesn't provide a way to safely kill a process.
+     * RemTask() will make sure it never gets scheduled again and will free
+     * the memory it allocated, but it may have open libraries, filehandles,
+     * etc which will get leaked. This can't be fixed without proper task
+     * resource tracking.
+     *
+     * I've chosen [2] for now, because its really the only option that
+     * doesn't cause either a system crash (executing code that no longer
+     * exists) or at least instability (leaked files, libraries, etc). They
+     * all suck though. The main task should arrange (or wait) for the threads
+     * to exit before it exits itself.
+     */
+
+    ListLength(&ThreadBase->threads, count);
+    if (count > 0) {
+        task = FindTask(NULL);
+
+        kprintf("[thread] %d threads still running, waiting for them to finish.\n", count);
+        kprintf("         This probably means a bug in the main task '%s'.\n", task->tc_Node.ln_Name);
+        kprintf("         Please report this to the author.\n");
+
+        /* re-enable task switches. we can do this safely because this is a
+         * per-opener library base */
+        Permit();
+
+        ForeachNode(&ThreadBase->threads, thread)
+            WaitForThreadCompletion(thread->id, NULL);
+
+        Forbid();
+    }
 
     return TRUE;
 }
