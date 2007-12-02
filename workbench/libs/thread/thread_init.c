@@ -68,7 +68,7 @@ static int GM_UNIQUENAME(Close)(struct ThreadBase *ThreadBase) {
 
         kprintf("[thread] %d threads still running, waiting for them to finish.\n", count);
         kprintf("         This probably means a bug in the main task '%s'.\n", task->tc_Node.ln_Name);
-        kprintf("         Please report this to the author.\n");
+        kprintf("         Please report this to the author of that program.\n");
 
         /* re-enable task switches. we can do this safely because this is a
          * per-opener library base */
