@@ -4,7 +4,9 @@ FILES := \
     twothreads \
     threadexit \
     cleanupatexit \
-    mutex
+    mutex \
+    signalcondition \
+    broadcastcondition
 
 EXEDIR := $(AROS_TESTS)/threads
 
