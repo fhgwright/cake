@@ -19,7 +19,7 @@
         AROS_LH1(BOOL, DestroyCondition,
 
 /*  SYNOPSIS */
-        AROS_LHA(_Condition, cond, A0),
+        AROS_LHA(Condition, cond, A0),
 
 /*  LOCATION */
         struct ThreadBase *, ThreadBase, 15, Thread)
@@ -52,16 +52,18 @@
 {
     AROS_LIBFUNC_INIT
 
-    assert(cond != NULL);
+    _Condition c = (_Condition) cond;
+
+    assert(c != NULL);
 
     /* we can only destroy the cond if noone is waiting on it */
-    ObtainSemaphoreShared(&cond->lock);
-    if (cond->count > 0) {
-        ReleaseSemaphore(&cond->lock);
+    ObtainSemaphoreShared(&c->lock);
+    if (c->count > 0) {
+        ReleaseSemaphore(&c->lock);
         return FALSE;
     }
 
-    FreeMem(cond, sizeof(struct _Condition));
+    FreeMem(c, sizeof(struct _Condition));
 
     return TRUE;
 

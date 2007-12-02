@@ -22,8 +22,8 @@
         AROS_LH2(BOOL, WaitCondition,
 
 /*  SYNOPSIS */
-        AROS_LHA(_Condition, cond,  A0),
-        AROS_LHA(_Mutex,           mutex, A1),
+        AROS_LHA(Condition, cond,  A0),
+        AROS_LHA(Mutex,     mutex, A1),
 
 /*  LOCATION */
         struct ThreadBase *, ThreadBase, 16, Thread)
@@ -67,10 +67,12 @@
 {
     AROS_LIBFUNC_INIT
 
+    _Condition c = (_Condition) cond;
+    _Mutex m = (_Mutex) mutex;
     _CondWaiter waiter;
 
-    assert(cond != NULL);
-    assert(mutex != NULL);
+    assert(c != NULL);
+    assert(m != NULL);
 
     /* setup a new waiter */
     if ((waiter = AllocMem(sizeof(struct _CondWaiter), MEMF_CLEAR)) == NULL) {
@@ -79,17 +81,17 @@
     waiter->task = FindTask(NULL);
 
     /* safely add ourselves to the list of waiters */
-    ObtainSemaphore(&cond->lock);
-    ADDTAIL(&cond->waiters, waiter);
-    cond->count++;
-    ReleaseSemaphore(&cond->lock);
+    ObtainSemaphore(&c->lock);
+    ADDTAIL(&c->waiters, waiter);
+    c->count++;
+    ReleaseSemaphore(&c->lock);
 
     /* disable task switches. we must atomically unlock the mutex and wait for
      * the signal, otherwise the signal may be missed */
     Forbid();
 
     /* release the mutex that protects the condition */
-    UnlockMutex(mutex);
+    UnlockMutex(m);
 
     /* and now wait for someone to hit the condition. this will break the
      * Forbid(), which is what we want */
@@ -100,7 +102,7 @@
     Permit();
 
     /* retake the mutex */
-    LockMutex(mutex);
+    LockMutex(m);
 
     /* done. note that we're not removing ourselves from the list of waiters,
      * that has been done by the signalling task */

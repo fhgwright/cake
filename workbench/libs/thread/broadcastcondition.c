@@ -20,7 +20,7 @@
         AROS_LH1(void, BroadcastCondition,
 
 /*  SYNOPSIS */
-        AROS_LHA(_Condition, cond, A0),
+        AROS_LHA(Condition, cond, A0),
 
 /*  LOCATION */
         struct ThreadBase *, ThreadBase, 18, Thread)
@@ -61,23 +61,24 @@
 {
     AROS_LIBFUNC_INIT
 
+    _Condition c = (_Condition) cond;
     _CondWaiter waiter;
 
-    assert(cond != NULL);
+    assert(c != NULL);
 
     /* safely operation on the condition */
-    ObtainSemaphore(&cond->lock);
+    ObtainSemaphore(&c->lock);
 
     /* wake up all the waiters */
-    while ((waiter = (_CondWaiter) REMHEAD(&cond->waiters)) != NULL) {
+    while ((waiter = (_CondWaiter) REMHEAD(&c->waiters)) != NULL) {
         Signal(waiter->task, SIGF_SINGLE);
         FreeMem(waiter, sizeof(struct _CondWaiter));
     }
 
     /* none left */
-    cond->count = 0;
+    c->count = 0;
 
-    ReleaseSemaphore(&cond->lock);
+    ReleaseSemaphore(&c->lock);
 
     AROS_LIBFUNC_EXIT
 } /* BroadcastCondition */

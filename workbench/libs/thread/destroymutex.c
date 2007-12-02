@@ -19,7 +19,7 @@
         AROS_LH1(BOOL, DestroyMutex,
 
 /*  SYNOPSIS */
-        AROS_LHA(_Mutex, mutex, A0),
+        AROS_LHA(Mutex, mutex, A0),
 
 /*  LOCATION */
         struct ThreadBase *, ThreadBase, 10, Thread)
