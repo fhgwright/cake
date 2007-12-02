@@ -28,7 +28,7 @@
         struct ThreadBase *, ThreadBase, 6, Thread)
 
 /*  FUNCTION
-        Blocks the current task until the requests thread exits.
+        Blocks the current task until the requested thread exits.
 
     INPUTS
         thread_id - ID of thread to detach.
