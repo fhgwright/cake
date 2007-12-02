@@ -76,14 +76,16 @@
     ObtainSemaphore(&thread->lock);
 
     /* can't wait for ourselves, that would be silly */
-    if (thread->task == FindTask(NULL))
+    if (thread->task == FindTask(NULL)) {
         ReleaseSemaphore(&thread->lock);
         return FALSE;
+    }
 
     /* can't wait on detached threads */
-    if (thread->detached)
+    if (thread->detached) {
         ReleaseSemaphore(&thread->lock);
         return FALSE;
+    }
 
     /* we only want to wait if the thread is still running */
     if (thread->task != NULL) {
