@@ -23,7 +23,7 @@
         AROS_LHA(Condition, cond, A0),
 
 /*  LOCATION */
-        struct ThreadBase *, ThreadBase, 18, Thread)
+        struct ThreadBase *, ThreadBase, 19, Thread)
 
 /*  FUNCTION
         Signals all threads waiting on a condition variable.

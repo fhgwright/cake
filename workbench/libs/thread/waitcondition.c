@@ -26,7 +26,7 @@
         AROS_LHA(Mutex,     mutex, A1),
 
 /*  LOCATION */
-        struct ThreadBase *, ThreadBase, 16, Thread)
+        struct ThreadBase *, ThreadBase, 17, Thread)
 
 /*  FUNCTION
         Blocks until a condition is signaled.

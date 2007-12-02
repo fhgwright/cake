@@ -18,7 +18,7 @@
         AROS_LHA(ThreadIdentifier, thread_id, D0),
 
 /*  LOCATION */
-        struct ThreadBase *, ThreadBase, 7, Thread)
+        struct ThreadBase *, ThreadBase, 8, Thread)
 
 /*  FUNCTION
         Detaches a thread from the parent process.
@@ -54,7 +54,7 @@
         it.
 
     SEE ALSO
-        CreateThread(), CurrentThread(), WaitThread()
+        CreateThread(), CurrentThread(), WaitThread(), WaitAllThreads()
 
     INTERNALS
 

@@ -9,38 +9,37 @@
 
 #include "thread_intern.h"
 
-#include <proto/exec.h>
+#include <exec/lists.h>
+#include <proto/thread.h>
 
 /*****************************************************************************
 
     NAME */
-        AROS_LH0(ThreadIdentifier, CurrentThread,
+        AROS_LH0(void, WaitAllThreads
 
 /*  SYNOPSIS */
 
 /*  LOCATION */
-        struct ThreadBase *, ThreadBase, 9, Thread)
+        struct ThreadBase *, ThreadBase, 7, Thread)
 
 /*  FUNCTION
-        Get the ID of the running thread.
+        Blocks the current task until all threads exit.
 
     INPUTS
         None.
 
     RESULT
-        Numeric thread ID, or -1 if this is not a thread. 0 is a valid thread
-        ID.
+        This function always succeeds.
 
     NOTES
 
     EXAMPLE
-        ThreadIdentifier id = CurrentThread();
-        printf("this is thread %d\n", id);
+        WaitAllThreads();
 
     BUGS
 
     SEE ALSO
-        CreateThread(), DetachThread(), WaitThread(), WaitAllThreads()
+        CreateThread(), CurrentThread(), DetachThread(), WaitThread()
 
     INTERNALS
 
@@ -48,12 +47,10 @@
 {
     AROS_LIBFUNC_INIT
 
-    /* find it */
-    _Thread thread = _getthreadbytask(FindTask(NULL), ThreadBase);
-    if (thread == NULL)
-        return -1;
+    _Thread thread, next;
 
-    return thread->id;
+    ForeachNodeSafe(&ThreadBase->threads, thread, next)
+        WaitThread(thread->id, NULL);
 
     AROS_LIBFUNC_EXIT
-} /* CurrentThread */
+} /* WaitAllThreads */

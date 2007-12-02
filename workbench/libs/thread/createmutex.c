@@ -21,7 +21,7 @@
 /*  SYNOPSIS */
 
 /*  LOCATION */
-        struct ThreadBase *, ThreadBase, 9, Thread)
+        struct ThreadBase *, ThreadBase, 10, Thread)
 
 /*  FUNCTION
         Creates a mutual exclusion device (aka lock).

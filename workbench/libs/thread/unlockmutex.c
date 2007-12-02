@@ -22,7 +22,7 @@
         AROS_LHA(Mutex, mutex, A0),
 
 /*  LOCATION */
-        struct ThreadBase *, ThreadBase, 13, Thread)
+        struct ThreadBase *, ThreadBase, 14, Thread)
 
 /*  FUNCTION
         Unlocks a locked mutex.

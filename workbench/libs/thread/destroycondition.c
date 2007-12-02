@@ -22,7 +22,7 @@
         AROS_LHA(Condition, cond, A0),
 
 /*  LOCATION */
-        struct ThreadBase *, ThreadBase, 15, Thread)
+        struct ThreadBase *, ThreadBase, 16, Thread)
 
 /*  FUNCTION
         Destroys a condition variable.

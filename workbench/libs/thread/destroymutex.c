@@ -22,7 +22,7 @@
         AROS_LHA(Mutex, mutex, A0),
 
 /*  LOCATION */
-        struct ThreadBase *, ThreadBase, 10, Thread)
+        struct ThreadBase *, ThreadBase, 11, Thread)
 
 /*  FUNCTION
         Destroys a mutex.

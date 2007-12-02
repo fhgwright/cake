@@ -5,6 +5,7 @@ FILES := thread_init
 FUNCS := \
         createthread \
         waitthread \
+        waitallthreads \
         detachthread \
         currentthread \
         createmutex \

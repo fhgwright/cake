@@ -64,7 +64,7 @@ static void entry_trampoline(void);
     BUGS
 
     SEE ALSO
-        CurrentThread(), DetachThread(), WaitThread()
+        CurrentThread(), DetachThread(), WaitThread(), WaitAllThreads()
 
     INTERNALS
         Each thread gets its own instance of arosc.library, so it can safely

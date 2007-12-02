@@ -21,7 +21,7 @@
 /*  SYNOPSIS */
 
 /*  LOCATION */
-        struct ThreadBase *, ThreadBase, 14, Thread)
+        struct ThreadBase *, ThreadBase, 15, Thread)
 
 /*  FUNCTION
         Creates a condition variable.
