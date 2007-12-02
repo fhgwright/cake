@@ -15,7 +15,7 @@
 /*****************************************************************************
 
     NAME */
-        AROS_LH0(void, WaitAllThreads
+        AROS_LH0(void, WaitAllThreads,
 
 /*  SYNOPSIS */
 
