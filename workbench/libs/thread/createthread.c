@@ -49,8 +49,7 @@ static void entry_trampoline(void);
                 pointed to by entry
 
     RESULT
-        Numeric thread ID, or -1 if thread could not be started. 0 is a valid
-        thread ID.
+        Numeric thread ID, or 0 if the thread could not be started.
 
     NOTES
 
@@ -84,7 +83,7 @@ static void entry_trampoline(void);
 
     /* allocate some space for the thread and stuff the trampoline needs */
     if ((td = AllocVec(sizeof(struct trampoline_data), MEMF_PUBLIC | MEMF_CLEAR)) == NULL)
-        return -1;
+        return 0;
 
     td->ThreadBase = ThreadBase;
 
@@ -94,9 +93,6 @@ static void entry_trampoline(void);
     /* entry point info for the trampoline */
     td->entry = entry;
     td->data = data;
-
-    /* assume failure */
-    td->id = -1;
 
     /* create the new process and hand control to the trampoline. it will wait
      * for us to finish setting up because we have the thread lock */
@@ -112,7 +108,7 @@ static void entry_trampoline(void);
     /* failure, shut it down */
     if (task == NULL) {
         FreeMem(td, sizeof(struct trampoline_data));
-        return -1;
+        return 0;
     }
 
     /* signal the task to kick it off */

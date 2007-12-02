@@ -67,7 +67,7 @@
 
     _Thread thread;
 
-    assert(thread_id >= 0);
+    assert(thread_id);
 
     /* get the thread */
     if ((thread = _getthreadbyid(thread_id, ThreadBase)) == NULL)

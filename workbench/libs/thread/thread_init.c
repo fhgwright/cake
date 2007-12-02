@@ -23,6 +23,8 @@ static int GM_UNIQUENAME(Open)(struct ThreadBase *ThreadBase) {
 
     NEWLIST(&ThreadBase->threads);
 
+    ThreadBase->nextid = 1;
+
     return TRUE;
 }
 

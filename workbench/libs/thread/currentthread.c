@@ -28,8 +28,7 @@
         None.
 
     RESULT
-        Numeric thread ID, or -1 if this is not a thread. 0 is a valid thread
-        ID.
+        Numeric thread ID, or 0 if this is not a thread.
 
     NOTES
 
@@ -51,7 +50,7 @@
     /* find it */
     _Thread thread = _getthreadbytask(FindTask(NULL), ThreadBase);
     if (thread == NULL)
-        return -1;
+        return 0;
 
     return thread->id;
 

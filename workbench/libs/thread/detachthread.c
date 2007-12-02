@@ -9,6 +9,9 @@
 
 #include "thread_intern.h"
 
+#include <proto/exec.h>
+#include <assert.h>
+
 /*****************************************************************************
 
     NAME */
@@ -61,6 +64,8 @@
 *****************************************************************************/
 {
     AROS_LIBFUNC_INIT
+
+    assert(thread_id);
 
     /* get thread data */
     _Thread thread = _getthreadbyid(thread_id, ThreadBase);
