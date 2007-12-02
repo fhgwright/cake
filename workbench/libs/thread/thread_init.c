@@ -79,7 +79,7 @@ static int GM_UNIQUENAME(Close)(struct ThreadBase *ThreadBase) {
 
         if (nattached > 0) {
             kprintf("         %d thread%s still attached at main task exit!\n", nthreads,
-                                                                                nthreads > 1 ? "s are" : " is");
+                                                                                nthreads > 1 ? "s" : "");
             kprintf("         This probably means a bug in the main task '%s'.\n", task->tc_Node.ln_Name);
             kprintf("         Please report this to the author of that program.\n");
         }
