@@ -28,12 +28,16 @@ has open in order to close them. I have some ideas, but I don't know that it
 can be done well without proper task resource tracking.
 
 In a similar vein, when your application or library closes thread.library (in
-an app, this will typically happen when main() exits), any threads that are
-still running will be killed by calling RemTask() on them, so again, their
-resources will not be recovered. You'll get some warnings in the kernel log,
-as this may make AROS quite unstable, depending on what your threads are
-doing. Read the comment in thread_init.c for details, and then make sure that
-all the threads are finished before you close thread.library.
+an app, this will typically happen when main() exits), it will wait for any
+threads that are still running to finish. You'll get some warnings in the
+kernel log when this happens. The main process can't be allowed to exit while
+threads are still running as the main thread is usually holding resources that
+the threads need that will be deallocated when the thread exits, eg the
+program code itself. As long as the threads run in the same address space as
+the main process there's very little that can be done about this.
+
+This also makes detached threads rather meaningless. The detached thread
+semantics are provided in the hope they can be fully implemented in the future.
 
 TODO
 
@@ -42,6 +46,9 @@ TODO
 
  - A way to wait for all threads to finish (including detached threads, so
    this can be used usefully to wait for threads before exiting in main()).
+
+ - A true way to detach running threads such that they can exist after the
+   main process exits.
 
  - Can exiting the main process while threads are still running be handled
    better?
