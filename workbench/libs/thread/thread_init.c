@@ -27,7 +27,7 @@ static int GM_UNIQUENAME(Open)(struct ThreadBase *ThreadBase) {
 }
 
 static int GM_UNIQUENAME(Close)(struct ThreadBase *ThreadBase) {
-    int count;
+    int nthreads, nattached;
     _Thread thread, next;
     struct Task *task;
 
@@ -62,13 +62,25 @@ static int GM_UNIQUENAME(Close)(struct ThreadBase *ThreadBase) {
      * to exit before it exits itself.
      */
 
-    ListLength(&ThreadBase->threads, count);
-    if (count > 0) {
+    nthreads = nattached = 0;
+    ForeachNode(&ThreadBase->threads, thread) {
+        nthreads++;
+        if (!thread->detached) nattached++;
+    }
+
+    if (nthreads > 0) {
         task = FindTask(NULL);
 
-        kprintf("[thread] %d threads still running, waiting for them to finish.\n", count);
-        kprintf("         This probably means a bug in the main task '%s'.\n", task->tc_Node.ln_Name);
-        kprintf("         Please report this to the author of that program.\n");
+        kprintf("[thread] %d thread%s still running, waiting for %s to finish.\n", nthreads,
+                                                                                   nthreads > 1 ? "s" : "",
+                                                                                   nthreads > 1 ? "them" : "it");
+
+        if (nattached > 0) {
+            kprintf("         %d thread%s still attached at main task exit!\n", nthreads,
+                                                                                nthreads > 1 ? "s are" : " is");
+            kprintf("         This probably means a bug in the main task '%s'.\n", task->tc_Node.ln_Name);
+            kprintf("         Please report this to the author of that program.\n");
+        }
 
         /* re-enable task switches. we can do this safely because this is a
          * per-opener library base */
