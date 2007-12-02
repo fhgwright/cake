@@ -74,8 +74,14 @@ static int GM_UNIQUENAME(Close)(struct ThreadBase *ThreadBase) {
          * per-opener library base */
         Permit();
 
-        ForeachNode(&ThreadBase->threads, thread)
+        ForeachNode(&ThreadBase->threads, thread) {
+            /* re-attach the thread so that WaitThread() can work */
+            ObtainSemaphore(&thread->lock);
+            thread->detached = FALSE;
+            ReleaseSemaphore(&thread->lock);
+
             WaitThread(thread->id, NULL);
+        }
 
         Forbid();
     }
