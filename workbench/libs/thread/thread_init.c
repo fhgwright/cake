@@ -28,7 +28,7 @@ static int GM_UNIQUENAME(Open)(struct ThreadBase *ThreadBase) {
 
 static int GM_UNIQUENAME(Close)(struct ThreadBase *ThreadBase) {
     int count;
-    _Thread thread;
+    _Thread thread, next;
     struct Task *task;
 
     /* we're most likely here because main() exited. if there are remaining
@@ -74,7 +74,7 @@ static int GM_UNIQUENAME(Close)(struct ThreadBase *ThreadBase) {
          * per-opener library base */
         Permit();
 
-        ForeachNode(&ThreadBase->threads, thread) {
+        ForeachNodeSafe(&ThreadBase->threads, thread, next) {
             /* re-attach the thread so that WaitThread() can work */
             ObtainSemaphore(&thread->lock);
             thread->detached = FALSE;
