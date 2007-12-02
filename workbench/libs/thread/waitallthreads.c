@@ -32,6 +32,7 @@
         This function always succeeds.
 
     NOTES
+        This function will ignore detached threads.
 
     EXAMPLE
         WaitAllThreads();
