@@ -17,10 +17,10 @@
 /*****************************************************************************
 
     NAME */
-        AROS_LH1(void, BroadcastThreadCondition,
+        AROS_LH1(void, BroadcastCondition,
 
 /*  SYNOPSIS */
-        AROS_LHA(_ThreadCondition, cond, A0),
+        AROS_LHA(_Condition, cond, A0),
 
 /*  LOCATION */
         struct ThreadBase *, ThreadBase, 18, Thread)
@@ -36,23 +36,23 @@
 
     NOTES
         Before calling this function you should lock the mutex that protects
-        the condition. WaitForThreadCondition() atomically unlocks the mutex
-        and waits on the condition, so by locking the mutex first before
-        sending the signal, you ensure that the signal cannot be missed. See
-        WaitForThreadCondition() for more details.
+        the condition. WaitCondition() atomically unlocks the mutex and waits
+        on the condition, so by locking the mutex first before sending the
+        signal, you ensure that the signal cannot be missed. See
+        WaitCondition() for more details.
 
         If no threads are waiting on the condition, nothing happens.
 
     EXAMPLE
         LockMutex(mutex);
-        BroadcastThreadCondition(cond);
+        BroadcastCondition(cond);
         UnlockMutex(mutex);
 
     BUGS
 
     SEE ALSO
-        CreateThreadCondition(), DestroyThreadCondition(),
-        WaitForThreadCondition(), SignalThreadCondition()
+        CreateCondition(), DestroyCondition(), WaitCondition(),
+        SignalCondition()
 
     INTERNALS
         SIGF_SIGNAL is used to signal the selected waiting thread.
@@ -61,7 +61,7 @@
 {
     AROS_LIBFUNC_INIT
 
-    _ThreadWaiter waiter;
+    _CondWaiter waiter;
 
     assert(cond != NULL);
 
@@ -69,9 +69,9 @@
     ObtainSemaphore(&cond->lock);
 
     /* wake up all the waiters */
-    while ((waiter = (_ThreadWaiter) REMHEAD(&cond->waiters)) != NULL) {
+    while ((waiter = (_CondWaiter) REMHEAD(&cond->waiters)) != NULL) {
         Signal(waiter->task, SIGF_SINGLE);
-        FreeMem(waiter, sizeof(struct _ThreadWaiter));
+        FreeMem(waiter, sizeof(struct _CondWaiter));
     }
 
     /* none left */
@@ -80,4 +80,4 @@
     ReleaseSemaphore(&cond->lock);
 
     AROS_LIBFUNC_EXIT
-} /* BroadcastThreadCondition */
+} /* BroadcastCondition */

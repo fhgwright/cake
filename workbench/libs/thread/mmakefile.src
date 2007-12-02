@@ -4,7 +4,7 @@ FILES := thread_init
 
 FUNCS := \
         createthread \
-        waitforthreadcompletion \
+        waitthread \
         detachthread \
         currentthread \
         createmutex \
@@ -12,11 +12,11 @@ FUNCS := \
         lockmutex \
         trylockmutex \
         unlockmutex \
-        createthreadcondition \
-        destroythreadcondition \
-        waitforthreadcondition \
-        signalthreadcondition \
-        broadcastthreadcondition
+        createcondition \
+        destroycondition \
+        waitcondition \
+        signalcondition \
+        broadcastcondition
 
 #MM workbench-libs-thread-includes : \
 #MM    kernel-exec-includes \

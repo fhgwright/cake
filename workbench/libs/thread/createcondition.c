@@ -16,7 +16,7 @@
 /*****************************************************************************
 
     NAME */
-        AROS_LH0(_ThreadCondition, CreateThreadCondition,
+        AROS_LH0(_Condition, CreateCondition,
 
 /*  SYNOPSIS */
 
@@ -33,15 +33,15 @@
         The newly created condition, or NULL if one couldn't be created.
 
     NOTES
-        ThreadCondition cond = CreateThreadCondition();
+        Condition cond = CreateCondition();
 
     EXAMPLE
 
     BUGS
 
     SEE ALSO
-        DestroyThreadCondition(), WaitForThreadCondition(),
-        SignalThreadCondition(), BroadcastThreadCondition()
+        DestroyCondition(), WaitCondition(), SignalCondition(),
+        BroadcastCondition()
 
     INTERNALS
 
@@ -49,10 +49,10 @@
 {
     AROS_LIBFUNC_INIT
 
-    _ThreadCondition cond;
+    _Condition cond;
 
     /* allocate */
-    if ((cond = AllocMem(sizeof(struct _ThreadCondition), MEMF_PUBLIC)) == NULL)
+    if ((cond = AllocMem(sizeof(struct _Condition), MEMF_PUBLIC)) == NULL)
         return NULL;
 
     /* initialise */
@@ -63,4 +63,4 @@
     return cond;
 
     AROS_LIBFUNC_EXIT
-} /* CreateThreadCondition */
+} /* CreateCondition */

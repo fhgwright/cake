@@ -54,10 +54,10 @@ int main (int argc, char **argv) {
     tw = CreateThread(waiter_thread, (void *) mutex);
 
     printf("waiting for locker thread to exit\n");
-    WaitForThreadCompletion(tl, NULL);
+    WaitThread(tl, NULL);
 
     printf("waiting for waiter thread to exit\n");
-    WaitForThreadCompletion(tw, NULL);
+    WaitThread(tw, NULL);
 
     printf("destroying the mutex\n");
     DestroyMutex(mutex);

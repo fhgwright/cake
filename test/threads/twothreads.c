@@ -32,11 +32,11 @@ int main (int argc, char **argv) {
     printf("created thread %d\n", t2);
 
     printf("waiting for thread %d\n", t2);
-    WaitForThreadCompletion(t2, NULL);
+    WaitThread(t2, NULL);
     printf("thread %d completed\n", t2);
 
     printf("waiting for thread %d\n", t1);
-    WaitForThreadCompletion(t1, NULL);
+    WaitThread(t1, NULL);
     printf("thread %d completed\n", t1);
 
     return 0;

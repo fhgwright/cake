@@ -64,7 +64,7 @@ static void entry_trampoline(void);
     BUGS
 
     SEE ALSO
-        CurrentThread(), DetachThread(), WaitForThreadCompletion()
+        CurrentThread(), DetachThread(), WaitThread()
 
     INTERNALS
         Each thread gets its own instance of arosc.library, so it can safely
@@ -165,7 +165,7 @@ static void entry_trampoline(void) {
     thread->task = task;
 
     /* make a condition so other threads can wait for us to exit */
-    thread->exit = CreateThreadCondition();
+    thread->exit = CreateCondition();
     thread->exit_mutex = CreateMutex();
 
     ObtainSemaphore(&ThreadBase->lock);
@@ -198,7 +198,7 @@ static void entry_trampoline(void) {
         ReleaseSemaphore(&ThreadBase->lock);
 
         /* and clean it up */
-        DestroyThreadCondition(thread->exit);
+        DestroyCondition(thread->exit);
         DestroyMutex(thread->exit_mutex);
         FreeVec(td);
         
@@ -213,9 +213,8 @@ static void entry_trampoline(void) {
 
     ReleaseSemaphore(&thread->lock);
 
-    /* tell anyone that cares. we'll be cleaned up in
-     * WaitForThreadCompletion() */
+    /* tell anyone that cares. we'll be cleaned up in WaitThread() */
     LockMutex(thread->exit_mutex);
-    BroadcastThreadCondition(thread->exit);
+    BroadcastCondition(thread->exit);
     UnlockMutex(thread->exit_mutex);
 }

@@ -19,10 +19,10 @@
 /*****************************************************************************
 
     NAME */
-        AROS_LH2(BOOL, WaitForThreadCondition,
+        AROS_LH2(BOOL, WaitCondition,
 
 /*  SYNOPSIS */
-        AROS_LHA(_ThreadCondition, cond,  A0),
+        AROS_LHA(_Condition, cond,  A0),
         AROS_LHA(_Mutex,           mutex, A1),
 
 /*  LOCATION */
@@ -45,19 +45,19 @@
         returning to the caller.
 
         The use of a mutex in conjunction with waiting on and signalling the
-        condition ensures that no signals are missed. See
-        SignalThreadCondition() for more details.
+        condition ensures that no signals are missed. See SignalCondition() for
+        more details.
 
     EXAMPLE
         LockMutex(mutex);
-        WaitForThreadCondition(cond, mutex);
+        WaitCondition(cond, mutex);
         UnlockMutex(mutex);
 
     BUGS
 
     SEE ALSO
-        CreateThreadCondition(), DestroyThreadCondition(),
-        SignalThreadCondition(), BroadcastThreadCondition()
+        CreateCondition(), DestroyCondition(), SignalCondition(),
+        BroadcastCondition()
 
     INTERNALS
         Waiting on a condition causes the current thread to wait to receive
@@ -67,13 +67,13 @@
 {
     AROS_LIBFUNC_INIT
 
-    _ThreadWaiter waiter;
+    _CondWaiter waiter;
 
     assert(cond != NULL);
     assert(mutex != NULL);
 
     /* setup a new waiter */
-    if ((waiter = AllocMem(sizeof(struct _ThreadWaiter), MEMF_CLEAR)) == NULL) {
+    if ((waiter = AllocMem(sizeof(struct _CondWaiter), MEMF_CLEAR)) == NULL) {
         return FALSE;
     }
     waiter->task = FindTask(NULL);
@@ -107,4 +107,4 @@
     return TRUE;
 
     AROS_LIBFUNC_EXIT
-} /* WaitForThreadCondition */
+} /* WaitCondition */

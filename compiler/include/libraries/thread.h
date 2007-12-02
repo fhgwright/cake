@@ -6,6 +6,6 @@
 typedef void *      (*ThreadFunction)(void *);
 typedef uint32_t    ThreadIdentifier;
 typedef void *      Mutex;
-typedef void *      ThreadCondition;
+typedef void *      Condition;
 
 #endif

@@ -75,7 +75,7 @@ static int GM_UNIQUENAME(Close)(struct ThreadBase *ThreadBase) {
         Permit();
 
         ForeachNode(&ThreadBase->threads, thread)
-            WaitForThreadCompletion(thread->id, NULL);
+            WaitThread(thread->id, NULL);
 
         Forbid();
     }

@@ -18,7 +18,7 @@
 /*****************************************************************************
 
     NAME */
-        AROS_LH2(BOOL, WaitForThreadCompletion,
+        AROS_LH2(BOOL, WaitThread,
 
 /*  SYNOPSIS */
         AROS_LHA(ThreadIdentifier, thread_id, D0),
@@ -52,7 +52,7 @@
 
     EXAMPLE
         void *ret;
-        WaitForThreadCompletion(id, &ret);
+        WaitThread(id, &ret);
 
     BUGS
 
@@ -94,7 +94,7 @@
 
         /* wait for exit */
         LockMutex(thread->exit_mutex);
-        WaitForThreadCondition(thread->exit, thread->exit_mutex);
+        WaitCondition(thread->exit, thread->exit_mutex);
         UnlockMutex(thread->exit_mutex);
 
         ObtainSemaphore(&thread->lock);
@@ -124,11 +124,11 @@
     ReleaseSemaphore(&ThreadBase->lock);
 
     /* and clean it up */
-    DestroyThreadCondition(thread->exit);
+    DestroyCondition(thread->exit);
     DestroyMutex(thread->exit_mutex);
     FreeVec(thread);
 
     return TRUE;
 
     AROS_LIBFUNC_EXIT
-} /* WaitForThreadCompletion */
+} /* WaitThread */

@@ -16,10 +16,10 @@
 /*****************************************************************************
 
     NAME */
-        AROS_LH1(BOOL, DestroyThreadCondition,
+        AROS_LH1(BOOL, DestroyCondition,
 
 /*  SYNOPSIS */
-        AROS_LHA(_ThreadCondition, cond, A0),
+        AROS_LHA(_Condition, cond, A0),
 
 /*  LOCATION */
         struct ThreadBase *, ThreadBase, 15, Thread)
@@ -38,13 +38,13 @@
         it.
 
     EXAMPLE
-        DestroyThreadCondition(cond);
+        DestroyCondition(cond);
 
     BUGS
 
     SEE ALSO
-        CreateThreadCondition(), WaitForThreadCondition(),
-        SignalThreadCondition(), BroadcastThreadCondition()
+        CreateCondition(), WaitCondition(), SignalCondition(),
+        BroadcastCondition()
 
     INTERNALS
 
@@ -61,9 +61,9 @@
         return FALSE;
     }
 
-    FreeMem(cond, sizeof(struct _ThreadCondition));
+    FreeMem(cond, sizeof(struct _Condition));
 
     return TRUE;
 
     AROS_LIBFUNC_EXIT
-} /* DestroyThreadCondition */
+} /* DestroyCondition */

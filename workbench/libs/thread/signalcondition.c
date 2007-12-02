@@ -17,10 +17,10 @@
 /*****************************************************************************
 
     NAME */
-        AROS_LH1(void, SignalThreadCondition,
+        AROS_LH1(void, SignalCondition,
 
 /*  SYNOPSIS */
-        AROS_LHA(_ThreadCondition, cond, A0),
+        AROS_LHA(_Condition, cond, A0),
 
 /*  LOCATION */
         struct ThreadBase *, ThreadBase, 17, Thread)
@@ -36,10 +36,10 @@
 
     NOTES
         Before calling this function you should lock the mutex that protects
-        the condition. WaitForThreadCondition() atomically unlocks the mutex
-        and waits on the condition, so by locking the mutex first before
-        sending the signal, you ensure that the signal cannot be missed. See
-        WaitForThreadCondition() for more details.
+        the condition. WaitCondition() atomically unlocks the mutex and waits
+        on the condition, so by locking the mutex first before sending the
+        signal, you ensure that the signal cannot be missed. See
+        WaitCondition() for more details.
 
         If no threads are waiting on the condition, nothing happens. If more
         than one thread is waiting, only one will be signalled. Which one is
@@ -47,14 +47,14 @@
 
     EXAMPLE
         LockMutex(mutex);
-        SignalThreadCondition(cond);
+        SignalCondition(cond);
         UnlockMutex(mutex);
 
     BUGS
 
     SEE ALSO
-        CreateThreadCondition(), DestroyThreadCondition(),
-        WaitForThreadCondition(), BroadcastThreadCondition()
+        CreateCondition(), DestroyCondition(), WaitCondition(),
+        BroadcastCondition()
 
     INTERNALS
         SIGF_SIGNAL is used to signal the selected waiting thread.
@@ -63,13 +63,13 @@
 {
     AROS_LIBFUNC_INIT
 
-    _ThreadWaiter waiter;
+    _CondWaiter waiter;
 
     assert(cond != NULL);
 
     /* safely remove a waiter from the list */
     ObtainSemaphore(&cond->lock);
-    waiter = (_ThreadWaiter) REMHEAD(&cond->waiters);
+    waiter = (_CondWaiter) REMHEAD(&cond->waiters);
     if (waiter != NULL)
         cond->count--;
     ReleaseSemaphore(&cond->lock);
@@ -82,7 +82,7 @@
     Signal(waiter->task, SIGF_SINGLE);
 
     /* all done */
-    FreeMem(waiter, sizeof(struct _ThreadWaiter));
+    FreeMem(waiter, sizeof(struct _CondWaiter));
 
     AROS_LIBFUNC_EXIT
-} /* SignalThreadCondition */
+} /* SignalCondition */

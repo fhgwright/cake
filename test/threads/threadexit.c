@@ -27,7 +27,7 @@ int main (int argc, char **argv) {
 
     for (i = 0; i < 10; i++) {
         printf("waiting for thread %d\n", id[i]);
-        WaitForThreadCompletion(id[i], (void **) &ret);
+        WaitThread(id[i], (void **) &ret);
         printf("thread %d return %d\n", id[i], ret);
     }
 

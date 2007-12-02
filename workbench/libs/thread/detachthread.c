@@ -41,10 +41,10 @@
 
     BUGS
         Currently this doesn't really do anything other than make it so you
-        can't call WaitForThreadCompletion() on the thread. Threads can't
-        truly be detached from the parent process since they run in the same
-        address space, and so when the process exits the program code and all
-        its other resources a freed.
+        can't call WaitThread() on the thread. Threads can't truly be detached
+        from the parent process since they run in the same address space, and
+        so when the process exits the program code and all its other resources
+        a freed.
         
         thread.library protects against this by waiting for all threads to
         complete (detached or not) before allowing the main process to exit.
@@ -54,7 +54,7 @@
         it.
 
     SEE ALSO
-        CreateThread(), CurrentThread(), WaitForThreadCompletion()
+        CreateThread(), CurrentThread(), WaitThread()
 
     INTERNALS
 

@@ -24,11 +24,11 @@
 /* internal definitions of mutexes and conditions (they're void * in the
  * public header */
 typedef struct SignalSemaphore  *_Mutex;
-typedef struct _ThreadCondition *_ThreadCondition;
+typedef struct _Condition       *_Condition;
 
 /* internal types */
 typedef struct _Thread          *_Thread;
-typedef struct _ThreadWaiter    *_ThreadWaiter;
+typedef struct _CondWaiter      *_CondWaiter;
 
 /* a single thread */
 struct _Thread {
@@ -45,7 +45,7 @@ struct _Thread {
     void                    *result;    /* storage for the thread exit value
                                          * for thread completion waiters */
 
-    _ThreadCondition        exit;       /* condition for threads waiting for
+    _Condition              exit;       /* condition for threads waiting for
                                          * this thread to finish */
     _Mutex                  exit_mutex; /* associated mutex */
     int                     exit_count; /* number of threads waitering */
@@ -54,15 +54,15 @@ struct _Thread {
 };
 
 /* a condition variable */
-struct _ThreadCondition {
+struct _Condition {
     struct SignalSemaphore  lock;       /* lock for this condition data */
 
-    struct List             waiters;    /* list of _ThreadWaiters */
+    struct List             waiters;    /* list of _CondWaiters */
     int                     count;      /* number of waiters in the list */
 };
 
 /* a waiter for a condition */
-struct _ThreadWaiter {
+struct _CondWaiter {
     struct Node             node;       /* node for cond->waiters */
     struct Task             *task;      /* task to signal when the condition
                                          * is met */
