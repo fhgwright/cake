@@ -192,6 +192,12 @@ static void entry_trampoline(void) {
 
     /* if its detached, then we close it down right here and now */
     if (thread->detached) {
+        /* remove it from the thread list */
+        ObtainSemaphore(&ThreadBase->lock);
+        REMOVE(thread);
+        ReleaseSemaphore(&ThreadBase->lock);
+
+        /* and clean it up */
         DestroyThreadCondition(thread->exit);
         DestroyMutex(thread->exit_mutex);
         FreeVec(td);

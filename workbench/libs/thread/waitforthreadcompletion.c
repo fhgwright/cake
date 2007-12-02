@@ -34,7 +34,6 @@
         thread_id - ID of thread to detach.
         result    - pointer to storage for the thread's return value. You can
                     pass NULL here if you don't care about the return value.
-                    if you don't care about the return value.
 
     RESULT
         TRUE when the thread completed successfully. FALSE if thread could not
@@ -42,7 +41,11 @@
 
     NOTES
         A thread cannot wait on itself. A thread cannot be waited on if it is
-        detached or has already finished.
+        detached.
+
+        If the thread has already completed, this call returns immediately with
+        the thread result. Further calls to this function for that thread will
+        fail.
 
         Multiple threads can wait for a thread to complete. They will all
         be notified when the thread completes, and will all receive the result.
@@ -70,11 +73,17 @@
     if ((thread = _getthreadbyid(thread_id, ThreadBase)) == NULL)
         return FALSE;
 
+    ObtainSemaphore(&thread->lock);
+
     /* can't wait for ourselves, that would be silly */
     if (thread->task == FindTask(NULL))
+        ReleaseSemaphore(&thread->lock);
         return FALSE;
 
-    ObtainSemaphore(&thread->lock);
+    /* can't wait on detached threads */
+    if (thread->detached)
+        ReleaseSemaphore(&thread->lock);
+        return FALSE;
 
     /* we only want to wait if the thread is still running */
     if (thread->task != NULL) {
@@ -109,6 +118,12 @@
     REMOVE(thread);
     ReleaseSemaphore(&ThreadBase->lock);
 
+    /* remove it from the thread list */
+    ObtainSemaphore(&ThreadBase->lock);
+    REMOVE(thread);
+    ReleaseSemaphore(&ThreadBase->lock);
+
+    /* and clean it up */
     DestroyThreadCondition(thread->exit);
     DestroyMutex(thread->exit_mutex);
     FreeVec(thread);

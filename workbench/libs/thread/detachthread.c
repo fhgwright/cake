@@ -33,20 +33,25 @@
     NOTES
         You cannot detach a thread that is already detached.
 
-        This effectively turns the thread into a first-class process. It will
-        survive even after the other threads and main task are gone, unless it
-        exits.
-        
         Once detached, the thread is no longer accessible from any other
-        thread. Additionally, resources that were available to the thread
-        previously (eg libraries) may no longer be available. This includes
-        thread.library itself! The thread should explicitly open anything it
-        needs.
+        thread.
 
     EXAMPLE
         DetachThread(id);
 
     BUGS
+        Currently this doesn't really do anything other than make it so you
+        can't call WaitForThreadCompletion() on the thread. Threads can't
+        truly be detached from the parent process since they run in the same
+        address space, and so when the process exits the program code and all
+        its other resources a freed.
+        
+        thread.library protects against this by waiting for all threads to
+        complete (detached or not) before allowing the main process to exit.
+        
+        Detached threads can't be truly implemented until a thread task and its
+        allocated resources can exist independently of the process that created
+        it.
 
     SEE ALSO
         CreateThread(), CurrentThread(), WaitForThreadCompletion()
@@ -66,11 +71,6 @@
     ObtainSemaphore(&thread->lock);
     thread->detached = TRUE;
     ReleaseSemaphore(&thread->lock);
-
-    /* remove it from the thread list too */
-    ObtainSemaphore(&ThreadBase->lock);
-    REMOVE(thread);
-    ReleaseSemaphore(&ThreadBase->lock);
 
     return TRUE;
 
