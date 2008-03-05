@@ -3,6 +3,18 @@
 
 #include <exec/types.h>
 
+#if defined __i386__
+#   include "elf-i386.h"
+#elif defined __x86_64__
+#   include "elf-x86_64.h"
+#elif defined __mc68000__
+#   include "elf-m68k.h"
+#elif defined __powerpc__
+#   include "elf-ppc.h"
+#else
+#   error unsupported CPU type
+#endif
+
 /* 32-bit ELF base types. */
 typedef ULONG Elf32_Addr;
 typedef UWORD Elf32_Half;
