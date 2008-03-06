@@ -90,7 +90,7 @@ static elf_header *load_header (BPTR               file,
                                 SIPTR             *helpers,
                                 struct DosLibrary *DOSBase)
 {
-    elf_header *h = AllocVec(sizeof(elf_header), 0);
+    elf_header *h = HELPER_ALLOC(helpers, sizeof(elf_header), MEMF_ANY);
 
     D(bug("[elf] loading header\n"));
 
@@ -179,6 +179,7 @@ static elf_header *load_header (BPTR               file,
 
 _header_fail:
     SetIoErr(ERROR_NOT_EXECUTABLE);
+    HELPER_FREE(helpers, h, sizeof(elf_header));
     FreeVec(h);
     return NULL;
 }
@@ -201,7 +202,7 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
 
 _loadseg_fail:
     if (h)
-        FreeVec(h);
+        HELPER_FREE(helpers, h, sizeof(elf_header));
 
     return 0;
 }
