@@ -161,7 +161,7 @@ typedef struct elf64_rel {
   Elf64_Xword   r_info;
 } Elf64_Rel;
 
-typedef struct elf32_rela{
+typedef struct elf32_rela {
   Elf32_Addr    r_offset;
   Elf32_Word    r_info;
   Elf32_Sword   r_addend;
@@ -212,11 +212,11 @@ typedef struct elf32_hdr {
 } Elf32_Ehdr;
 
 typedef struct elf64_hdr {
-  unsigned char e_ident[E_NIDENT];
+  unsigned char e_ident[EI_NIDENT];
   Elf64_Half    e_type;
   Elf64_Half    e_machine;
   Elf64_Word    e_version;
-  Elf64_Addr    entry;
+  Elf64_Addr    e_entry;
   Elf64_Off     e_phoff;
   Elf64_Off     e_shoff;
   Elf64_Word    e_flags;
@@ -259,38 +259,40 @@ typedef struct elf64_phdr {
 
 
 /* sh_type */
-#define SHT_NULL        0
-#define SHT_PROGBITS    1
-#define SHT_SYMTAB      2
-#define SHT_STRTAB      3
-#define SHT_RELA        4
-#define SHT_HASH        5
-#define SHT_DYNAMIC     6
-#define SHT_NOTE        7
-#define SHT_NOBITS      8
-#define SHT_REL         9
-#define SHT_SHLIB       10
-#define SHT_DYNSYM      11
-#define SHT_NUM         12
-#define SHT_LOPROC      0x70000000
-#define SHT_HIPROC      0x7fffffff
-#define SHT_LOUSER      0x80000000
-#define SHT_HIUSER      0xffffffff
+#define SHT_NULL            0
+#define SHT_PROGBITS        1
+#define SHT_SYMTAB          2
+#define SHT_STRTAB          3
+#define SHT_RELA            4
+#define SHT_HASH            5
+#define SHT_DYNAMIC         6
+#define SHT_NOTE            7
+#define SHT_NOBITS          8
+#define SHT_REL             9
+#define SHT_SHLIB           10
+#define SHT_DYNSYM          11
+#define SHT_NUM             12
+#define SHT_SYMTAB_SHNDX    18
+#define SHT_LOPROC          0x70000000
+#define SHT_HIPROC          0x7fffffff
+#define SHT_LOUSER          0x80000000
+#define SHT_HIUSER          0xffffffff
 
 /* sh_flags */
-#define SHF_WRITE       0x1
-#define SHF_ALLOC       0x2
-#define SHF_EXECINSTR   0x4
-#define SHF_MASKPROC    0xf0000000
+#define SHF_WRITE           0x1
+#define SHF_ALLOC           0x2
+#define SHF_EXECINSTR       0x4
+#define SHF_MASKPROC        0xf0000000
 
 /* special section indexes */
-#define SHN_UNDEF       0
-#define SHN_LORESERVE   0xff00
-#define SHN_LOPROC      0xff00
-#define SHN_HIPROC      0xff1f
-#define SHN_ABS         0xfff1
-#define SHN_COMMON      0xfff2
-#define SHN_HIRESERVE   0xffff
+#define SHN_UNDEF           0
+#define SHN_LORESERVE       0xff00
+#define SHN_LOPROC          0xff00
+#define SHN_HIPROC          0xff1f
+#define SHN_ABS             0xfff1
+#define SHN_COMMON          0xfff2
+#define SHN_XINDEX          0xffff
+#define SHN_HIRESERVE       0xffff
  
 typedef struct elf32_shdr {
   Elf32_Word    sh_name;
@@ -334,8 +336,6 @@ typedef struct elf64_shdr {
 #define ELFMAG1 'E'
 #define ELFMAG2 'L'
 #define ELFMAG3 'F'
-#define ELFMAG  "\177ELF"
-#define SELFMAG 4
 
 /* EI_CLASS */
 #define ELFCLASSNONE    0
