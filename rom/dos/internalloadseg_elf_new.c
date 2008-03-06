@@ -86,9 +86,9 @@ static void *load_block (BPTR               file,
     return block;
 }
 
-static elf_header *load_header(BPTR               file,
-                               SIPTR             *helpers,
-                               struct DosLibrary *DOSBase)
+static elf_header *load_header (BPTR               file,
+                                SIPTR             *helpers,
+                                struct DosLibrary *DOSBase)
 {
     elf_header *h = AllocVec(sizeof(elf_header), 0);
 
@@ -184,9 +184,9 @@ _header_fail:
 }
 
 BPTR InternalLoadSeg_ELF_New (BPTR               file,
-                              BPTR               table __unused,
+                              BPTR               table     __unused,
                               SIPTR             *helpers,
-                              SIPTR             *stack __unused,
+                              SIPTR             *stack     __unused,
                               struct MinList    *seginfos,
                               struct DosLibrary *DOSBase)
 {
