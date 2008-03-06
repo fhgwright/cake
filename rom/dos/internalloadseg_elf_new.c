@@ -200,7 +200,17 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
     if (!(ph = load_block(file, h->eh.e_phoff, h->eh.e_phnum * h->eh.e_phentsize, helpers, DOSBase)))
         goto _loadseg_fail;
 
+    D(bug("[elf] program headers:\n"));
+
+    int i;
+    for (i = 0; i < h->eh.e_phnum; i++) {
+        D(bug("  %d: type %d off 0x%p vaddr 0x%p paddr 0x%p filesz %d memsz %d flags 0x%p align %d\n", i, ph[i].p_type, ph[i].p_offset, ph[i].p_vaddr, ph[i].p_paddr, ph[i].p_filesz, ph[i].p_memsz, ph[i].p_flags, ph[i].p_align));
+    }
+
 _loadseg_fail:
+    if (ph)
+        HELPER_FREE(helpers, ph, h->eh.e_phnum * h->eh.e_phentsize);
+
     if (h)
         HELPER_FREE(helpers, h, sizeof(elf_header));
 
