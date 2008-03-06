@@ -29,7 +29,7 @@ typedef struct elf_header {
                AROS_LCA(ULONG, flags, D1), \
                struct ExecBase *, SysBase) \
 
-#define HELPER_FREE(helpers, size)           \
+#define HELPER_FREE(helpers, addr, size)     \
     AROS_CALL2NR(void, helpers[2],           \
                  AROS_LCA(void *, addr, A1), \
                  AROS_LCA(ULONG,  size, D0), \
@@ -64,6 +64,26 @@ static BOOL read_block (BPTR               file,
     }
 
     return TRUE;
+}
+
+static void *load_block (BPTR               file,
+                         ULONG              offset,
+                         ULONG              size,
+                         SIPTR             *helpers,
+                         struct DosLibrary *DOSBase)
+{
+    void *block = HELPER_ALLOC(helpers, size, MEMF_ANY);
+    if (block == NULL) {
+        SetIoErr(ERROR_NO_FREE_STORE);
+        return NULL;
+    }
+
+    if (!read_block(file, offset, block, size, helpers, DOSBase)) {
+        HELPER_FREE(helpers, block, size);
+        return NULL;
+    }
+
+    return block;
 }
 
 static elf_header *load_header(BPTR               file,
@@ -170,8 +190,12 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
                               struct MinList    *seginfos,
                               struct DosLibrary *DOSBase)
 {
-    elf_header *h = load_header(file, helpers, DOSBase);
+    elf_header *h;
+    
+    if (!(h = load_header(file, helpers, DOSBase)))
+        goto _loadseg_fail;
 
+_loadseg_fail:
     if (h)
         FreeVec(h);
 
