@@ -92,8 +92,6 @@ static elf_header *load_header (BPTR               file,
 {
     elf_header *h = HELPER_ALLOC(helpers, sizeof(elf_header), MEMF_ANY);
 
-    D(bug("[elf] loading header\n"));
-
     if (!read_block(file, 0, (APTR) &h->eh, sizeof(Elf32_Ehdr), helpers, DOSBase))
         return NULL;
 
@@ -180,7 +178,6 @@ static elf_header *load_header (BPTR               file,
 _header_fail:
     SetIoErr(ERROR_NOT_EXECUTABLE);
     HELPER_FREE(helpers, h, sizeof(elf_header));
-    FreeVec(h);
     return NULL;
 }
 
