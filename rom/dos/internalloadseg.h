@@ -8,6 +8,13 @@ BPTR InternalLoadSeg_AOS(BPTR file,
 			 struct MinList *seginfos,
                          struct DosLibrary * DOSBase);
 
+BPTR InternalLoadSeg_ELF_New(BPTR file,
+                             BPTR hunk_table,
+                             SIPTR * FuncArray,
+                             SIPTR * stack,
+                             struct MinList *seginfos,
+                             struct DosLibrary * DOSBase);
+
 BPTR InternalLoadSeg_ELF(BPTR file,
                          BPTR hunk_table,
                          SIPTR * FuncArray,

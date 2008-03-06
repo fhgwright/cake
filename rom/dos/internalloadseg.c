@@ -91,6 +91,7 @@ struct MinList debug_seglist, free_debug_segnodes;
     
     static const segfunc_t funcs[] = 
     {
+        SEGFUNC(ELF_New),
         SEGFUNC(ELF),
         SEGFUNC(ELF64),
     #if !defined(__mc68000__) && !defined(__arm__)
