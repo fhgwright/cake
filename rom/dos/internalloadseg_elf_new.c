@@ -191,8 +191,12 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
                               struct DosLibrary *DOSBase)
 {
     elf_header *h;
+    Elf32_Phdr *ph;
     
     if (!(h = load_header(file, helpers, DOSBase)))
+        goto _loadseg_fail;
+
+    if (!(ph = load_block(file, h->eh.e_phoff, h->eh.e_phnum * h->eh.e_phentsize, helpers, DOSBase)))
         goto _loadseg_fail;
 
 _loadseg_fail:
