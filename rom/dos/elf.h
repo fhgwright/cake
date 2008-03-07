@@ -16,14 +16,14 @@
 #endif
 
 /* 32-bit ELF base types. */
-typedef ULONG Elf32_Addr;
+typedef void* Elf32_Addr;
 typedef UWORD Elf32_Half;
 typedef ULONG Elf32_Off;
 typedef LONG  Elf32_Sword;
 typedef ULONG Elf32_Word;
 
 /* 64-bit ELF base types. */
-typedef UQUAD Elf64_Addr;
+typedef void* Elf64_Addr;
 typedef UWORD Elf64_Half;
 typedef WORD  Elf64_SHalf;
 typedef UQUAD Elf64_Off;
