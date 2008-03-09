@@ -1,7 +1,11 @@
 #include <exec/types.h>
 #include <dos/dos.h>
+
 #include <proto/exec.h>
 #include <proto/dos.h>
+
+#include <stdlib.h>
+
 #include "dos_intern.h"
 
 #define DEBUG 1
@@ -15,6 +19,15 @@ typedef struct elf_header {
     Elf32_Word  shnum;
     Elf32_Word  shstrndx;
 } elf_header;
+
+struct hunk {
+    ULONG size;
+    BPTR  next;
+    char  data[0];
+} __attribute__((packed));
+
+#define BPTR2HUNK(bptr) ((struct hunk *) ((char *) BADDR(bptr) - offsetof(struct hunk, next)))
+#define HUNK2BPTR(hunk) MKBADDR(&hunk->next)
 
 #define HELPER_READ(helpers, file, buf, size) \
     AROS_CALL3(LONG, helpers[0],              \
@@ -84,6 +97,40 @@ static void *load_block (BPTR               file,
     }
 
     return block;
+}
+
+static BOOL load_hunk (BPTR                file,
+                       BPTR              **next_hunk_ptr,
+                       Elf32_Phdr         *ph,
+                       SIPTR              *helpers,
+                       struct DosLibrary  *DOSBase)
+{
+    struct hunk *hunk;
+
+    if (ph->p_memsz < ph->p_filesz) {
+        SetIoErr(ERROR_BAD_HUNK);
+        return FALSE;
+    }
+
+    if (ph->p_memsz == 0)
+        return TRUE;
+    
+    if (!(hunk = HELPER_ALLOC(helpers, ph->p_memsz + sizeof(struct hunk), MEMF_ANY))) {
+        SetIoErr(ERROR_NO_FREE_STORE);
+        return FALSE;
+    }
+
+    hunk->size = ph->p_memsz + sizeof(struct hunk);
+
+    ph->p_paddr = hunk->data;
+
+    hunk->next = BPTR2HUNK(*next_hunk_ptr)->next;
+    BPTR2HUNK(*next_hunk_ptr)->next = HUNK2BPTR(hunk);
+    *next_hunk_ptr = HUNK2BPTR(hunk);
+
+    memset(hunk->data + ph->p_filesz, 0, ph->p_memsz - ph->p_filesz);
+        
+    return read_block(file, ph->p_offset, (APTR) hunk->data, ph->p_filesz, helpers, DOSBase);
 }
 
 static elf_header *load_header (BPTR               file,
@@ -188,6 +235,9 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
                               struct MinList    *seginfos,
                               struct DosLibrary *DOSBase)
 {
+    BPTR  hunks     = 0;
+    BPTR *next_hunk = &hunks;
+    BOOL have_exec_segment = FALSE;
     elf_header *h;
     Elf32_Phdr *ph;
     
@@ -202,14 +252,61 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
     int i;
     for (i = 0; i < h->eh.e_phnum; i++) {
         D(bug("  %d: type %d off 0x%p vaddr 0x%p paddr 0x%p filesz %d memsz %d flags 0x%p align %d\n", i, ph[i].p_type, ph[i].p_offset, ph[i].p_vaddr, ph[i].p_paddr, ph[i].p_filesz, ph[i].p_memsz, ph[i].p_flags, ph[i].p_align));
+
+        if (ph[i].p_type == PT_LOAD) {
+            if (!load_hunk(file, &next_hunk, &ph[i], helpers, DOSBase))
+                goto _loadseg_fail;
+
+            D(bug("[elf] loaded PT_LOAD segment\n"));
+
+            if (ph[i].p_flags | PF_X) {
+                struct hunk *hunk;
+
+                D(bug("[elf] segment is executable, creating trampoline hunk\n"));
+
+                if (have_exec_segment) {
+                    D(bug("[fat] multiple executable segments found, aborting\n"));
+                    SetIoErr(ERROR_BAD_HUNK);
+                    goto _loadseg_fail;
+                }
+
+                have_exec_segment = TRUE;
+
+                if (!((h->eh.e_entry >= ph[i].p_vaddr) && (h->eh.e_entry <= (ph[i].p_vaddr + ph[i].p_memsz)))) {
+                    D(bug("[fat] entry point 0x%p is outside segment (0x%p-0x%p), aborting\n", h->eh.e_entry, ph[i].p_vaddr, ph[i].p_vaddr + ph[i].p_memsz));
+                    SetIoErr(ERROR_BAD_HUNK);
+                    goto _loadseg_fail;
+                }
+
+                if (!(hunk = HELPER_ALLOC(helpers, sizeof(struct FullJumpVec) + sizeof(struct hunk), MEMF_ANY | MEMF_CLEAR))) {
+                    SetIoErr(ERROR_NO_FREE_STORE);
+                    goto _loadseg_fail;
+                }
+
+                hunk->size = sizeof(struct FullJumpVec) + sizeof(struct hunk);
+                hunk->next = BPTR2HUNK(hunks)->next;
+                BPTR2HUNK(hunks)->next = HUNK2BPTR(hunk);
+
+                __AROS_SET_FULLJMP((struct FullJumpVec *) hunk->data,
+                                   (ULONG) h->eh.e_entry + (ULONG) ph[i].p_paddr - (ULONG) ph[i].p_vaddr);
+            }
+        }
     }
 
+    goto _loadseg_end;
+
 _loadseg_fail:
+    if (hunks) {
+        InternalUnLoadSeg(hunks, (VOID_FUNC) helpers[2]);
+        hunks = 0;
+    }
+
+_loadseg_end:
     if (ph)
         HELPER_FREE(helpers, ph, h->eh.e_phnum * h->eh.e_phentsize);
 
     if (h)
         HELPER_FREE(helpers, h, sizeof(elf_header));
 
-    return 0;
+    return hunks;
 }
