@@ -238,8 +238,8 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
     BPTR  hunks     = 0;
     BPTR *next_hunk = &hunks;
     BOOL have_exec_segment = FALSE;
-    elf_header *h;
-    Elf32_Phdr *ph;
+    elf_header *h = NULL;
+    Elf32_Phdr *ph = NULL;
     
     if (!(h = load_header(file, helpers, DOSBase)))
         goto _loadseg_fail;
