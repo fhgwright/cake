@@ -289,6 +289,8 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
 
                 __AROS_SET_FULLJMP((struct FullJumpVec *) hunk->data,
                                    (ULONG) h->eh.e_entry + (ULONG) ph[i].p_paddr - (ULONG) ph[i].p_vaddr);
+                
+                D(bug("[elf] trampoline target set to 0x%p\n", (ULONG) h->eh.e_entry + (ULONG) ph[i].p_paddr - (ULONG) ph[i].p_vaddr));
             }
         }
     }
