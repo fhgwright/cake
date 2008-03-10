@@ -29,6 +29,12 @@ struct hunk {
 #define BPTR2HUNK(bptr) ((struct hunk *) ((char *) BADDR(bptr) - offsetof(struct hunk, next)))
 #define HUNK2BPTR(hunk) MKBADDR(&hunk->next)
 
+#define SHINDEX(n) \
+    ((n) < SHN_LORESERVE ? (n) : ((n) <= SHN_HIRESERVE ? 0 : (n) - (SHN_HIRESERVE + 1 - SHN_LORESERVE)))
+
+#define SHNUM(i) \
+    ((i) < SHN_LORESERVE ? (i) : (i) + (SHN_HIRESERVE + 1 - SHN_LORESERVE))
+
 #define HELPER_READ(helpers, file, buf, size) \
     AROS_CALL3(LONG, helpers[0],              \
                AROS_LCA(BPTR, file, D1),      \
@@ -240,11 +246,19 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
     BOOL have_exec_segment = FALSE;
     elf_header *h = NULL;
     Elf32_Phdr *ph = NULL;
+    Elf32_Shdr *sh = NULL;
+    char *strtab = NULL;
     
     if (!(h = load_header(file, helpers, DOSBase)))
         goto _loadseg_fail;
 
     if (!(ph = load_block(file, h->eh.e_phoff, h->eh.e_phnum * h->eh.e_phentsize, helpers, DOSBase)))
+        goto _loadseg_fail;
+
+    if (!(sh = load_block(file, h->eh.e_shoff, h->shnum * h->eh.e_shentsize, helpers, DOSBase)))
+        goto _loadseg_fail;
+
+    if (!(strtab = load_block(file, sh[SHINDEX(h->shstrndx)].sh_offset, sh[SHINDEX(h->shstrndx)].sh_size, helpers, DOSBase)))
         goto _loadseg_fail;
 
     D(bug("[elf] program headers:\n"));
@@ -304,6 +318,12 @@ _loadseg_fail:
     }
 
 _loadseg_end:
+    if (strtab)
+        HELPER_FREE(helpers, strtab, sh[SHINDEX(h->shstrndx)].sh_size);
+
+    if (sh)
+        HELPER_FREE(helpers, sh, h->shnum * h->eh.e_shentsize);
+
     if (ph)
         HELPER_FREE(helpers, ph, h->eh.e_phnum * h->eh.e_phentsize);
 
