@@ -309,6 +309,12 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
         }
     }
 
+    D(bug("[elf] section headers:\n"));
+
+    for (i = 0; i < h->shnum; i++) {
+        D(bug("  %d: name '%s' type %d flags 0x%p addr 0x%p offset 0x%p size %d link %d info 0x%p addralign 0x%p entsize %d\n", i, strtab + sh[i].sh_name, sh[i].sh_type, sh[i].sh_flags, sh[i].sh_addr, sh[i].sh_offset, sh[i].sh_size, sh[i].sh_link, sh[i].sh_info, sh[i].sh_addralign, sh[i].sh_entsize));
+    }
+
     goto _loadseg_end;
 
 _loadseg_fail:
