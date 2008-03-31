@@ -20,15 +20,17 @@ typedef struct elf_header {
     Elf32_Word  shstrndx;
 } elf_header;
 
-struct hunk {
-    ULONG       size;
-    int         phindex;
-    BPTR        next;
-    char        data[0];
+struct segment {
+    struct segment *next;
+    int             size;
+    int             index;
+    char            data[0];
 } __attribute__((packed));
 
-#define BPTR2HUNK(bptr) ((struct hunk *) ((char *) BADDR(bptr) - offsetof(struct hunk, next)))
-#define HUNK2BPTR(hunk) MKBADDR(&hunk->next)
+struct trampoline {
+    struct FullJumpVec   jump;
+    struct segment      *segments;
+};
 
 #define SHINDEX(n) \
     ((n) < SHN_LORESERVE ? (n) : ((n) <= SHN_HIRESERVE ? 0 : (n) - (SHN_HIRESERVE + 1 - SHN_LORESERVE)))
@@ -143,44 +145,6 @@ static void *load_block (BPTR               file,
     return block;
 }
 
-static struct hunk *load_hunk (BPTR                file,
-                               Elf32_Phdr         *ph,
-                               int                 phindex,
-                               SIPTR              *helpers,
-                               struct DosLibrary  *DOSBase)
-{
-    struct hunk *hunk;
-
-    if (ph[phindex].p_memsz < ph[phindex].p_filesz) {
-        SetIoErr(ERROR_BAD_HUNK);
-        return NULL;
-    }
-
-    if (ph[phindex].p_memsz == 0)
-        return NULL;
-    
-    if (!(hunk = HELPER_ALLOC(helpers, ph[phindex].p_memsz + sizeof(struct hunk), MEMF_ANY))) {
-        SetIoErr(ERROR_NO_FREE_STORE);
-        return NULL;
-    }
-
-    hunk->next = NULL;
-
-    hunk->size = ph[phindex].p_memsz + sizeof(struct hunk);
-    hunk->phindex = phindex;
-
-    ph[phindex].p_paddr = hunk->data;
-
-    memset(hunk->data + ph[phindex].p_filesz, 0, ph[phindex].p_memsz - ph[phindex].p_filesz);
-        
-    if (!read_block(file, ph[phindex].p_offset, (APTR) hunk->data, ph[phindex].p_filesz, helpers, DOSBase)) {
-        HELPER_FREE(helpers, hunk, ph[phindex].p_memsz + sizeof(struct hunk));
-        return NULL;
-    }
-
-    return hunk;
-}
-
 static elf_header *load_header (BPTR               file,
                                 SIPTR             *helpers,
                                 struct DosLibrary *DOSBase)
@@ -276,6 +240,44 @@ _header_fail:
     return NULL;
 }
 
+static struct segment *load_segment (BPTR                file,
+                                     Elf32_Phdr         *ph,
+                                     int                 index,
+                                     SIPTR              *helpers,
+                                     struct DosLibrary  *DOSBase)
+{
+    struct segment *segment;
+
+    if (ph[index].p_memsz < ph[index].p_filesz) {
+        SetIoErr(ERROR_BAD_HUNK);
+        return NULL;
+    }
+
+    if (ph[index].p_memsz == 0)
+        return NULL;
+    
+    if (!(segment = HELPER_ALLOC(helpers, ph[index].p_memsz + sizeof(struct segment), MEMF_ANY))) {
+        SetIoErr(ERROR_NO_FREE_STORE);
+        return NULL;
+    }
+
+    segment->next = NULL;
+
+    segment->size = ph[index].p_memsz + sizeof(struct segment);
+    segment->index = index;
+
+    ph[index].p_paddr = segment->data;
+
+    memset(segment->data + ph[index].p_filesz, 0, ph[index].p_memsz - ph[index].p_filesz);
+        
+    if (!read_block(file, ph[index].p_offset, (APTR) segment->data, ph[index].p_filesz, helpers, DOSBase)) {
+        HELPER_FREE(helpers, segment, segment->size);
+        return NULL;
+    }
+
+    return segment;
+}
+
 BPTR InternalLoadSeg_ELF_New (BPTR               file,
                               BPTR               table     __unused,
                               SIPTR             *helpers,
@@ -283,9 +285,8 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
                               struct MinList    *seginfos,
                               struct DosLibrary *DOSBase)
 {
-    BPTR hunks = 0;
-    struct hunk *hunk = NULL, *last = NULL;
-    BOOL have_exec_segment = FALSE;
+    struct segment *segments = NULL, *last = NULL, *segment;
+    struct trampoline *trampoline = NULL;
     elf_header *h = NULL;
     Elf32_Phdr *ph = NULL;
     Elf32_Shdr *sh = NULL;
@@ -310,23 +311,20 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
         D(bug("  %d: type %d off 0x%p vaddr 0x%p paddr 0x%p filesz 0x%04x memsz 0x%04x flags 0x%p align 0x%02x\n", i, ph[i].p_type, ph[i].p_offset, ph[i].p_vaddr, ph[i].p_paddr, ph[i].p_filesz, ph[i].p_memsz, ph[i].p_flags, ph[i].p_align));
 
         if (ph[i].p_type == PT_LOAD) {
-            if (!(hunk = load_hunk(file, ph, i, helpers, DOSBase)))
+            if (!(segment = load_segment(file, ph, i, helpers, DOSBase)))
                 goto _loadseg_fail;
 
-            if (!hunks)
-                hunks = HUNK2BPTR(hunk);
-                last = hunk;
+            if (!segments)
+                segments = last = segment;
             else {
-                last->next = HUNK2BPTR(hunk);
-                last = hunk;
+                last->next = segment;
+                last = segment;
             }
 
             D(bug("[elf] loaded PT_LOAD segment\n"));
 
             if (ph[i].p_flags | PF_X) {
-                struct hunk *trampoline;
-
-                if (have_exec_segment) {
+                if (trampoline) {
                     D(bug("[fat] multiple executable segments found, aborting\n"));
                     SetIoErr(ERROR_BAD_HUNK);
                     goto _loadseg_fail;
@@ -334,30 +332,20 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
 
                 D(bug("[elf] segment is executable, creating trampoline hunk\n"));
 
-                have_exec_segment = TRUE;
-
                 if (!((h->eh.e_entry >= ph[i].p_vaddr) && (h->eh.e_entry <= (ph[i].p_vaddr + ph[i].p_memsz)))) {
                     D(bug("[fat] entry point 0x%p is outside segment (0x%p-0x%p), aborting\n", h->eh.e_entry, ph[i].p_vaddr, ph[i].p_vaddr + ph[i].p_memsz));
                     SetIoErr(ERROR_BAD_HUNK);
                     goto _loadseg_fail;
                 }
 
-                if (!(trampoline = HELPER_ALLOC(helpers, sizeof(struct FullJumpVec) + sizeof(struct hunk), MEMF_ANY | MEMF_CLEAR))) {
+                if (!(trampoline = HELPER_ALLOC(helpers, sizeof(struct trampoline), MEMF_ANY))) {
                     SetIoErr(ERROR_NO_FREE_STORE);
                     goto _loadseg_fail;
                 }
 
-                trampoline->size = sizeof(struct FullJumpVec) + sizeof(struct hunk);
-                trampoline->phindex = i;
+                trampoline->segments = segments;
 
-                trampoline->next = 
-
-                BPTR2HUNK(last)->next = HUNK2BPTR(hunk);
-                last = hunk;
-                cwhunk->next = BPTR2HUNK(hunks)->next;
-                BPTR2HUNK(hunks)->next = HUNK2BPTR(hunk);
-
-                __AROS_SET_FULLJMP((struct FullJumpVec *) hunk->data,
+                __AROS_SET_FULLJMP((struct FullJumpVec *) &trampoline->jump,
                                    (ULONG) h->eh.e_entry + (ULONG) ph[i].p_paddr - (ULONG) ph[i].p_vaddr);
                 
                 D(bug("[elf] trampoline target set to 0x%p\n", (ULONG) h->eh.e_entry + (ULONG) ph[i].p_paddr - (ULONG) ph[i].p_vaddr));
@@ -373,12 +361,12 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
         if (sh[i].sh_flags & SHF_ALLOC) {
             D(bug("[elf] found SHT_ALLOC section\n"));
 
-            struct hunk *target_hunk = BPTR2HUNK(hunks);
-            while (target_hunk && !(ELF_IS_SECTION_IN_SEGMENT_MEMORY((&sh[i]), (&ph[target_hunk->phindex]))))
-                target_hunk = BPTR2HUNK(target_hunk->next);
+            struct segment *target = segments;
+            while (target && !(ELF_IS_SECTION_IN_SEGMENT_MEMORY((&sh[i]), (&ph[target->index]))))
+                target = target->next;
 
-            if (target_hunk) {
-                D(bug("[elf] section '%s' allocation appears in program header %d\n", strtab + sh[i].sh_name, target_hunk->phindex));
+            if (target) {
+                D(bug("[elf] section '%s' allocation appears in program header %d\n", strtab + sh[i].sh_name, target->index));
             }
         }
     }
@@ -406,9 +394,19 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
     goto _loadseg_end;
 
 _loadseg_fail:
-    if (hunks) {
-        InternalUnLoadSeg(hunks, (VOID_FUNC) helpers[2]);
-        hunks = 0;
+    if (segments) {
+        struct segment *cur = segments, *next;
+        while (cur) {
+            next = cur->next;
+            HELPER_FREE(helpers, cur, cur->size);
+            cur = next;
+        }
+        segments = NULL;
+    }
+
+    if (trampoline) {
+        HELPER_FREE(helpers, trampoline, sizeof(struct trampoline));
+        trampoline = NULL;
     }
 
 _loadseg_end:
@@ -424,5 +422,5 @@ _loadseg_end:
     if (h)
         HELPER_FREE(helpers, h, sizeof(elf_header));
 
-    return hunks;
+    return trampoline;
 }
