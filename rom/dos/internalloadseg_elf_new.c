@@ -323,7 +323,7 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
 
             D(bug("[elf] loaded PT_LOAD segment\n"));
 
-            if (ph[i].p_flags | PF_X) {
+            if (ph[i].p_flags & PF_X) {
                 struct segment *trampoline;
 
                 if (have_trampoline) {
