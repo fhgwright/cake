@@ -370,9 +370,9 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
         if (sh[i].sh_flags & SHF_ALLOC) {
             D(bug("[elf] found SHT_ALLOC section\n"));
 
-            struct segment *target = seglist;
-            while (target && target->index >= 0 && !(ELF_IS_SECTION_IN_SEGMENT_MEMORY((&sh[i]), (&ph[target->index]))))
-                target = target->next;
+            struct segment *target = BPTR_TO_SEGMENT(seglist);
+            while (target && (target->index < 0 || !(ELF_IS_SECTION_IN_SEGMENT_MEMORY((&sh[i]), (&ph[target->index])))))
+                target = BPTR_TO_SEGMENT(target->next);
 
             if (target) {
                 D(bug("[elf] section '%s' allocation appears in program header %d\n", strtab + sh[i].sh_name, target->index));
