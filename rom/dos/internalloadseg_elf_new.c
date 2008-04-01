@@ -327,7 +327,7 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
                 struct segment *trampoline;
 
                 if (have_trampoline) {
-                    D(bug("[fat] multiple executable segments found, aborting\n"));
+                    D(bug("[elf] multiple executable segments found, aborting\n"));
                     SetIoErr(ERROR_BAD_HUNK);
                     goto _loadseg_fail;
                 }
@@ -335,7 +335,7 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
                 D(bug("[elf] segment is executable, creating trampoline hunk\n"));
 
                 if (!((h->eh.e_entry >= ph[i].p_vaddr) && (h->eh.e_entry <= (ph[i].p_vaddr + ph[i].p_memsz)))) {
-                    D(bug("[fat] entry point 0x%p is outside segment (0x%p-0x%p), aborting\n", h->eh.e_entry, ph[i].p_vaddr, ph[i].p_vaddr + ph[i].p_memsz));
+                    D(bug("[elf] entry point 0x%p is outside segment (0x%p-0x%p), aborting\n", h->eh.e_entry, ph[i].p_vaddr, ph[i].p_vaddr + ph[i].p_memsz));
                     SetIoErr(ERROR_BAD_HUNK);
                     goto _loadseg_fail;
                 }
