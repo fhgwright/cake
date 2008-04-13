@@ -1,0 +1,25 @@
+# Copyright © 2004, The AROS Development Team. All rights reserved.
+# $Id: mmakefile 20923 2004-02-16 14:07:14Z chodorowski $
+
+include $(TOP)/config/make.cfg
+
+SUBDIRS := Zune SYS SYS/Packages
+FILES   := $(foreach dir, $(SUBDIRS), $(filter-out $(dir)/CVS, $(wildcard $(dir)/*)))
+
+AROS_GUI_THEME = "THEMES:Ice"
+
+#MM- workbench-prefs : workbench-prefs-envarc
+#MM- workbench-prefs-envarc : workbench-prefs-envarc-copyfiles workbench-prefs-envarc-theme
+#MM  workbench-prefs-envarc-copyfiles
+
+workbench-prefs-envarc-copyfiles : $(FILES:%=$(AROS_ENVARC)/%)
+
+$(AROS_ENVARC)/% : %
+	@if [ -f $< ]; then      \
+            $(MKDIR) $(dir $@) ; \
+            $(CP) $< $@ ;        \
+        fi
+
+#MM
+workbench-prefs-envarc-theme:
+	@echo $(AROS_GUI_THEME) > $(AROS_ENVARC)/SYS/theme.var

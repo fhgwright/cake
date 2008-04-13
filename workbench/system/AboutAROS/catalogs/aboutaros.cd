@@ -3,10 +3,10 @@ MSG_TITLE (//)
 About AROS
 ;
 MSG_PERSONAL_BUILD (//)
-Personal Build
+Personal %s Build
 ;
 MSG_NIGHTLY_BUILD (//)
-Nightly Build
+Nightly %s Build
 ;
 MSG_SNAPSHOT (//)
 Snapshot
@@ -79,6 +79,9 @@ Kernel
 ;
 MSG_SECTION_DOS (//)
 DOS
+;
+MSG_SECTION_NETWORK (//)
+Networking Components
 ;
 MSG_SECTION_LIBC_POSIX (//)
 C link library and POSIX layer

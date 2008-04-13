@@ -6,10 +6,10 @@ MSG_TITLE
 À propos d'AROS
 ;
 MSG_PERSONAL_BUILD
-Moutûre personelle
+Moutûre %s personelle
 ;
 MSG_NIGHTLY_BUILD
-Moutûre quotidienne
+Moutûre %s quotidienne
 ;
 MSG_SNAPSHOT
 Instantané
@@ -82,6 +82,10 @@ Kernel
 ;
 MSG_SECTION_DOS
 DOS
+;
+MSG_SECTION_NETWORK (//)
+Networking Components
+;Networking Components
 ;
 MSG_SECTION_LIBC_POSIX
 C link library et couche POSIX

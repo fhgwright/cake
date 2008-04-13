@@ -1,5 +1,5 @@
 /*
-    Copyright © 2004-2007, The AROS Development Team. All rights reserved
+    Copyright © 2004-2008, The AROS Development Team. All rights reserved
     $Id$
 
     Desc:
@@ -24,9 +24,17 @@
  *                                 Corrected IO Areas to allow ATA to talk to PCI controllers
  * 2008-02-24  T. Wiszkowski       Corrected unit open function
  * 2008-03-03  T. Wiszkowski       Added drive reselection + setup delay on Init
+ * 2008-03-23  T. Wiszkowski       Corrected Alternative Command block position
+ * 2008-03-30  T. Wiszkowski       Added workaround for interrupt collision handling; fixed SATA in LEGACY mode.
+ *                                 nForce and Intel SATA chipsets should now be operational.
+ * 2008-04-03  T. Wiszkowski       Fixed IRQ flood issue, eliminated and reduced obsolete / redundant code                                 
+ * 2008-04-07  T. Wiszkowski       Changed bus timeout mechanism
+ * 2008-04-07  M. Schulz           The SiL3114 chip yields Class 0x01 and SubClass 0x80. Therefore it will 
+ *                                 not be find with the generic enumeration. Do an explicit search after it 
+ *                                 since ata.device may handle it in legacy mode without any issues.
  */
 
-#define DEBUG 0
+#define DEBUG 1
 #include <aros/debug.h>
 
 #include <aros/symbolsets.h>
@@ -156,6 +164,8 @@ BOOL AddVolume(ULONG StartCyl, ULONG EndCyl, struct ata_Unit *unit)
 /*
  * PCI BUS ENUMERATOR
  *   collect ALL ata/ide capable devices (including SATA and other) and spawn consecutive tasks
+ *
+ * This function is growing too large. It will shorten drasticly once this whole mess gets converted into c++
  */
 
 static
@@ -176,10 +186,10 @@ AROS_UFH3(void, Enumerator,
         UBYTE irq;
     } Buses[] = 
     {
-        {0x1f0, 0x3f0, 14},
-        {0x170, 0x370, 15},
-        {0x168, 0x368, 10},
-        {0x1e8, 0x3e8, 11},
+        {0x1f0, 0x3f4, 14},
+        {0x170, 0x374, 15},
+        {0x168, 0x36c, 10},
+        {0x1e8, 0x3ec, 11},
     };
 
     /*
@@ -225,9 +235,9 @@ AROS_UFH3(void, Enumerator,
     /*
      * obtain more or less useful data
      */
-    OOP_GetAttr(Device, aHidd_PCIDevice_ProductID, &ProductID);
-    OOP_GetAttr(Device, aHidd_PCIDevice_VendorID,  &VendorID);
-    OOP_GetAttr(Device, aHidd_PCIDevice_Base4,     &DMABase);
+    OOP_GetAttr(Device, aHidd_PCIDevice_ProductID,          &ProductID);
+    OOP_GetAttr(Device, aHidd_PCIDevice_VendorID,           &VendorID);
+    OOP_GetAttr(Device, aHidd_PCIDevice_Base4,              &DMABase);
 
     if (a->ATABase->ata_NoDMA)
         DMABase = 0;
@@ -301,7 +311,7 @@ AROS_UFH3(void, Enumerator,
         ab->ab_Flags        = 0;
         ab->ab_SleepySignal = 0;
         ab->ab_BusNum       = a->CurrentBus++;
-        ab->ab_Waiting      = 0;
+        ab->ab_Waiting      = FALSE;
         ab->ab_Timeout      = 0;
         ab->ab_Units[0]     = 0;
         ab->ab_Units[1]     = 0;
@@ -313,7 +323,7 @@ AROS_UFH3(void, Enumerator,
          */
         ab->ab_PRD          = AllocVecPooled(a->ATABase->ata_MemPool, (PRD_MAX+1) * 2 * sizeof(struct PRDEntry));  
         if ((0x10000 - ((ULONG)ab->ab_PRD & 0xffff)) < PRD_MAX * sizeof(struct PRDEntry))
-            ab->ab_PRD      = (void*)((((IPTR)ab->ab_PRD)+0xffff) &~ 0xffff);
+           ab->ab_PRD      = (void*)((((IPTR)ab->ab_PRD)+0xffff) &~ 0xffff);
 
         InitSemaphore(&ab->ab_Lock);
 
@@ -325,11 +335,13 @@ AROS_UFH3(void, Enumerator,
         {
             ab->ab_Units[0] = AllocVecPooled(a->ATABase->ata_MemPool, sizeof(struct ata_Unit));
             ab->ab_Units[0]->au_DMAPort = (DMABase != 0 ? DMABase + (x<<3) : 0);
+            ata_init_unit(ab, 0);
         }
         if (ab->ab_Dev[1] > DEV_UNKNOWN)
         {
             ab->ab_Units[1] = AllocVecPooled(a->ATABase->ata_MemPool, sizeof(struct ata_Unit));
             ab->ab_Units[1]->au_DMAPort = (DMABase != 0 ? DMABase + (x<<3) : 0);
+            ata_init_unit(ab, 1);
         }
 
         D(bug("[ATA  ] Bus %ld: Unit 0 - %x, Unit 1 - %x\n", ab->ab_BusNum, ab->ab_Dev[0], ab->ab_Dev[1]));
@@ -341,14 +353,13 @@ AROS_UFH3(void, Enumerator,
          */
         AddTail((struct List*)&a->ATABase->ata_Buses, (struct Node*)ab);
 
-        ata_InitBusTask(ab);
     }
 
     /*
      * check dma status
      */
     if (DMABase != 0)
-        D(bug("[ATA  ] Bus0 status says %02x, Bus1 status says %02x\n", inb(DMABase + 2), inb(DMABase + 10)));
+        D(bug("[ATA  ] Bus0 status says %02x, Bus1 status says %02x\n", ata_in(2, DMABase), ata_in(10, DMABase)));
     
     OOP_SetAttrs(Device, attrs);
     OOP_ReleaseAttrBase(IID_Hidd_PCIDevice);
@@ -360,6 +371,7 @@ AROS_UFH3(void, Enumerator,
 void ata_Scan(struct ataBase *base)
 {
     OOP_Object *pci;
+    struct Node* node;
 
     D(bug("[ATA--] Enumerating devices\n"));
 
@@ -385,7 +397,6 @@ void ata_Scan(struct ataBase *base)
             {TAG_DONE,              0x00}
         };
 
-
         struct pHidd_PCI_EnumDevices enummsg = {
             mID:            OOP_GetMethodID(IID_Hidd_PCI, moHidd_PCI_EnumDevices),
             callback:       &FindHook,
@@ -393,8 +404,27 @@ void ata_Scan(struct ataBase *base)
         }, *msg = &enummsg;
         
         OOP_DoMethod(pci, (OOP_Msg)msg);
+
+        /* 
+         * The SiL3114 chip yields Class 0x01 and SubClass 0x80. Therefore it will not be find
+         * with the enumeration above. Do an explicit search now since ata.device may handle it
+         * in legacy mode without any issues.
+         * 
+         * Note: This chip is used on Sam440 board.
+         */
+        Requirements[0].ti_Tag = tHidd_PCI_VendorID;
+        Requirements[0].ti_Data = 0x1095;
+        Requirements[1].ti_Tag = tHidd_PCI_ProductID;
+        Requirements[1].ti_Data = 0x3114;
+
+        OOP_DoMethod(pci, (OOP_Msg)msg);
         
         OOP_DisposeObject(pci);
+    }
+            
+    ForeachNode(&base->ata_Buses, node)
+    {
+        ata_InitBusTask((struct ata_Bus*)node);
     }
 }
 
@@ -550,3 +580,4 @@ ADD2INITLIB(ata_init, 0)
 ADD2OPENDEV(open, 0)
 ADD2CLOSEDEV(close, 0)
 ADD2LIBS("irq.hidd", 0, static struct Library *, __irqhidd)
+/* vim: set ts=8 sts=4 et : */

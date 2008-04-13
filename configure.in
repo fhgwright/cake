@@ -453,6 +453,21 @@ CFLAGS="$save_cflags"
 
 #-----------------------------------------------------------------------------
 
+# Disable pointer-signedness warnings if the compiler recognises the option
+# (this only works for the host compiler at the moment)
+
+AC_MSG_CHECKING([whether ${CC} accepts -Wno-pointer-sign])
+save_cflags="$CFLAGS"
+CFLAGS="$CFLAGS -Wno-pointer-sign"
+AC_TRY_COMPILE(,, use_no_sign_warning="yes", use_no_sign_warning="no")
+AC_MSG_RESULT($use_no_sign_warning)
+if test "x-$use_no_sign_warning" = "x-yesnnn" ; then
+    aros_host_cflags="$aros_host_cflags -Wno-pointer-sign"
+fi
+CFLAGS="$save_cflags"
+
+#-----------------------------------------------------------------------------
+
 AC_MSG_CHECKING([for type of build])
 AC_ARG_ENABLE(build_type,AC_HELP_STRING([--enable-build-type=TYPE],[Select the build type. Available types are: personal, nightly, snapshot, milestone, release. Do NOT use this option unless you know what you are doing! (default=personal)]),build_type=$enableval,build_type="personal")
 
@@ -988,6 +1003,43 @@ else
 fi
 AC_MSG_RESULT($target_bootloader)
 
+# Check LZO when compiling the grub2 bootloader on i386/x86_64.
+aros_liblzo_check="no"
+case "$aros_target_bootloader" in
+    grub2*)
+    case "$target_cpu" in
+        *i?86*)
+        aros_liblzo_check="yes"
+        ;;
+        *x86_64*)
+        aros_liblzo_check="yes"  
+        ;;
+        *)
+        ;;
+    esac
+  
+    ;;
+   *)
+    ;;
+esac
+
+if test "$aros_liblzo_check" = "yes"; then
+    # There are three possibilities. LZO version 2 installed with the name
+    # liblzo2, with the name liblzo, and LZO version 1.  
+    AC_CHECK_LIB(lzo2, __lzo_init_v2, [LIBLZO="-llzo2"],  
+    AC_CHECK_LIB(lzo, __lzo_init_v2, [LIBLZO="-llzo"],
+                AC_CHECK_LIB(lzo, __lzo_init2, [LIBLZO="-llzo"],
+                AC_MSG_ERROR([LZO library version 1.02 or later is required]))))
+
+    AC_SUBST(LIBLZO)
+    LIBS="$LIBS $LIBLZO"
+    AC_CHECK_FUNC(lzo1x_999_compress, ,
+                [AC_MSG_ERROR([LZO1X-999 must be enabled])])
+
+    # LZO version 2 uses lzo/lzo1x.h, while LZO version 1 uses lzo1x.h.
+    AC_CHECK_HEADERS(lzo/lzo1x.h lzo1x.h)
+fi
+
 # Find out if we are cross-compiling (ie. if we can't use the host compiler
 # for target code)
 cross_compiling=no
@@ -1089,7 +1141,6 @@ aros_target_ranlib="${prefix}-ranlib $aros_target_ranlib_flags"
 aros_target_nm="${prefix}-nm $aros_target_nm_flags"
 aros_kernel_nm="${prefix}-nm"
 aros_target_strip=${prefix}-strip
-
 
 # Find the system include path. We can suggest that an alternative is
 # used if we don't get it correct. The default is to use /usr/include.
@@ -1519,7 +1570,7 @@ palmnative)     aros_flavour_uc="(AROS_FLAVOUR_STANDALONE|AROS_FLAVOUR_EMULATION
 		aros_flavour="palmnative" ;;
 mac68knative)   aros_flavour_uc="(AROS_FLAVOUR_STANDALONE|AROS_FLAVOUR_EMULATION)"
 		aros_flavour="mac68knative" ;;
-ppcnative)	aros_flavour_uc="(AROS_FLAVOUR_NATIVE|AROS_FLAVOUR_BINCOMPAT)"
+ppcnative)	aros_flavour_uc="(AROS_FLAVOUR_STANDALONE|AROS_FLAVOUR_BINCOMPAT)"
 		aros_flavour="ppcnative" ;;
 esac
 

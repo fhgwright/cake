@@ -7,10 +7,10 @@ Tietoa AROS:ista
 ; About AROS
 ;
 MSG_PERSONAL_BUILD
-Henkilökohtainen käännös
+Henkilökohtainen %s käännös
 ;
 MSG_NIGHTLY_BUILD
-Öinen käännös
+Öinen %s käännös
 ;
 MSG_SNAPSHOT
 Snapshot
@@ -83,6 +83,10 @@ Ydin
 ;
 MSG_SECTION_DOS
 DOS
+;
+MSG_SECTION_NETWORK (//)
+Networking Components
+;Networking Components
 ;
 MSG_SECTION_LIBC_POSIX
 C-linkkikirjasto ja POSIX rajapinta

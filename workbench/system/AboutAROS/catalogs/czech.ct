@@ -8,11 +8,11 @@ O systému AROS
 ; About AROS
 ;
 MSG_PERSONAL_BUILD
-Osobní sestavení
+Osobní %s sestavení
 ; Personal Build
 ;
 MSG_NIGHTLY_BUILD
-Noèní sestavení
+Noèní %s sestavení
 ; Nightly Build
 ;
 MSG_SNAPSHOT
@@ -110,6 +110,10 @@ Kernel
 MSG_SECTION_DOS
 DOS
 ; DOS
+;
+MSG_SECTION_NETWORK (//)
+Networking Components
+;Networking Components
 ;
 MSG_SECTION_LIBC_POSIX
 Knihovna libc a vrstva POSIX

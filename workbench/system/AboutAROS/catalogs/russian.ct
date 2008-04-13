@@ -8,12 +8,12 @@ MSG_TITLE
 ; About AROS
 ;
 MSG_PERSONAL_BUILD
-Личная сборка
+Личная %s сборка
 ; Personal Build
 ; FIXME: shall I translate this?
 ;
 MSG_NIGHTLY_BUILD
-"Ночная" сборка
+"Ночная" %s сборка
 ; Nightly Build
 ; FIXME: shall I translate this?
 ;
@@ -112,6 +112,10 @@ MSG_SECTION_KERNEL
 MSG_SECTION_DOS
 DOS
 ; DOS
+;
+MSG_SECTION_NETWORK (//)
+Networking Components
+;Networking Components
 ;
 MSG_SECTION_LIBC_POSIX
 Библиотеки C и POSIX Layer

@@ -28,6 +28,17 @@
  * 2008-02-08  T. Wiszkowski       Fixed DMA accesses for direct scsi devices,
  *                                 Corrected IO Areas to allow ATA to talk to PCI controllers
  * 2008-03-03  T. Wiszkowski       Added drive reselection + setup delay on Init
+ * 2008-03-29  T. Wiszkowski       Restored error on 64bit R/W access to non-64bit capable atapi devices
+ *                                 cleared debug flag
+ * 2008-03-30  T. Wiszkowski       Added workaround for interrupt collision handling; fixed SATA in LEGACY mode.
+ *                                 nForce and Intel SATA chipsets should now be operational (nForce confirmed)
+ * 2008-03-31  M. Schulz           The ins/outs function definitions used only in case of x86 and x86_64 architectures. 
+ *                                 Otherwise, function declaratons are emitted.
+ * 2008-04-01  M. Schulz           Use C functions ata_ins[wl] ata_outs[wl]
+ * 2008-04-03  T. Wiszkowski       Fixed IRQ flood issue, eliminated and reduced obsolete / redundant code                                 
+ * 2008-04-05  T. Wiszkowski       Improved IRQ management 
+ * 2008-04-07  T. Wiszkowski       Changed bus timeout mechanism
+ *                                 increased failure timeout values to cover rainy day scenarios
  */
 
 #define DEBUG 0
@@ -42,6 +53,8 @@
 
 #include <proto/exec.h>
 #include <devices/timer.h>
+
+#include <asm/io.h>
 
 #include "ata.h"
 
@@ -67,7 +80,6 @@ static ULONG ata_WriteDMA32(struct ata_Unit *, ULONG, ULONG, APTR, ULONG *);
 static ULONG ata_WriteDMA64(struct ata_Unit *, UQUAD, ULONG, APTR, ULONG *);
 static ULONG ata_Eject(struct ata_Unit *);
 
-static ULONG atapi_ErrCmd();
 static ULONG atapi_EndCmd(struct ata_Unit *unit);
 
 static ULONG atapi_Read(struct ata_Unit *, ULONG, ULONG, APTR, ULONG *);
@@ -84,30 +96,50 @@ static void common_SetBestXferMode(struct ata_Unit* unit);
 /*
  * having an x86 assembly here i dare to assume that this is meant to be
  * an x86[_64] device only.
+ * 
+ * Not anymore.
+ * 
+ * This functions will stay here for some time *IF* and only if the code is compiled for
+ * x86 or x86_64 architecture. Otherwise, function declarations will be emitted and the
+ * one who ports the driver will be reponsible for adding the missing code.
  */
 
 /*
  * the outsl and insl commands improperly assumed that every transfer is sized to multiple of four
  */
-static VOID insw(APTR address, UWORD port, ULONG count)
+#if defined(__i386__) || defined(__x86_64__)
+
+static VOID ata_insw(APTR address, UWORD port, ULONG count)
 {
-    asm volatile ("cld; rep insw"::"Nd"(port),"c"(count >> 1),"D"(address):"memory");
+    insw(port, address, count >> 1);
 }
 
-static VOID insl(APTR address, UWORD port, ULONG count)
+static VOID ata_insl(APTR address, UWORD port, ULONG count)
 {
-    asm volatile ("cld; testb $2,%%al; je _insl_; insw; _insl_: rep insl" ::"Nd"(port),"a"(count&2),"c"(count >> 2),"D"(address));
+    if (count & 2)
+        insw(port, address, count >> 1);
+    else
+        insl(port, address, count >> 2);
 }
 
-static VOID outsw(APTR address, UWORD port, ULONG count)
+static VOID ata_outsw(APTR address, UWORD port, ULONG count)
 {
-    asm volatile ("cld; rep outsw"::"Nd"(port),"c"(count >> 1),"S"(address));
+    outsw(port, address, count >> 1);
 }
 
-static VOID outsl(APTR address, UWORD port, ULONG count)
+static VOID ata_outsl(APTR address, UWORD port, ULONG count)
 {
-    asm volatile ("cld; testb $2,%%al; je _outsl_; outsw; _outsl_: rep outsl" ::"Nd"(port),"a"(count&2),"c"(count >> 2),"S"(address));
+    if (count & 2)
+        outsw(port, address, count >> 1);
+    else
+        outsl(port, address, count >> 2);
 }
+#else
+extern VOID ata_insw(APTR address, UWORD port, ULONG count);
+extern VOID ata_insl(APTR address, UWORD port, ULONG count);
+extern VOID ata_outsw(APTR address, UWORD port, ULONG count);
+extern VOID ata_outsl(APTR address, UWORD port, ULONG count);
+#endif
 
 static void dump(APTR mem, ULONG len)
 {
@@ -169,7 +201,7 @@ static ULONG ata_STUB_IO32(struct ata_Unit *au, ULONG blk, ULONG len, APTR buf, 
 
 static ULONG ata_STUB_IO64(struct ata_Unit *au, UQUAD blk, ULONG len, APTR buf, ULONG* act)
 {
-    D(bug("[ATA%02ld] CALLED STUB FUNCTION. THIS OPERATION IS NOT SUPPORTED BY DEVICE\n", au->au_UnitNum));
+    bug("[ATA%02ld] CALLED STUB FUNCTION -- IO ACCESS TO BLOCK %08lx:%08lx, LENGTH %08lx. THIS OPERATION IS NOT SUPPORTED BY DEVICE\n", au->au_UnitNum, (blk >> 32), (blk & 0xffffffff), len);
     return CDERR_NOCMD;
 }
 
@@ -196,80 +228,163 @@ inline void ata_SelectUnit(struct ata_Unit* unit)
     ata_out(unit->au_DevMask, ata_DevHead, unit->au_Bus->ab_Port);
 }
 
-inline void ata_ClearOldIRQ(struct ata_Unit *unit)
+/*
+ * enable / disable IRQ; this manages interrupt requests more effectively in case of legacy emulation
+ * as little code as there can be. and keep it that way.
+ */
+void ata_EnableIRQ(struct ata_Bus *bus, BOOL enable)
 {
-    SetSignal(0, (1 << unit->au_Bus->ab_SleepySignal) | SIGBREAKF_CTRL_C);
+    bus->ab_Waiting = enable;
+    ata_out(enable ? 0x0 : 0x02, ata_AltControl, bus->ab_Alt);
+}
+
+/*
+ * handle IRQ; still fast and efficient, supposed to verify if this irq is for us and take adequate steps
+ * part of code moved here from ata.c to reduce containment
+ */
+void ata_HandleIRQ(struct ata_Bus *bus)
+{
+    /*
+     * don't waste your time on checking other devices.
+     * pass irq ONLY if task is expecting one;
+     */
+    if (TRUE == bus->ab_Waiting)
+    {
+        if (0 == (ATAF_BUSY & ata_ReadStatus(bus)))
+        {
+            D(bug("[ATA  ] Got Intrq\n"));
+            ata_EnableIRQ(bus, FALSE);
+            bus->ab_IntCnt++;
+            Signal(bus->ab_Task, 1L << bus->ab_SleepySignal);
+        }
+    }
 }
 
 /*
  * wait for timeout or drive ready
+ * polling-in-a-loop, but it should be safe to remove this already
  */
-BOOL ata_WaitBusyTO(struct ata_Unit *unit, UWORD tout)
+BOOL ata_WaitBusyTO(struct ata_Unit *unit, UWORD tout, BOOL irq)
 {
     UBYTE status;
+    ULONG sigs = SIGBREAKF_CTRL_C | (irq ? (1 << unit->au_Bus->ab_SleepySignal) : 0);
     ULONG step = 0;
+    BOOL res = TRUE;
             
-    SetSignal(0, SIGBREAKF_CTRL_C);
+    /*
+     * clear up all old signals
+     */
+    SetSignal(0, sigs);
 
+    /*
+     * set up bus timeout and irq
+     */
     Disable();
+    ata_EnableIRQ(unit->au_Bus, irq);
     unit->au_Bus->ab_Timeout = tout;
     Enable();
+
+    /*
+     * this loop may experience one of two scenarios
+     * 1) we get a valid irq and the drive wanted to let us know that it's ready
+     * 2) we get an invalid irq due to some collissions. We may still want to go ahead and get some extra irq breaks
+     *    this would reduce system load a little
+     */
 
     do
     {
+        /*
+         * lets check if the drive is already good
+         */
         status = ata_in(ata_Status, unit->au_Bus->ab_Port);
-        ++step;
-        if ((step & 16) == 0)
+        if (0 == (status & ATAF_BUSY))
+            break;
+
+        /*
+         * so we're stuck in a loop?
+         */
+        D(bug("[ATA%02ld] Waiting (Current status: %02lx)...\n", unit->au_UnitNum, status));
+
+        /*
+         * if IRQ wait is requested then allow either timeout or irq;
+         * then clear irq flag so we dont keep receiving more of these (especially when system suffers collissions)
+         */
+        if (irq)
         {
-            if (SetSignal(0, SIGBREAKF_CTRL_C) & SIGBREAKF_CTRL_C)
+            /*
+             * wait for either IRQ or TIMEOUT
+             */
+            step = Wait(sigs);
+
+            /*
+             * now if we did reach timeout, then there's no point in going ahead.
+             */
+            if (SIGBREAKB_CTRL_C & step)
             {
-                D(bug("[ATA%02ld] Device still busy after timeout. Aborting\n", unit->au_UnitNum));
-                return FALSE;   
+                bug("[ATA%02ld] Timeout while waiting for device to complete operation\n", unit->au_UnitNum);
+                res = FALSE;
+            }
+
+            /*
+             * if we get as far as this, there's no more signals to expect
+             * but we still want the status
+             */
+            status = ata_in(ata_Status, unit->au_Bus->ab_Port);
+            break;
+        }
+        else
+        { 
+            /*
+             * device not ready just yet. lets set whether we want an IRQ and move on - to polling or irq wait
+             */
+            ++step;
+
+            /*
+             * every 16n rounds do some extra stuff
+             */
+            if ((step & 16) == 0)
+            {
+                /*
+                 * huhm. so it's been 16n rounds already. any timeout yet?
+                 */
+                if (SetSignal(0, SIGBREAKF_CTRL_C) & SIGBREAKF_CTRL_C)
+                {
+                    D(bug("[ATA%02ld] Device still busy after timeout. Aborting\n", unit->au_UnitNum));
+                    res = FALSE;
+                    break;
+                }
+
+                /*
+                 * no timeout just yet, but it's not a good idea to keep spinning like that.
+                 * let's give the system some time.
+                 */
+                // TODO: Put some delay here!
             }
         }
-        D(bug("[ATA%02ld] Still waiting (%02lx)...\n", unit->au_UnitNum, status));
     } while(status & ATAF_BUSY);
 
-    D(bug("[ATA%02ld] Ready.\n", unit->au_UnitNum));
+    /*
+     * be nice to frustrated developer
+     */
+    D(bug("[ATA%02ld] WaitBusy status: %ld\n", unit->au_UnitNum, res));
+
+    /*
+     * clear up all our expectations 
+     */
     Disable();
-    unit->au_Bus->ab_Timeout = 0;
-    Enable();
-            
-    SetSignal(0, SIGBREAKF_CTRL_C);
-
-    return TRUE;
-}
-
-/*
- * wait for timeout or IRQ
- */
-BOOL ata_WaitIRQ(struct ata_Unit *unit, UWORD tout)
-{
-    SetSignal(0, SIGBREAKF_CTRL_C);
-            
-    Disable();
-    unit->au_Bus->ab_Timeout = tout;
-    Enable();
-
-    D(bug("[ATA%02ld] Awaiting IRQ.\n", unit->au_UnitNum));
-
-    if (Wait((1<<unit->au_Bus->ab_SleepySignal) | SIGBREAKF_CTRL_C) & SIGBREAKF_CTRL_C)
-    {
-        D(bug("[ATA%02ld] Timed out.\n", unit->au_UnitNum));
-        return FALSE;
-    }
-
-    D(bug("[ATA%02ld] Ready.\n", unit->au_UnitNum));
-    Disable();
-    unit->au_Bus->ab_Timeout = 0;
+    ata_EnableIRQ(unit->au_Bus, FALSE);
+    unit->au_Bus->ab_Timeout = -1;
     Enable();
             
     /*
-     * clear signal just in case
+     * release old junk
      */
-    SetSignal(0, SIGBREAKF_CTRL_C);
+    SetSignal(0, sigs);
 
-    return TRUE;
+    /*
+     * and say it went fine (i mean it)
+     */
+    return res;
 }
 
 /*
@@ -286,6 +401,10 @@ void ata_Wait(struct ata_Unit *unit, UWORD tout)
     Wait(SIGBREAKF_CTRL_C);
 }
 
+UBYTE ata_ReadStatus(struct ata_Bus *bus)
+{
+    return ata_in(ata_Status, bus->ab_Port);
+}
 
 /*
  * Procedure for sending ATA command blocks
@@ -303,6 +422,7 @@ static ULONG ata_exec_cmd(struct ata_Unit* au, ata_CommandBlock *block)
     APTR mem = block->buffer;
     BOOL dma = FALSE;
 
+    ata_SelectUnit(au);
 
     /*
      * initial checks and stuff
@@ -356,6 +476,7 @@ static ULONG ata_exec_cmd(struct ata_Unit* au, ata_CommandBlock *block)
             return IOERR_NOCMD;
     }
 
+    ata_SelectUnit(au);
 
     block->actual = 0;
 
@@ -366,14 +487,12 @@ static ULONG ata_exec_cmd(struct ata_Unit* au, ata_CommandBlock *block)
      * 
      * - select device
      */
-    ata_out(0x08, ata_AltControl, au->au_Bus->ab_Alt);
     D(bug("[ATA%02ld] Executing command %02lx\n", au->au_UnitNum, block->command));
-    ata_out(au->au_DevMask, ata_DevHead, port);
 
     /*
      * generally we could consider marking unit as 'retarded' upon three attempts or stuff like that
      */
-    if (ata_WaitBusyTO(au, 100) == FALSE)
+    if (ata_WaitBusyTO(au, 1, TRUE) == FALSE)
     {
         bug("[ATA%02ld] UNIT BUSY AT SELECTION\n", au->au_UnitNum);
         return IOERR_UNITBUSY;
@@ -383,16 +502,6 @@ static ULONG ata_exec_cmd(struct ata_Unit* au, ata_CommandBlock *block)
     {
         ata_out(block->feature, ata_Feature, port);
     }
-
-
-    /*
-     * - clear all old signals
-     */
-    //D(bug("[ATA%02ld] Clearing old signals\n", au->au_UnitNum));
-    SetSignal(0, (1 << au->au_Bus->ab_SleepySignal) | SIGBREAKF_CTRL_C);
-    ata_in(ata_Status, port);
-
-
 
     /*
      * - set LBA and sector count
@@ -461,9 +570,8 @@ static ULONG ata_exec_cmd(struct ata_Unit* au, ata_CommandBlock *block)
         case CM_PIORead:
         case CM_NoData:
             D(bug("[ATA%02ld] Sending command\n", au->au_UnitNum));
-            ata_ClearOldIRQ(au);
             ata_out(block->command, ata_Command, port);
-            if (FALSE == ata_WaitIRQ(au, 1000))
+            if (FALSE == ata_WaitBusyTO(au, 10, TRUE))
             {
                 D(bug("[ATA%02ld] Device is late - no response\n", au->au_UnitNum));
                 err = IOERR_UNITBUSY;
@@ -497,7 +605,7 @@ static ULONG ata_exec_cmd(struct ata_Unit* au, ata_CommandBlock *block)
             stat = ata_in(dma_Status, au->au_DMAPort);
             D(bug("[ATA%02ld] DMA status %02lx\n", au->au_UnitNum, stat));
 
-            if (stat & DMAF_Interrupt)
+            if (0 == (stat & DMAF_Active))
             {
                 //D(bug("[ATA%02ld] DMA transfer is now complete\n", au->au_UnitNum));
                 block->actual = block->length;
@@ -519,7 +627,7 @@ static ULONG ata_exec_cmd(struct ata_Unit* au, ata_CommandBlock *block)
             /*
              * wait for drive to clear busy
              */
-            if (FALSE == ata_WaitBusyTO(au, 1000))
+            if (FALSE == ata_WaitBusyTO(au, 30, FALSE))
             {
                 bug("[ATA%02ld] Device busy after timeout\n", au->au_UnitNum);
                 err = IOERR_UNITBUSY;
@@ -620,7 +728,7 @@ static ULONG ata_exec_cmd(struct ata_Unit* au, ata_CommandBlock *block)
         /*
          * wait for interrupt
          */
-        if (FALSE == ata_WaitIRQ(au, 1000))
+        if (FALSE == ata_WaitBusyTO(au, 30, TRUE))
         {
             bug("[ATA%02ld] Device is late - no response\n", au->au_UnitNum);
             err = IOERR_UNITBUSY;
@@ -718,9 +826,8 @@ int atapi_SendPacket(struct ata_Unit *unit, APTR packet, LONG datalen, BOOL *dma
         
     datalen = (datalen+1)&~1;
 
-    ata_out(0x08, ata_AltControl, unit->au_Bus->ab_Alt);
     ata_out(unit->au_DevMask, atapi_DevSel, port);
-    if (ata_WaitBusyTO(unit, 10))
+    if (ata_WaitBusyTO(unit, 1, TRUE))
     {
         /*
          * since the device is now ready (~BSY) && (~DRQ), we can set up features and transfer size
@@ -736,9 +843,8 @@ int atapi_SendPacket(struct ata_Unit *unit, APTR packet, LONG datalen, BOOL *dma
          * once we're done with that, we can go ahead and inform device that we're about to send atapi packet
          * after command is dispatched, we are obliged to give 400ns for the unit to parse command and set status
          */
-        ata_ClearOldIRQ(unit);
         ata_out(ATA_PACKET, atapi_Command, port);
-        if (ata_WaitBusyTO(unit, 50) == FALSE)
+        if (ata_WaitBusyTO(unit, 50, FALSE) == FALSE)
         {
             D(bug("[ATAPI] Unit not ready to accept command.\n"));
             return IOERR_UNITBUSY;
@@ -820,7 +926,7 @@ ULONG atapi_DirectSCSI(struct ata_Unit *unit, struct SCSICmd *cmd)
          */
         if (FALSE == dma)
         {
-            if (ata_WaitIRQ(unit, 1000) == FALSE)
+            if (ata_WaitBusyTO(unit, 30, TRUE) == FALSE)
             {
                 D(bug("[DSCSI] Command timed out.\n"));
                 err = IOERR_UNITBUSY;
@@ -893,7 +999,7 @@ ULONG atapi_DirectSCSI(struct ata_Unit *unit, struct SCSICmd *cmd)
 
             while (err == 0)
             {
-                if (FALSE == ata_WaitIRQ(unit, 300))
+                if (FALSE == ata_WaitBusyTO(unit, 30, TRUE))
                 {
                     err = IOERR_UNITBUSY;
                     break;
@@ -905,7 +1011,7 @@ ULONG atapi_DirectSCSI(struct ata_Unit *unit, struct SCSICmd *cmd)
 
                 status = ata_in(dma_Status, unit->au_DMAPort);
                 D(bug("[ATAPI] DMA status: %lx\n", status));
-                if (0 == (status & DMAF_Interrupt))
+                if (0 == (status & DMAF_Active))
                 {
                     break;
                 }
@@ -920,7 +1026,7 @@ ULONG atapi_DirectSCSI(struct ata_Unit *unit, struct SCSICmd *cmd)
     }
     else
     {
-       err = atapi_ErrCmd();
+       err = CDERR_ABORTED;
     }
 
     /*
@@ -986,14 +1092,11 @@ static ULONG ata_exec_blk(struct ata_Unit *unit, ata_CommandBlock *blk)
 /*
  * Initial device configuration that suits *all* cases
  */
-BOOL ata_setup_unit(struct ata_Bus *bus, UBYTE u)
+BOOL ata_init_unit(struct ata_Bus *bus, UBYTE u)
 {
     struct ata_Unit *unit=NULL;
 
-    /*
-     * this stuff always goes along the same way
-     */
-    D(bug("[ATA  ] setting up unit %ld\n", u));
+    D(bug("[ATA  ] Initializing unit %ld\n", u));
 
     unit = bus->ab_Units[u];
     if (NULL == unit)
@@ -1005,13 +1108,13 @@ BOOL ata_setup_unit(struct ata_Bus *bus, UBYTE u)
     unit->au_DevMask    = 0xa0 | (u << 4);
     if (bus->ab_Base->ata_32bit)
     {
-        unit->au_ins        = insl;
-        unit->au_outs       = outsl;
+        unit->au_ins        = ata_insl;
+        unit->au_outs       = ata_outsl;
     }
     else
     {
-        unit->au_ins        = insw;
-        unit->au_outs       = outsw;
+        unit->au_ins        = ata_insw;
+        unit->au_outs       = ata_outsw;
     }
     unit->au_SectorShift= 9;    /* this really has to be set here. */
     unit->au_Flags      = 0;
@@ -1022,17 +1125,33 @@ BOOL ata_setup_unit(struct ata_Bus *bus, UBYTE u)
      * since the stack is always handled by caller
      * it's safe to stub all calls with one function
      */
-    unit->au_Read32     = ata_STUB_IO32;
-    unit->au_Read64     = ata_STUB_IO64;
-    unit->au_Write32    = ata_STUB_IO32;
-    unit->au_Write64    = ata_STUB_IO64;
-    unit->au_Eject      = ata_STUB;
-    unit->au_DirectSCSI = ata_STUB_SCSI;
-    unit->au_Identify   = ata_STUB;
+    unit->au_Read32                 = ata_STUB_IO32;
+    unit->au_Read64                 = ata_STUB_IO64;
+    unit->au_Write32                = ata_STUB_IO32;
+    unit->au_Write64                = ata_STUB_IO64;
+    unit->au_Eject                  = ata_STUB;
+    unit->au_DirectSCSI             = ata_STUB_SCSI;
+    unit->au_Identify               = ata_STUB;
+    return TRUE;
+}
+
+BOOL ata_setup_unit(struct ata_Bus *bus, UBYTE u)
+{
+    struct ata_Unit *unit=NULL;
+
+    /*
+     * this stuff always goes along the same way
+     * WARNING: NO INTERRUPTS AT THIS POINT!
+     */
+    D(bug("[ATA  ] setting up unit %ld\n", u));
+
+    unit = bus->ab_Units[u];
+    if (NULL == unit)
+        return FALSE;
 
     ata_SelectUnit(unit);
 
-    if (FALSE == ata_WaitBusyTO(unit, 10))
+    if (FALSE == ata_WaitBusyTO(unit, 1, FALSE))
     {
         D(bug("[ATA%02ld] ERROR: Drive not ready for use. Keeping functions stubbed\n", unit->au_UnitNum));
         FreePooled(bus->ab_Base->ata_MemPool, unit->au_Drive, sizeof(struct DriveIdent));
@@ -1350,6 +1469,10 @@ void common_DetectXferModes(struct ata_Unit* unit)
     }
 }
 
+#define SWAP_LE_WORD(x) (x) = AROS_LE2WORD((x))
+#define SWAP_LE_LONG(x) (x) = AROS_LE2LONG((x))
+#define SWAP_LE_QUAD(x) (x) = AROS_LE2LONG((x)>>32) | AROS_LE2LONG((x) & 0xffffffff) << 32
+
 ULONG atapi_Identify(struct ata_Unit* unit)
 {
     ata_CommandBlock acb =
@@ -1368,7 +1491,7 @@ ULONG atapi_Identify(struct ata_Unit* unit)
     };
 
     ata_SelectUnit(unit);
-    if (ata_WaitBusyTO(unit, 100) == FALSE)
+    if (ata_WaitBusyTO(unit, 1, FALSE) == FALSE)
     {
         bug("[ATA%02ld] Unit not ready after timeout. Aborting.\n", unit->au_UnitNum);
         return IOERR_UNITBUSY;
@@ -1379,13 +1502,64 @@ ULONG atapi_Identify(struct ata_Unit* unit)
         return IOERR_OPENFAIL;
     }
 
+#ifdef AROS_BIG_ENDIAN
+    SWAP_LE_WORD(unit->au_Drive->id_General);
+    SWAP_LE_WORD(unit->au_Drive->id_OldCylinders);
+    SWAP_LE_WORD(unit->au_Drive->id_SpecificConfig);
+    SWAP_LE_WORD(unit->au_Drive->id_OldHeads);
+    SWAP_LE_WORD(unit->au_Drive->id_OldSectors);
+    SWAP_LE_WORD(unit->au_Drive->id_RWMultipleSize);
+    SWAP_LE_WORD(unit->au_Drive->id_Capabilities);
+    SWAP_LE_WORD(unit->au_Drive->id_OldCaps);
+    SWAP_LE_WORD(unit->au_Drive->id_OldPIO);
+    SWAP_LE_WORD(unit->au_Drive->id_ConfigAvailable);
+    SWAP_LE_WORD(unit->au_Drive->id_OldLCylinders);
+    SWAP_LE_WORD(unit->au_Drive->id_OldLHeads);
+    SWAP_LE_WORD(unit->au_Drive->id_OldLSectors);
+    SWAP_LE_WORD(unit->au_Drive->id_RWMultipleTrans);
+    SWAP_LE_WORD(unit->au_Drive->id_MWDMASupport);
+    SWAP_LE_WORD(unit->au_Drive->id_PIOSupport);
+    SWAP_LE_WORD(unit->au_Drive->id_MWDMA_MinCycleTime);
+    SWAP_LE_WORD(unit->au_Drive->id_MWDMA_DefCycleTime);
+    SWAP_LE_WORD(unit->au_Drive->id_PIO_MinCycleTime);
+    SWAP_LE_WORD(unit->au_Drive->id_PIO_MinCycleTImeIORDY);
+    SWAP_LE_WORD(unit->au_Drive->id_QueueDepth);
+    SWAP_LE_WORD(unit->au_Drive->id_ATAVersion);
+    SWAP_LE_WORD(unit->au_Drive->id_ATARevision);
+    SWAP_LE_WORD(unit->au_Drive->id_Commands1);
+    SWAP_LE_WORD(unit->au_Drive->id_Commands2);
+    SWAP_LE_WORD(unit->au_Drive->id_Commands3);
+    SWAP_LE_WORD(unit->au_Drive->id_Commands4);
+    SWAP_LE_WORD(unit->au_Drive->id_Commands5);
+    SWAP_LE_WORD(unit->au_Drive->id_Commands6);
+    SWAP_LE_WORD(unit->au_Drive->id_UDMASupport);
+    SWAP_LE_WORD(unit->au_Drive->id_SecurityEraseTime);
+    SWAP_LE_WORD(unit->au_Drive->id_EnchSecurityEraseTime);
+    SWAP_LE_WORD(unit->au_Drive->id_CurrentAdvowerMode);
+    SWAP_LE_WORD(unit->au_Drive->id_MasterPwdRevision);
+    SWAP_LE_WORD(unit->au_Drive->id_HWResetResult);
+    SWAP_LE_WORD(unit->au_Drive->id_AcousticManagement);
+    SWAP_LE_WORD(unit->au_Drive->id_StreamMinimunReqSize);
+    SWAP_LE_WORD(unit->au_Drive->id_StreamingTimeDMA);
+    SWAP_LE_WORD(unit->au_Drive->id_StreamingLatency);
+    SWAP_LE_WORD(unit->au_Drive->id_StreamingTimePIO);
+    SWAP_LE_WORD(unit->au_Drive->id_PhysSectorSize);
+    SWAP_LE_WORD(unit->au_Drive->id_RemMediaStatusNotificationFeatures);
+    SWAP_LE_WORD(unit->au_Drive->id_SecurityStatus);
+
+    SWAP_LE_LONG(unit->au_Drive->id_WordsPerLogicalSector);
+    SWAP_LE_LONG(unit->au_Drive->id_LBASectors);
+    SWAP_LE_LONG(unit->au_Drive->id_StreamingGranularity);
+
+    SWAP_LE_QUAD(unit->au_Drive->id_LBA48Sectors);
+#endif
+
+    
     D(dump(unit->au_Drive, sizeof(struct DriveIdent)));
 
     unit->au_SectorShift    = 11;
     unit->au_Read32         = atapi_Read;
-    unit->au_Read64         = NULL;
     unit->au_Write32        = atapi_Write;
-    unit->au_Write64        = NULL;
     unit->au_DirectSCSI     = atapi_DirectSCSI;
     unit->au_Eject          = atapi_Eject;
     unit->au_Flags         |= AF_DiscPresenceUnknown;
@@ -1396,7 +1570,7 @@ ULONG atapi_Identify(struct ata_Unit* unit)
     ata_strcpy(unit->au_Drive->id_SerialNumber, unit->au_SerialNumber, 20);
     ata_strcpy(unit->au_Drive->id_FirmwareRev, unit->au_FirmwareRev, 8);
 
-    D(bug("[ATA%02ld] Unit info: %s / %s / %s\n", unit->au_UnitNum, unit->au_Model, unit->au_SerialNumber, unit->au_FirmwareRev));
+    bug("[ATA%02ld] Unit info: %s / %s / %s\n", unit->au_UnitNum, unit->au_Model, unit->au_SerialNumber, unit->au_FirmwareRev);
     common_DetectXferModes(unit);
     common_SetBestXferMode(unit);
 
@@ -1469,6 +1643,58 @@ ULONG ata_Identify(struct ata_Unit* unit)
         return IOERR_OPENFAIL;
     }
 
+#ifdef AROS_BIG_ENDIAN
+    SWAP_LE_WORD(unit->au_Drive->id_General);
+    SWAP_LE_WORD(unit->au_Drive->id_OldCylinders);
+    SWAP_LE_WORD(unit->au_Drive->id_SpecificConfig);
+    SWAP_LE_WORD(unit->au_Drive->id_OldHeads);
+    SWAP_LE_WORD(unit->au_Drive->id_OldSectors);
+    SWAP_LE_WORD(unit->au_Drive->id_RWMultipleSize);
+    SWAP_LE_WORD(unit->au_Drive->id_Capabilities);
+    SWAP_LE_WORD(unit->au_Drive->id_OldCaps);
+    SWAP_LE_WORD(unit->au_Drive->id_OldPIO);
+    SWAP_LE_WORD(unit->au_Drive->id_ConfigAvailable);
+    SWAP_LE_WORD(unit->au_Drive->id_OldLCylinders);
+    SWAP_LE_WORD(unit->au_Drive->id_OldLHeads);
+    SWAP_LE_WORD(unit->au_Drive->id_OldLSectors);
+    SWAP_LE_WORD(unit->au_Drive->id_RWMultipleTrans);
+    SWAP_LE_WORD(unit->au_Drive->id_MWDMASupport);
+    SWAP_LE_WORD(unit->au_Drive->id_PIOSupport);
+    SWAP_LE_WORD(unit->au_Drive->id_MWDMA_MinCycleTime);
+    SWAP_LE_WORD(unit->au_Drive->id_MWDMA_DefCycleTime);
+    SWAP_LE_WORD(unit->au_Drive->id_PIO_MinCycleTime);
+    SWAP_LE_WORD(unit->au_Drive->id_PIO_MinCycleTImeIORDY);
+    SWAP_LE_WORD(unit->au_Drive->id_QueueDepth);
+    SWAP_LE_WORD(unit->au_Drive->id_ATAVersion);
+    SWAP_LE_WORD(unit->au_Drive->id_ATARevision);
+    SWAP_LE_WORD(unit->au_Drive->id_Commands1);
+    SWAP_LE_WORD(unit->au_Drive->id_Commands2);
+    SWAP_LE_WORD(unit->au_Drive->id_Commands3);
+    SWAP_LE_WORD(unit->au_Drive->id_Commands4);
+    SWAP_LE_WORD(unit->au_Drive->id_Commands5);
+    SWAP_LE_WORD(unit->au_Drive->id_Commands6);
+    SWAP_LE_WORD(unit->au_Drive->id_UDMASupport);
+    SWAP_LE_WORD(unit->au_Drive->id_SecurityEraseTime);
+    SWAP_LE_WORD(unit->au_Drive->id_EnchSecurityEraseTime);
+    SWAP_LE_WORD(unit->au_Drive->id_CurrentAdvowerMode);
+    SWAP_LE_WORD(unit->au_Drive->id_MasterPwdRevision);
+    SWAP_LE_WORD(unit->au_Drive->id_HWResetResult);
+    SWAP_LE_WORD(unit->au_Drive->id_AcousticManagement);
+    SWAP_LE_WORD(unit->au_Drive->id_StreamMinimunReqSize);
+    SWAP_LE_WORD(unit->au_Drive->id_StreamingTimeDMA);
+    SWAP_LE_WORD(unit->au_Drive->id_StreamingLatency);
+    SWAP_LE_WORD(unit->au_Drive->id_StreamingTimePIO);
+    SWAP_LE_WORD(unit->au_Drive->id_PhysSectorSize);
+    SWAP_LE_WORD(unit->au_Drive->id_RemMediaStatusNotificationFeatures);
+    SWAP_LE_WORD(unit->au_Drive->id_SecurityStatus);
+
+    SWAP_LE_LONG(unit->au_Drive->id_WordsPerLogicalSector);
+    SWAP_LE_LONG(unit->au_Drive->id_LBASectors);
+    SWAP_LE_LONG(unit->au_Drive->id_StreamingGranularity);
+
+    SWAP_LE_QUAD(unit->au_Drive->id_LBA48Sectors);
+#endif
+
     D(dump(unit->au_Drive, sizeof(struct DriveIdent)));
 
     unit->au_SectorShift    = 9;
@@ -1485,7 +1711,7 @@ ULONG ata_Identify(struct ata_Unit* unit)
     ata_strcpy(unit->au_Drive->id_SerialNumber, unit->au_SerialNumber, 20);
     ata_strcpy(unit->au_Drive->id_FirmwareRev, unit->au_FirmwareRev, 8);
 
-    D(bug("[ATA%02ld] Unit info: %s / %s / %s\n", unit->au_UnitNum, unit->au_Model, unit->au_SerialNumber, unit->au_FirmwareRev));
+    bug("[ATA%02ld] Unit info: %s / %s / %s\n", unit->au_UnitNum, unit->au_Model, unit->au_SerialNumber, unit->au_FirmwareRev);
     common_DetectXferModes(unit);
     common_SetBestXferMode(unit);
 
@@ -2023,13 +2249,13 @@ void ata_ResetBus(struct timerequest *tr, struct ata_Bus *bus)
     ObtainSemaphore(&bus->ab_Lock);
 
     /* Disable IRQ */
-    ata_out(0x0a, ata_AltControl, alt);
+    ata_EnableIRQ(bus, FALSE);
     /* Issue software reset */
-    ata_out(0x0e, ata_AltControl, alt);
+    ata_out(0x04, ata_AltControl, alt);
     /* wait a while */
     ata_usleep(tr, 400);
     /* Clear reset signal */
-    ata_out(0x0a, ata_AltControl, alt);
+    ata_EnableIRQ(bus, FALSE);
     /* And wait again */
     ata_usleep(tr, 400);
     /* wait for dev0 to come online. Limited delay up to 30µs */
@@ -2060,7 +2286,6 @@ void ata_ResetBus(struct timerequest *tr, struct ata_Bus *bus)
         }
     }
 
-    ata_out(0x08, ata_AltControl, alt);
     ReleaseSemaphore(&bus->ab_Lock);
 }
 
@@ -2084,7 +2309,7 @@ void ata_ScanBus(struct ata_Bus *bus)
     bus->ab_Dev[1] = DEV_NONE;
 
     /* Disable IDE IRQ */
-    ata_out(0x0a, ata_AltControl, bus->ab_Alt);
+    ata_EnableIRQ(bus, FALSE);
 
     /* Select device 0 */
     ata_out(0xa0, ata_DevHead, port);
@@ -2148,6 +2373,8 @@ void ata_ScanBus(struct ata_Bus *bus)
         bus->ab_Dev[0] = DEV_UNKNOWN;
         tmp1 = ata_in(ata_LBAMid, port);
         tmp2 = ata_in(ata_LBAHigh, port);
+        
+        D(bug("[ATA  ] Subtype check returned %02lx:%02lx\n", tmp1, tmp2));
     
         if ((tmp1 == 0x14) && (tmp2 == 0xeb))
         {
@@ -2183,6 +2410,8 @@ void ata_ScanBus(struct ata_Bus *bus)
         bus->ab_Dev[1] = DEV_UNKNOWN;
         tmp1 = ata_in(ata_LBAMid, port);
         tmp2 = ata_in(ata_LBAHigh, port);
+        
+        D(bug("[ATA  ] Subtype check returned %02lx:%02lx\n", tmp1, tmp2));
 
         if ((tmp1 == 0x14) && (tmp2 == 0xeb))
         {
@@ -2205,7 +2434,6 @@ void ata_ScanBus(struct ata_Bus *bus)
     /*
      * restore IRQ
      */
-    ata_out(0x08, ata_AltControl, bus->ab_Alt);
     ReleaseSemaphore(&bus->ab_Lock);
 
     CloseDevice((struct IORequest *)tr);
@@ -2234,11 +2462,6 @@ static const ULONG ErrorMap[] = {
     CDERR_NoSecHdr,
     CDERR_NotSpecified,
 };
-
-static ULONG atapi_ErrCmd()
-{
-    return CDERR_ABORTED;
-}
 
 static ULONG atapi_EndCmd(struct ata_Unit *unit)
 {

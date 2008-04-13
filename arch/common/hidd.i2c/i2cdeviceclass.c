@@ -238,42 +238,36 @@ OOP_Object *METHOD(I2CDev, Root, New)
         if (driver && address)
         {
             IPTR val;
-            
             if (dev->AcknTimeout == -1)
             {
                 OOP_GetAttr(driver, aHidd_I2C_AcknTimeout, &val);
                 dev->AcknTimeout = val;
             }
-            
             if (dev->BitTimeout == -1)
             {
                 OOP_GetAttr(driver, aHidd_I2C_BitTimeout, &val);
                 dev->BitTimeout = val;
             }
-            
             if (dev->ByteTimeout == -1)
             {
                 OOP_GetAttr(driver, aHidd_I2C_ByteTimeout, &val);
                 dev->ByteTimeout = val;
             }
-            
             if (dev->HoldTime == -1)
             {
                 OOP_GetAttr(driver, aHidd_I2C_HoldTime, &val);
                 dev->HoldTime = val;
             }
-            
             if (dev->RiseFallTime == -1)
             {
                 OOP_GetAttr(driver, aHidd_I2C_RiseFallTime, &val);
                 dev->RiseFallTime = val;
             }
-            
             if (dev->StartTimeout == -1)
             {
                 OOP_GetAttr(driver, aHidd_I2C_StartTimeout, &val);
                 dev->StartTimeout = val;
-            }          
+            }
         }
         else
         {

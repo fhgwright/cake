@@ -20,6 +20,14 @@
  *                                 Compacted source and implemented major ATA support procedure
  *                                 Improved DMA and Interrupt management
  *                                 Removed obsolete code
+ * 2008-03-23  T. Wiszkowski       Corrected DMA PRD issue (x86_64 systems)
+ * 2008-03-30  T. Wiszkowski       Added workaround for interrupt collision handling; fixed SATA in LEGACY mode.
+ *                                 nForce and Intel SATA chipsets should now be operational.
+ * 2008-03-31  M. Schulz           We do have asm/io.h include for ages... No need to define io functions here anymore.
+ *                                 Redefined ata_in and ata_out. On x86-like systems they use inb/outb directly. On other systems
+ *                                 they use pci_inb and pci_outb.
+ * 2008-04-05  T. Wiszkowski       Improved IRQ management 
+ * 2008-04-07  T. Wiszkowski       Changed bus timeout mechanism
  */
 
 #include <exec/types.h>
@@ -40,6 +48,7 @@
 #include "include/scsicmds.h"
 
 #include <hidd/irq.h>
+#include <asm/io.h>
 
 #include LC_LIBDEFS_FILE
 
@@ -62,8 +71,11 @@
 struct ata_Unit;
 struct ata_Bus;
 
+/*
+ * this **might** cause problems with PPC64, which **might** expect both to be 64bit.
+ */
 struct PRDEntry {
-    IPTR    prde_Address;
+    ULONG   prde_Address;
     ULONG   prde_Length;
 };
 
@@ -108,6 +120,7 @@ struct ata_Bus
     struct MinNode          ab_Node;    /* exec node */
     struct ataBase          *ab_Base;   /* device self */
     struct SignalSemaphore  ab_Lock;    /* Semaphore locking IO access */
+
     ULONG                   ab_Port;    /* IO port used */
     ULONG                   ab_Alt;     /* alternate io port */
     UBYTE                   ab_Irq;     /* IRQ used */
@@ -117,7 +130,7 @@ struct ata_Bus
                                              /* for data requests/DMA */
     UBYTE                   ab_BusNum;  /* bus id - used to calculate device id */
     BOOL                    ab_Waiting;
-    ULONG                   ab_Timeout;
+    LONG                    ab_Timeout; /* in seconds; please note that resolution is low (1sec) */
 
     struct ata_Unit         *ab_Units[MAX_UNIT];    /* Units on the bus */
 
@@ -126,8 +139,6 @@ struct ata_Bus
 
     struct Task             *ab_Task;       /* Bus task handling all not-immediate transactions */
     struct MsgPort          *ab_MsgPort;    /* Task's message port */
-    struct MsgPort          *ab_TimerMP;    /* Two fields used by bus task to do delays if needed */
-    struct timerequest      *ab_TimerIO;
     struct PRDEntry         *ab_PRD;
 };
 
@@ -276,7 +287,7 @@ struct ata_Unit
 
     VOID                (*au_ins)(APTR, UWORD, ULONG);
     VOID                (*au_outs)(APTR, UWORD, ULONG);
-
+    
     /* If a HW driver is used with this unit, it may store its data here */
     APTR                au_DriverData;
     
@@ -293,6 +304,7 @@ struct ata_Unit
     UBYTE               au_DevMask;             /* device mask used to simplify device number coding */
     UBYTE               au_SenseKey;            /* Sense key from ATAPI devices */
     UBYTE               au_DevType;
+    
 };
 
 typedef enum
@@ -364,11 +376,18 @@ typedef enum
 #define ata_DevHead         6
 #define ata_Status          7
 #define ata_Command         7
-#define ata_AltStatus       0x6
-#define ata_AltControl      0x6
+#define ata_AltStatus       0x2
+#define ata_AltControl      0x2
 
+#if defined(__i386__) || defined(__x86_64__)
 #define ata_out(val, offset, port)  outb((val), (offset)+(port))
 #define ata_in(offset, port)        inb((offset)+(port))
+#define ata_outl(val, offset, port) outl((val), (offset)+(port))
+#else
+#define ata_out(val, offset, port)  pci_outb((val), (offset)+(port))
+#define ata_in(offset, port)        pci_inb((offset)+(port))
+#define ata_outl(val, offset, port) pci_outl_le((val), (offset)+(port))
+#endif
 
 #define atapi_Error         1
 #define atapi_Features      1
@@ -463,6 +482,8 @@ ULONG atapi_RequestSense(struct ata_Unit* unit, UBYTE* sense, ULONG senselen);
 
 int ata_InitBusTask(struct ata_Bus *);
 int ata_InitDaemonTask(LIBBASETYPEPTR);
+void ata_HandleIRQ(struct ata_Bus *bus);
+UBYTE ata_ReadStatus(struct ata_Bus *bus);
 
 VOID dma_SetupPRD(struct ata_Unit *, APTR, ULONG, BOOL);
 VOID dma_SetupPRDSize(struct ata_Unit *, APTR, ULONG, BOOL);
@@ -470,35 +491,9 @@ VOID dma_StartDMA(struct ata_Unit *);
 VOID dma_StopDMA(struct ata_Unit *);
 
 BOOL ata_setup_unit(struct ata_Bus *bus, UBYTE u);
+BOOL ata_init_unit(struct ata_Bus *bus, UBYTE u);
 BOOL AddVolume(ULONG StartCyl, ULONG EndCyl, struct ata_Unit *unit);
  
-/*
-    ATAPI SCSI commands
-*/
-//#define SCSI_READ10   
-//#define SCSI_WRITE10
-//#define SCSI_STARTSTOP
-
-struct atapi_Read10
-{
-    UBYTE   command;
-    UBYTE   pad1;
-    UBYTE   lba[4];
-    UBYTE   pad2;
-    UBYTE   len[2];
-    UBYTE   pad3[3];
-};
-
-struct atapi_Write10
-{
-    UBYTE   command;
-    UBYTE   pad1;
-    UBYTE   lba[4];
-    UBYTE   pad2;
-    UBYTE   len[2];
-    UBYTE   pad3[3];
-};
-
 #define ATAPI_SS_EJECT  0x02
 #define ATAPI_SS_LOAD   0x03
 
@@ -511,6 +506,7 @@ struct atapi_StartStop
     UBYTE   pad2[7];
 };
 
+#if 0
 /*
     Arch specific things to access IO space of drive. Shouldn't be here. Really.
 */
@@ -552,6 +548,7 @@ static inline VOID outb(UBYTE val, UWORD port)
 {
     asm volatile ("outb %0,%w1"::"a"(val),"Nd"(port));
 }
+#endif
 
 #endif // _ATA_H
 

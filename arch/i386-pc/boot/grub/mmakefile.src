@@ -1,40 +1,14 @@
-# Copyright © 2004, The AROS Development Team. All rights reserved.
-# $Id$
-
+# $Id: mmakefile.src 22621 2004-12-25 16:05:59Z verhaegs $
 include $(TOP)/config/make.cfg
 
-ifneq ($(AROS_TARGET_VARIANT),tiny)
-GRUBOPTS += --enable-affs
-else
-GRUBOPTS += --enable-affs --disable-fat --disable-ffs --disable-minix --disable-reiserfs \
-            --disable-vstafs --disable-jfs --disable-xfs --disable-md5-password \
-            --disable-packet-retransmission --disable-ext2fs --disable-serial \
-            --disable-hercules
-endif
+#MM- bootloader-grub-pc-i386: grub-pc-i386
 
-#MM- config-i386-native-boot-grub : grub-quick grub-copy-stages
+#MM grub-pc-i386: grub-quick grub-copy-stages
 
-#MM
-grub-copy-stages : $(AROSDIR)/boot/grub/stage1 $(AROSDIR)/boot/grub/stage2 $(AROSDIR)/boot/grub/stage2_hdisk $(AROSDIR)/boot/grub/iso9660_stage1_5
+grub-pc-i386: $(BINDIR)/boot/grub/menu.lst $(BINDIR)/boot/grub/menu.lst.DH0
 
-CFLAGS := -minline-all-stringops
-export CFLAGS
+$(BINDIR)/boot/grub/menu.lst:
+		$(CP) menu.lst $(BINDIR)/boot/grub/
 
-%build_with_configure mmake=grub compiler=kernel install_target= \
-    extraoptions="$(GRUBOPTS)" 
-    
-$(AROSDIR)/boot/grub/stage1: $(GENDIR)/$(CURDIR)/stage1/stage1
-	%mkdirs_q $(dir $@)
-	@$(CP) $< $@
-
-$(AROSDIR)/boot/grub/stage2: $(GENDIR)/$(CURDIR)/stage2/stage2_eltorito
-	%mkdirs_q $(dir $@)
-	@$(CP) $< $@
-
-$(AROSDIR)/boot/grub/stage2_hdisk: $(GENDIR)/$(CURDIR)/stage2/stage2
-	%mkdirs_q $(dir $@)
-	@$(CP) $< $@
-
-$(AROSDIR)/boot/grub/iso9660_stage1_5: $(GENDIR)/$(CURDIR)/stage2/iso9660_stage1_5
-	%mkdirs_q $(dir $@)
-	@$(CP) $< $@
+$(BINDIR)/boot/grub/menu.lst.DH0:
+		$(CP) menu.lst.DH0 $(BINDIR)/boot/grub/

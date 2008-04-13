@@ -86,7 +86,9 @@ COMMONTESTFILES := \
     getdeviceproc \
     minicat \
     time \
-    waitforchar
+    waitforchar \
+    seektest \
+    avltest
 
 HOSTEDTESTFILES :=  \
     hostlib

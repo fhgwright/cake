@@ -55,6 +55,8 @@ typedef quad_t *        qaddr_t;
    
    POSIX, however, needs us to define some other types, which we do later.
 */
+
+#define __need_size_t
 #include <stddef.h>
 
 /* Define the rest of the POSIX types */
@@ -123,6 +125,11 @@ typedef __off_t                     off_t;      /* Offset (in files)        */
 #ifndef __AROS_PID_T_DECLARED
 #define __AROS_PID_T_DECLARED
 typedef __pid_t                     pid_t;      /* Process ID               */
+#endif
+
+#ifndef __AROS_SOCKLEN_T_DECLARED
+#define __AROS_SOCKLEN_T_DECLARED
+typedef __socklen_t                 socklen_t;
 #endif
 
 #ifndef __AROS_SUSECONDS_T_DECLARED
