@@ -289,6 +289,7 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
     elf_header *h = NULL;
     Elf32_Phdr *ph = NULL;
     Elf32_Shdr *sh = NULL;
+    Elf32_Shdr *symtab_shndx = NULL;
     char *strtab = NULL;
     
     if (!(h = load_header(file, helpers, DOSBase)))
@@ -362,6 +363,22 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
         }
     }
 
+    for (i = 0; i < h->shnum; i++) {
+        if (sh[i].sh_type == SHT_SYMTAB || sh[i].sh_type == SHT_STRTAB || sh[i].sh_type == SHT_SYMTAB_SHNDX) {
+            if (!(sh[i].sh_addr = load_block(file, sh[i].sh_offset, sh[i].sh_size, helpers, DOSBase)))
+                goto _loadseg_fail;
+
+            if (sh[i].sh_type == SHT_SYMTAB_SHNDX) {
+                if (symtab_shndx == NULL) {
+                    symtab_shndx = &sh[i];
+                    D(bug("[elf] symtab shndx table found at section header %d\n", i));
+                }
+                else
+                    D(bug("[elf] file contains multiple symtab shndx tables, only using the first one\n"));
+            }
+        }
+    }
+
     D(bug("[elf] section headers:\n"));
 
     for (i = 0; i < h->shnum; i++) {
@@ -405,6 +422,11 @@ BPTR InternalLoadSeg_ELF_New (BPTR               file,
 _loadseg_fail:
     if (seglist)
         InternalUnLoadSeg(seglist, (VOID_FUNC) helpers[2]);
+
+    if (sh)
+        for (i = 0; i < h->shnum; i++)
+            if (sh[i].sh_addr)
+                HELPER_FREE(helpers, sh[i].sh_addr, sh[i].sh_size);
 
 _loadseg_end:
     if (strtab)
