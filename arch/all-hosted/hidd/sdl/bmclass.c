@@ -354,6 +354,14 @@ HIDDT_Pixel SDLBitMap__Hidd_BitMap__GetPixel(OOP_Class *cl, OOP_Object *o, struc
     return (HIDDT_Pixel) c;
 }
 
+VOID SDLBitMap__Hidd_BitMap__UpdateRect(OOP_Class *cl, OOP_Object *o, struct pHidd_BitMap_UpdateRect *msg) {
+    struct bmdata *bmdata = OOP_INST_DATA(cl, o);
+
+    D(bug("[sdl] SDLBitMap::UpdateRect\n"));
+
+    UPDATE(bmdata, msg->x, msg->y, msg->width, msg->height);
+}
+
 VOID SDLBitMap__Hidd_BitMap__PutImage(OOP_Class *cl, OOP_Object *o, struct pHidd_BitMap_PutImage *msg) {
     struct bmdata *bmdata = OOP_INST_DATA(cl, o);
     int depth;
