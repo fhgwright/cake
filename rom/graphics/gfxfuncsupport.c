@@ -685,7 +685,7 @@ static ULONG wp8_render(APTR wp8r_data, LONG srcx, LONG srcy, OOP_Object *dstbm_
 
 LONG write_pixels_8(struct RastPort *rp, UBYTE *array, ULONG modulo,
     	    	    LONG xstart, LONG ystart, LONG xstop, LONG ystop,
-		    HIDDT_PixelLUT *pixlut, struct GfxBase *GfxBase)
+		    HIDDT_PixelLUT *pixlut, BOOL do_update, struct GfxBase *GfxBase)
 {
 	
     LONG pixwritten = 0;
@@ -720,7 +720,7 @@ LONG write_pixels_8(struct RastPort *rp, UBYTE *array, ULONG modulo,
     rr.MaxX = xstop;
     rr.MaxY = ystop;
     
-    pixwritten = do_render_func(rp, NULL, &rr, wp8_render, &wp8rd, FALSE, GfxBase);
+    pixwritten = do_render_func(rp, NULL, &rr, wp8_render, &wp8rd, do_update, FALSE, GfxBase);
     
     /* Reset to preserved drawmode */
     gc_tags[0].ti_Data = old_drmd;

@@ -190,7 +190,7 @@ BOOL int_bltbitmap(struct BitMap *srcBitMap, OOP_Object *srcbm_obj, LONG xSrc, L
 
 LONG write_pixels_8(struct RastPort *rp, UBYTE *array, ULONG modulo,
     	    	    LONG xstart, LONG ystart, LONG xstop, LONG ystop,
-		    HIDDT_PixelLUT *pixlut, struct GfxBase *GfxBase);
+		    HIDDT_PixelLUT *pixlut, BOOL do_update, struct GfxBase *GfxBase);
 
 LONG write_transp_pixels_8(struct RastPort *rp, UBYTE *array, ULONG modulo,
     	    	    	   LONG xstart, LONG ystart, LONG xstop, LONG ystop,

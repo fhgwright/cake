@@ -1456,6 +1456,7 @@ LONG driver_WriteLUTPixelArray(APTR srcrect,
 	, destx, desty
 	, destx + sizex - 1, desty + sizey - 1
 	, &pixlut
+        , TRUE
 	, GfxBase
     );
     
@@ -1538,6 +1539,7 @@ LONG driver_WritePixelArray(APTR src, UWORD srcx, UWORD srcy
 		, destx, desty
 		, destx + width - 1, desty + height - 1
 		, &pixlut
+                , TRUE
 		, GfxBase);
 	
 	RELEASE_DRIVERDATA(rp, GfxBase);
