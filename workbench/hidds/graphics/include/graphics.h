@@ -1787,6 +1787,8 @@ HIDDT_RGBConversionFunction HIDD_BM_SetRGBConversionFunction(OOP_Object *o,
     	    	    	    	HIDDT_StdPixFmt srcPixFmt,
 				HIDDT_StdPixFmt dstPixFmt,
 				HIDDT_RGBConversionFunction function);
+
+VOID HIDD_BM_UpdateRect(OOP_Object *obj, WORD x, WORD y, WORD width, WORD height);
 				
 /*******************************************************/
 /**  PROTECTED DATA 
