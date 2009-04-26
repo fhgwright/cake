@@ -1800,6 +1800,7 @@ LONG driver_InvertPixelArray(struct RastPort *rp
 	 , desty + height - 1
 	 , 0xFF
 	 , vHidd_GC_DrawMode_Invert
+         , TRUE
 	 , GfxBase);
 }
 
@@ -1824,6 +1825,7 @@ LONG driver_FillPixelArray(struct RastPort *rp
 	, desty + height - 1
 	, pix
 	, vHidd_GC_DrawMode_Copy
+        , TRUE
 	, GfxBase
     );
 }

@@ -419,7 +419,7 @@ static ULONG fillrect_render(APTR funcdata, LONG srcx, LONG srcy,
 /****************************************************************************************/
 
 LONG fillrect_pendrmd(struct RastPort *rp, LONG x1, LONG y1, LONG x2, LONG y2,
-    	    	      HIDDT_Pixel pix, HIDDT_DrawMode drmd, struct GfxBase *GfxBase)
+    	    	      HIDDT_Pixel pix, HIDDT_DrawMode drmd, BOOL do_update, struct GfxBase *GfxBase)
 {   
     LONG    	    	pixwritten = 0;
     
@@ -451,7 +451,7 @@ LONG fillrect_pendrmd(struct RastPort *rp, LONG x1, LONG y1, LONG x2, LONG y2,
     rr.MaxX = x2;
     rr.MaxY = y2;
     
-    pixwritten = do_render_func(rp, NULL, &rr, fillrect_render, NULL, FALSE, GfxBase);
+    pixwritten = do_render_func(rp, NULL, &rr, fillrect_render, NULL, do_update, FALSE, GfxBase);
     
     /* Restore old GC values */
     gc_tags[0].ti_Data = (IPTR)old_drmd;
