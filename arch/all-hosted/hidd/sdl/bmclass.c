@@ -314,7 +314,7 @@ VOID SDLBitMap__Hidd_BitMap__PutPixel(OOP_Class *cl, OOP_Object *o, struct pHidd
 
     UNLOCK(bmdata->surface);
 
-    UPDATE(bmdata, msg->x, msg->y, 1, 1);
+    //UPDATE(bmdata, msg->x, msg->y, 1, 1);
 }
 
 HIDDT_Pixel SDLBitMap__Hidd_BitMap__GetPixel(OOP_Class *cl, OOP_Object *o, struct pHidd_BitMap_GetPixel *msg) {
