@@ -70,6 +70,7 @@ ULONG do_render_func(struct RastPort *rp
 	, struct Rectangle *rr
 	, ULONG (*render_func)(APTR, LONG, LONG, OOP_Object *, OOP_Object *, LONG, LONG, LONG, LONG, struct GfxBase *)
 	, APTR funcdata
+        , BOOL do_update
 	, BOOL get_special_info
 	, struct GfxBase *GfxBase)
 {
@@ -133,6 +134,10 @@ ULONG do_render_func(struct RastPort *rp
 		, torender.MaxX, torender.MaxY
 		, GfxBase
 	);
+        if (do_update)
+        {
+            HIDD_BM_UpdateRect(bm_obj, torender.MinX, torender.MinY, torender.MaxX - torender.MinX + 1, torender.MaxY - torender.MinY + 1);
+        }
 
 	RELEASE_HIDD_BM(bm_obj, bm);
 
