@@ -272,6 +272,7 @@ ULONG do_pixel_func(struct RastPort *rp
 	, LONG x, LONG y
 	, LONG (*render_func)(APTR, OOP_Object *, OOP_Object *, LONG, LONG, struct GfxBase *)
 	, APTR funcdata
+        , BOOL do_update
 	, struct GfxBase *GfxBase)
 {
     struct BitMap   	*bm = rp->BitMap;
@@ -309,6 +310,10 @@ ULONG do_pixel_func(struct RastPort *rp
 	
     	/* This is a screen */
 	retval = render_func(funcdata, bm_obj, gc, x, y, GfxBase);
+        if (do_update)
+        {
+            HIDD_BM_UpdateRect(bm_obj, x, y, 1, 1);
+        }
 	
 	RELEASE_HIDD_BM(bm_obj, bm);
 	
@@ -349,6 +354,10 @@ ULONG do_pixel_func(struct RastPort *rp
 				, absx, absy
 				, GfxBase
 			    );
+                            if (do_update)
+                            {
+                                HIDD_BM_UpdateRect(bm_obj, x, y, 1, 1);
+                            }
 			    
 			    RELEASE_HIDD_BM(bm_obj, bm);
 			}
@@ -377,6 +386,10 @@ ULONG do_pixel_func(struct RastPort *rp
 					, absy - CR->bounds.MinY
 					, GfxBase
 				); 
+                                if (do_update)
+                                {
+                                    HIDD_BM_UpdateRect(bm_obj, absx - CR->bounds.MinX + ALIGN_OFFSET(CR->bounds.MinX), absy - CR->bounds.MinY, 1, 1);
+                                }
 				
 				RELEASE_HIDD_BM(bm_obj, CR->BitMap);
 			    }

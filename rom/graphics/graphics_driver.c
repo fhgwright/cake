@@ -1874,7 +1874,7 @@ LONG driver_WriteRGBPixel(struct RastPort *rp, UWORD x, UWORD y
     
     prd.pixel = HIDD_BM_MapColor(HIDD_BM_OBJ(rp->BitMap), &col);
     
-    retval = do_pixel_func(rp, x, y, rgbpix_write, &prd, GfxBase);
+    retval = do_pixel_func(rp, x, y, rgbpix_write, &prd, TRUE, GfxBase);
       
     RELEASE_DRIVERDATA(rp, GfxBase);
     
@@ -1902,7 +1902,7 @@ ULONG driver_ReadRGBPixel(struct RastPort *rp, UWORD x, UWORD y
     
     if (!OBTAIN_DRIVERDATA(rp, GfxBase)) return (ULONG)-1;
     
-    ret = do_pixel_func(rp, x, y, pix_read, &prd, GfxBase);
+    ret = do_pixel_func(rp, x, y, pix_read, &prd, FALSE, GfxBase);
     
     RELEASE_DRIVERDATA(rp, GfxBase);
     
