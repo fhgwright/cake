@@ -1274,6 +1274,7 @@ static OOP_Class *init_fakefbclass(struct class_static_data *csd)
 	{(IPTR (*)())fakefb_fwd			, moHidd_BitMap_ObtainDirectAccess  },
 	{(IPTR (*)())fakefb_fwd			, moHidd_BitMap_ReleaseDirectAccess },
 	{(IPTR (*)())fakefb_fwd			, moHidd_BitMap_SetRGBConversionFunction },
+	{(IPTR (*)())fakefb_fwd			, moHidd_BitMap_UpdateRect          },
 
 	/* PRIVATE METHODS */	
 #if 0
