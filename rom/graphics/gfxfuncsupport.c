@@ -208,6 +208,10 @@ ULONG do_render_func(struct RastPort *rp
 				, intersect.MaxY
 				, GfxBase
 			    );
+                            if (do_update)
+                            {
+                                HIDD_BM_UpdateRect(bm_obj, intersect.MinX, intersect.MinY, intersect.MaxX - intersect.MinX + 1, intersect.MaxY - intersect.MinY + 1);
+                            }
 			    
 			    RELEASE_HIDD_BM(bm_obj, bm);
 			}
@@ -245,6 +249,13 @@ ULONG do_render_func(struct RastPort *rp
 					, intersect.MaxY - CR->bounds.MinY
 					, GfxBase
 		    		);
+                                if (do_update)
+                                {
+                                    HIDD_BM_UpdateRect(bm_obj, intersect.MinX - CR->bounds.MinX + ALIGN_OFFSET(CR->bounds.MinX),
+                                                               intersect.MinY - CR->bounds.MinY,
+                                                               intersect.MaxX - intersect.MinX + 1,
+                                                               intersect.MaxY - intersect.MinY + 1);
+                                }
 				
 				RELEASE_HIDD_BM(bm_obj, CR->BitMap);
 			    }
