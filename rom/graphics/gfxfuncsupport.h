@@ -195,7 +195,7 @@ LONG write_pixels_8(struct RastPort *rp, UBYTE *array, ULONG modulo,
 LONG write_transp_pixels_8(struct RastPort *rp, UBYTE *array, ULONG modulo,
     	    	    	   LONG xstart, LONG ystart, LONG xstop, LONG ystop,
 		    	   HIDDT_PixelLUT *pixlut, UBYTE transparent,
-			   struct GfxBase *GfxBase);
+			   BOOL do_update, struct GfxBase *GfxBase);
 
 void amiga2hidd_fast(APTR src_info, OOP_Object *hidd_gc, LONG x_src , LONG y_src,
     	    	     struct BitMap *hidd_bm, LONG x_dest, LONG y_dest,
