@@ -185,6 +185,7 @@ OOP_Object *fontbm_to_hiddbm(struct TextFont *font, struct GfxBase *GfxBase)
 	
 	HIDD_BM_PutTemplate(bm_obj, tmp_gc, font->tf_CharData, font->tf_Modulo,
 	    	    	    0, 0, 0, width, height, FALSE);
+        HIDD_BM_UpdateRect(bm_obj, 0, 0, width, height);
 
     }
     
