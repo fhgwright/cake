@@ -849,7 +849,7 @@ void blit_glyph_fast(struct RastPort *rp, OOP_Object *fontbm, WORD xsrc
     if (!OBTAIN_DRIVERDATA(rp, GfxBase))
     	ReturnVoid("blit_glyph_fast");
 	
-    do_render_func(rp, NULL, &rr, bgf_render, &bgfrd, FALSE, GfxBase);
+    do_render_func(rp, NULL, &rr, bgf_render, &bgfrd, TRUE, FALSE, GfxBase);
 	
     RELEASE_DRIVERDATA(rp, GfxBase);
     
@@ -1618,7 +1618,7 @@ LONG driver_WritePixelArray(APTR src, UWORD srcx, UWORD srcy
     rr.MaxX = destx + width  - 1;
     rr.MaxY = desty + height - 1;
     
-    pixwritten = do_render_func(rp, NULL, &rr, wpa_render, &wpard, FALSE, GfxBase);
+    pixwritten = do_render_func(rp, NULL, &rr, wpa_render, &wpard, TRUE, FALSE, GfxBase);
 
     RELEASE_DRIVERDATA(rp, GfxBase);  
       
@@ -1656,7 +1656,7 @@ LONG driver_WritePixelArrayAlpha(APTR src, UWORD srcx, UWORD srcy
     rr.MaxX = destx + width  - 1;
     rr.MaxY = desty + height - 1;
     
-    pixwritten = do_render_func(rp, NULL, &rr, wpaa_render, &wpaard, FALSE, GfxBase);
+    pixwritten = do_render_func(rp, NULL, &rr, wpaa_render, &wpaard, TRUE, FALSE, GfxBase);
     
     RELEASE_DRIVERDATA(rp, GfxBase);
     
@@ -1773,7 +1773,7 @@ LONG driver_ReadPixelArray(APTR dst, UWORD destx, UWORD desty
     rr.MaxX = srcx + width  - 1;
     rr.MaxY = srcy + height - 1;
     
-    pixread = do_render_func(rp, NULL, &rr, rpa_render, &rpard, FALSE, GfxBase);
+    pixread = do_render_func(rp, NULL, &rr, rpa_render, &rpard, FALSE, FALSE, GfxBase);
     
     /* restore old gc values */
     gc_tags[0].ti_Data = (IPTR)old_drmd;
@@ -2157,7 +2157,7 @@ ULONG driver_ExtractColor(struct RastPort *rp, struct BitMap *bm
     
     ecrd.destbm = bm;
     
-    pixread = do_render_func(rp, NULL, &rr, extcol_render, &ecrd, TRUE, GfxBase);
+    pixread = do_render_func(rp, NULL, &rr, extcol_render, &ecrd, FALSE, TRUE, GfxBase);
 	
     RELEASE_DRIVERDATA(rp, GfxBase);
     
@@ -2219,7 +2219,7 @@ VOID driver_DoCDrawMethodTagList(struct Hook *hook, struct RastPort *rp, struct 
     }
     
     dmrd.gc = GetDriverData(rp)->dd_GC;
-    do_render_func(rp, NULL, &rr, dm_render, &dmrd, FALSE, GfxBase);
+    do_render_func(rp, NULL, &rr, dm_render, &dmrd, TRUE, FALSE, GfxBase);
     
     RELEASE_DRIVERDATA(rp, GfxBase);
     
@@ -2370,7 +2370,7 @@ void driver_BltTemplateAlpha(UBYTE *src, LONG srcx, LONG srcmod
     rr.MaxX = destx + width  - 1;
     rr.MaxY = desty + height - 1;
     
-    do_render_func(rp, NULL, &rr, bta_render, &btard, FALSE, GfxBase);
+    do_render_func(rp, NULL, &rr, bta_render, &btard, TRUE, FALSE, GfxBase);
     
     RELEASE_DRIVERDATA(rp, GfxBase);
 }
