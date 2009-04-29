@@ -135,7 +135,7 @@
 	{
 	    /* No need for clipping */
 	    HIDD_BM_DrawLine(bm_obj, gc, x1, y1, x, y);  
-            HIDD_BM_UpdateRect(bm_obj, x1, y1, abs(x - x1), abs(y - y1));
+            HIDD_BM_UpdateRect(bm_obj, x1, y1, abs(x - x1) + 1, abs(y - y1) + 1);
 	
 	    RELEASE_HIDD_BM(bm_obj, bm);
 	}
@@ -202,8 +202,8 @@
                             HIDD_BM_UpdateRect(bm_obj
                                 , x1 + xrel
                                 , y1 + yrel
-                                , abs(x - x1)
-                                , abs(y - y1)
+                                , abs(x - x1) + 1
+                                , abs(y - y1) + 1
                             );
 			    
 			    RELEASE_HIDD_BM(bm_obj, bm);
@@ -255,8 +255,8 @@
                                 HIDD_BM_UpdateRect(bm_obj
                                         , bm_rel_minx - (layer_rel_x - x1) + ALIGN_OFFSET(CR->bounds.MinX)
                                         , bm_rel_miny - (layer_rel_y - y1)
-                                        , abs(x - x1)
-                                        , abs(y - y1)
+                                        , abs(x - x1) + 1
+                                        , abs(y - y1) + 1
                                 );
 				
 				RELEASE_HIDD_BM(bm_obj, CR->BitMap);
