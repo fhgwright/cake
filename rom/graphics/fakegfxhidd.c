@@ -1426,8 +1426,6 @@ static VOID draw_cursor(struct gfx_data *data, BOOL draw, struct class_static_da
 	    , data->gc
 	);
 
-        HIDD_BM_UpdateRect(data->curs_backup, 0, 0, width, height);
-
 	data->backup_done = TRUE;
 
     	// bug("RENDERING CURSOR IMAGE\n");
