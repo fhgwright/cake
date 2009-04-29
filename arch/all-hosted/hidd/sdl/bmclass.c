@@ -23,7 +23,7 @@
 
 #include LC_LIBDEFS_FILE
 
-#define DEBUG 0
+#define DEBUG 1
 #include <aros/debug.h>
 
 #include "icon.h"
@@ -358,6 +358,8 @@ VOID SDLBitMap__Hidd_BitMap__UpdateRect(OOP_Class *cl, OOP_Object *o, struct pHi
     struct bmdata *bmdata = OOP_INST_DATA(cl, o);
 
     D(bug("[sdl] SDLBitMap::UpdateRect\n"));
+
+    D(bug("[sdl] Updating region (%d,%d) [%d,%d]\n", msg->x, msg->y, msg->width, msg->height));
 
     UPDATE(bmdata, msg->x, msg->y, msg->width, msg->height);
 }
