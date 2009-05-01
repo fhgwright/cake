@@ -135,7 +135,7 @@
 	{
 	    /* No need for clipping */
 	    HIDD_BM_DrawLine(bm_obj, gc, x1, y1, x, y);  
-            HIDD_BM_UpdateRect(bm_obj, x1, y1, abs(x - x1) + 1, abs(y - y1) + 1);
+            HIDD_BM_UpdateRect(bm_obj, MIN(x1, x), MIN(y1, y), abs(x - x1) + 1, abs(y - y1) + 1);
 	
 	    RELEASE_HIDD_BM(bm_obj, bm);
 	}
@@ -200,8 +200,8 @@
 				, y + yrel
 			    );
                             HIDD_BM_UpdateRect(bm_obj
-                                , x1 + xrel
-                                , y1 + yrel
+                                , MIN(x1, x) + xrel
+                                , MIN(y1, y) + yrel
                                 , abs(x - x1) + 1
                                 , abs(y - y1) + 1
                             );
@@ -253,8 +253,8 @@
 					, bm_rel_miny - (layer_rel_y - y)
 				);
                                 HIDD_BM_UpdateRect(bm_obj
-                                        , bm_rel_minx - (layer_rel_x - x1) + ALIGN_OFFSET(CR->bounds.MinX)
-                                        , bm_rel_miny - (layer_rel_y - y1)
+                                        , bm_rel_minx - (layer_rel_x - MIN(x1, x)) + ALIGN_OFFSET(CR->bounds.MinX)
+                                        , bm_rel_miny - (layer_rel_y - MIN(y1, y))
                                         , abs(x - x1) + 1
                                         , abs(y - y1) + 1
                                 );
