@@ -1,55 +1,56 @@
 #include <stdio.h>
-#include <windows.h>
+
 
 #include "hostlib.h"
 
 #define D(x)
 
-static void GetErrorStr(char **error, BOOL condition)
-{
-    if (error != NULL) {
-    	if (condition) {
-	    FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER|FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(),
-			  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), error, 0, NULL );
-	} else
-	    *error = NULL;
-    }
-}
-
 void Host_HostLib_FreeErrorStr(char *error)
 {
-    LocalFree(error);
+    /* libdl returns static strings, so nothing to do here */
 }
 
 void *Host_HostLib_Open(const char *filename, char **error)
 {
-    HMODULE handle;
+    void *handle;
 
-    D(printf("[hostlib] Open: filename=%s\n", filename));
-    handle = LoadLibrary(filename);
-    GetErrorStr(error, !handle);
+    D(bug("[hostlib] Open: filename=%s\n", filename));
+    
+    handle = dlopen((char *) filename, RTLD_NOW);
+
+    if (error != NULL)
+        *error = handle == NULL ? dlerror() : NULL;
 
     return handle;
 }
 
 int Host_HostLib_Close(void *handle, char **error)
 {
-    int err;
+    int ret;
 
-    D(printf("[hostlib] Close: handle=0x%08x\n", handle));
-    err = !FreeLibrary(handle);
-    GetErrorStr(error, err);
+    D(bug("[hostlib] Close: handle=0x%08x\n", handle));
 
-    return err;
+    ret = dlclose(handle);
+
+    if (error != NULL)
+        *error = ret != 0 ? dlerror() : NULL;
+
+    return ret;
 }
 
 void *Host_HostLib_GetPointer(void *handle, const char *symbol, char **error)
 {
     void *ptr;
 
-    D(printf("[hostlib] GetPointer: handle=0x%08x, symbol=%s\n", handle, symbol));
-    ptr = GetProcAddress(handle, symbol);
-    GetErrorStr(error, !ptr);
+    D(bug("[hostlib] GetPointer: handle=0x%08x, symbol=%s\n", handle, symbol));
+
+    dlerror();
+
+    ptr = dlsym(handle, (char *) symbol);
+
+    if (error != NULL)
+        *error = dlerror();
+
     return ptr;
 }
 
@@ -58,7 +59,7 @@ unsigned long Host_HostLib_GetInterface(void *handle, char **names, void **funcs
     unsigned long unresolved = 0;
 
     for (; *names; names++) {
-        *funcs = GetProcAddress(handle, *names);
+        *funcs = dlsym(handle, *names);
         D(printf("[hostlib] GetInterface: handle=0x%08x, symbol=%s, value=0x%08x\n", handle, *names, *funcs));
         if (*funcs++ == NULL)
             unresolved++;

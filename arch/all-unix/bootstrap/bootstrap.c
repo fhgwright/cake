@@ -2,16 +2,9 @@
 #include <stdlib.h>
 #include <strings.h>
 #include <signal.h>
-#include <windows.h>
 #include <sys/stat.h>
+#include <sys/utsname.h>
 #include <aros/system.h>
-
-#define __typedef_LONG /* LONG, ULONG, WORD, BYTE and BOOL are declared in Windows headers. Looks like everything  */
-#define __typedef_WORD /* is the same except BOOL. It's defined to short on AROS and to int on Windows. This means */
-#define __typedef_BYTE /* that you can't use it in OS-native part of the code and can't use any AROS structure     */
-#define __typedef_BOOL /* definition that contains BOOL.                                                           */
-typedef unsigned AROS_16BIT_TYPE UWORD;
-typedef unsigned char UBYTE;
 
 #include <aros/kernel.h>
 #include <utility/tagitem.h>
@@ -59,9 +52,9 @@ int main(int argc, char ** argv)
   struct stat st;
   int i = 1;
   unsigned int memSize = 64;
-  char *kernel = "boot\\aros-mingw32";
+  char *kernel = "boot\\aros-unix";
   char *KernelArgs = NULL;
-  OSVERSIONINFO winver;
+  struct utsname utsname;
 
   GetCurrentDirectory(MAX_PATH, bootstrapdir);
   bootstrapname = argv[0];
@@ -73,7 +66,7 @@ int main(int argc, char ** argv)
       {
         printf
         (
-            "AROS for Windows\n"
+            "AROS for UNIX\n"
             "usage: %s [options] [kernel arguments]\n"
 	    "Availible options:\n"
             " -h                 show this page\n"
@@ -123,9 +116,9 @@ int main(int argc, char ** argv)
       }
   }
   D(printf("[Bootstrap] Kernel arguments: %s\n", KernelArgs));
-  winver.dwOSVersionInfoSize = sizeof(winver);
-  GetVersionEx(&winver);
-  sprintf(SystemVersion, "Windows %lu.%lu build %lu %s", winver.dwMajorVersion, winver.dwMinorVersion, winver.dwBuildNumber, winver.szCSDVersion);
+
+  uname(&utsname);
+  sprintf(SystemVersion, "%s %s %s %s %s", utsname.sysname, utsname.nodename, utsname.release, utsname.version, utsname.machine);
   D(printf("[Bootstrap] OS version: %s\n", SystemVersion));
   
   if (!stat("..\\AROS.boot", &st)) {

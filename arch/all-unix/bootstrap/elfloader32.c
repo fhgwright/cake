@@ -6,11 +6,11 @@
  Lang: English
  */
 
-#include <windows.h>
 #include "elfloader32.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
+#include <stddef.h>
 
 #define D(X)
 #define DREL(x)
