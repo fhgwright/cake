@@ -53,8 +53,6 @@ void core_intr_disable(void) {
 }
 
 void core_intr_enable(void) {
-    int i;
-
     D(printf("[kernel] enabling interrupts\n"));
     irq_enabled = 1;
 }
