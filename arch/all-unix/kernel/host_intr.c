@@ -109,9 +109,14 @@ static void *switcher_entry(void *arg) {
     while (1) {
         /* wait for an interrupt */
         pthread_mutex_lock(&irq_lock);
-        pthread_cond_wait(&irq_cond, &irq_lock);
+        while (irq_bits == 0) pthread_cond_wait(&irq_cond, &irq_lock);
 
-        D(printf("[kernel] interrupt received, irq bits are 0x%x\n", irq_bits));
+        /* save the current interrupt bits and allow new interrupts to occur */
+        irq_bits_current = irq_bits;
+        irq_bits = 0;
+        pthread_mutex_unlock(&irq_lock);
+
+        D(printf("[kernel] interrupt received, irq bits are 0x%x\n", irq_bits_current));
 
         /* tell the main task to stop and wait for its signal to proceed */
         if (sleep_state != ss_SLEEPING) {
@@ -122,16 +127,17 @@ static void *switcher_entry(void *arg) {
 
         if (irq_enabled) {
             in_supervisor++;
+            core_ExitInterrupt(&main_ctx);
+            in_supervisor--;
+        }
 
-        /* allow new interrupts */
-        irq_bits = 0;
-        pthread_mutex_unlock(&irq_lock);
+        /* unless we're running, we're sleeping */
+        if (sleep_state != ss_RUNNING)
+            sleep_state = ss_SLEEPING;
 
-        /* run the scheduler */
-        core_ExitInterrupt(&main_ctx);
-
-        /* tell the main task to switch the context */
-        sem_post(&main_sem);
+        /* there's an active task, tell the main thread to jump to it */
+        else
+            sem_post(&main_sem);
     }
 
     return NULL;
