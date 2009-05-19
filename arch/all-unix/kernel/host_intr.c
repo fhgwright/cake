@@ -8,7 +8,7 @@
  * what the switcher thread is for.
  *
  * the switcher thread receives interrupts from a variety of sources (virtual
- * hardware) including its own timer (for normal task switch operation). when
+ * hardware) including a timer thread (for normal task switch operation). when
  * an interrupt occurs, the following happens (high level)
  *
  * - switcher signals main that its time for a context switch
@@ -40,209 +40,27 @@
 #include "host_debug.h"
 #include "cpucontext.h"
 
-#define DI(x)   /* Interrupts debug     */
-#define DS(x)   /* Task switcher debug  */
-#define DIRQ(x) /* IRQ debug		*/
-
-#define AROS_EXCEPTION_SYSCALL 0x80000001
-
-struct SwitcherData {
-    HANDLE MainThread;
-    HANDLE IntObjects[INTERRUPTS_NUM];
-};
-
-struct SwitcherData SwData;
-DWORD *LastErrorPtr;
-unsigned char Ints_Enabled;
-unsigned char PendingInts[INTERRUPTS_NUM];
-unsigned char Supervisor;
-unsigned char Sleep_Mode;
 struct ExecBase **SysBasePtr;
 struct KernelBase **KernelBasePtr;
 
-void user_handler(uint8_t exception, struct List *list)
-{
-    if (!IsListEmpty(&list[exception]))
-    {
-        struct IntrNode *in, *in2;
+int irq_enabled;
+int in_supervisor;
+int sleep_state;
 
-        ForeachNodeSafe(&list[exception], in, in2)
-        {
-            if (in->in_Handler)
-                in->in_Handler(in->in_HandlerData, in->in_HandlerData2);
-        }
-    }
+void core_intr_disable(void) {
+    D(printf("[kernel] disabling interrupts\n"));
+    irq_enabled = 0;
 }
 
-LONG CALLBACK ExceptionHandler(PEXCEPTION_POINTERS Except)
-{
-    	struct ExecBase *SysBase = *SysBasePtr;
-    	struct KernelBase *KernelBase = *KernelBasePtr;
-    	REG_SAVE_VAR;
-
-	Supervisor++;
-	switch (Except->ExceptionRecord->ExceptionCode) {
-	case AROS_EXCEPTION_SYSCALL:
-	    CONTEXT_SAVE_REGS(Except->ContextRecord);
-	    DI(printf("[KRN] Syscall exception %lu\n", *Except->ExceptionRecord->ExceptionInformation));
-	    switch (*Except->ExceptionRecord->ExceptionInformation)
-	    {
-	    case SC_CAUSE:
-	        core_Cause(SysBase);
-	        break;
-	    case SC_DISPATCH:
-	        core_Dispatch(Except->ContextRecord);
-	        break;
-	    case SC_SWITCH:
-	        core_Switch(Except->ContextRecord);
-	        break;
-	    case SC_SCHEDULE:
-	        core_Schedule(Except->ContextRecord);
-	        break;
-	    }
-	    CONTEXT_RESTORE_REGS(Except->ContextRecord);
-	    Supervisor--;
-	    return EXCEPTION_CONTINUE_EXECUTION;
-	default:
-	    printf("[KRN] Exception 0x%08lX handler. Context @ %p, SysBase @ %p, KernelBase @ %p\n", Except->ExceptionRecord->ExceptionCode, Except->ContextRecord, SysBase, KernelBase);
-    	    if (SysBase)
-    	    {
-        	struct Task *t = SysBase->ThisTask;
-        	
-        	if (t)
-        	    printf("[KRN] %s %p (%s)\n", t->tc_Node.ln_Type == NT_TASK ? "Task":"Process", t, t->tc_Node.ln_Name ? t->tc_Node.ln_Name : "--unknown--");
-        	else
-        	    printf("[KRN] No task\n");
-    	    }
-    	    PRINT_CPUCONTEXT(Except->ContextRecord);
-    	    printf("[KRN] **UNHANDLED EXCEPTION** stopping here...\n");
-	    return EXCEPTION_EXECUTE_HANDLER;
-	}
-}
-
-DWORD WINAPI TaskSwitcher(struct SwitcherData *args)
-{
-    HANDLE IntEvent;
-    DWORD obj;
-    CONTEXT MainCtx;
-    REG_SAVE_VAR;
-    DS(DWORD res);
-    MSG msg;
-
-    for (;;) {
-        obj = WaitForMultipleObjects(INTERRUPTS_NUM, args->IntObjects, FALSE, INFINITE);
-        DS(bug("[Task switcher] Object %lu signalled\n", obj));
-        if (Sleep_Mode != SLEEP_MODE_ON) {
-            DS(res =) SuspendThread(args->MainThread);
-    	    DS(bug("[Task switcher] Suspend thread result: %lu\n", res));
-    	}
-        if (Ints_Enabled) {
-    	    Supervisor++;
-    	    PendingInts[obj] = 0;
-    	    /* 
-    	     * We will get and store the complete CPU context, but set only part of it.
-    	     * This can be a useful aid for future AROS debuggers.
-    	     */
-    	    CONTEXT_INIT_FLAGS(&MainCtx);
-    	    DS(res =) GetThreadContext(args->MainThread, &MainCtx);
-    	    DS(bug("[Task switcher] Get context result: %lu\n", res));
-    	    CONTEXT_SAVE_REGS(&MainCtx);
-    	    DS(OutputDebugString("[Task switcher] original CPU context: ****\n"));
-    	    DS(PrintCPUContext(&MainCtx));
-    	    if (*KernelBasePtr)
-	    	user_handler(obj, (*KernelBasePtr)->kb_Interrupts);
-    	    core_ExitInterrupt(&MainCtx);
-    	    if (!Sleep_Mode) {
-    	        DS(OutputDebugString("[Task switcher] new CPU context: ****\n"));
-    	        DS(PrintCPUContext(&MainCtx));
-    	        CONTEXT_RESTORE_REGS(&MainCtx);
-    	        DS(res =)SetThreadContext(args->MainThread, &MainCtx);
-    	        DS(bug("[Task switcher] Set context result: %lu\n", res));
-    	    }
-    	    Supervisor--;
-    	} else {
-    	    PendingInts[obj] = 1;
-            DS(bug("[KRN] Interrupts are disabled, interrupt %lu is pending\n", obj));
-        }
-        if (Sleep_Mode)
-            /* We've entered sleep mode */
-            Sleep_Mode = SLEEP_MODE_ON;
-        else {
-            DS(res =) ResumeThread(args->MainThread);
-            DS(bug("[Task switcher] Resume thread result: %lu\n", res));
-        }
-    }
-    return 0;
-}
-
-/* ****** Interface functions ****** */
-
-long __declspec(dllexport) core_intr_disable(void)
-{
-    DI(printf("[KRN] disabling interrupts\n"));
-    Ints_Enabled = 0;
-}
-
-long __declspec(dllexport) core_intr_enable(void)
-{
+void core_intr_enable(void) {
     int i;
 
-    DI(printf("[KRN] enabling interrupts\n"));
-    Ints_Enabled = 1;
-    /* FIXME: here we do not force timer interrupt, probably this is wrong. However there's no way
-       to force-trigger a waitable timer in Windows. A workaround is possible, but the design will
-       be complicated then (we need a companion event in this case). Probably it will be implemented
-       in future. */
-    for (i = INT_IO; i < INTERRUPTS_NUM; i++) {
-        if (PendingInts[i]) {
-            DI(printf("[KRN] enable: sigalling about pending interrupt %lu\n", i));
-            SetEvent(SwData.IntObjects[i]);
-        }
-    }
+    D(printf("[kernel] enabling interrupts\n"));
+    irq_enabled = 1;
 }
 
-void __declspec(dllexport) core_syscall(unsigned long n)
-{
-    RaiseException(AROS_EXCEPTION_SYSCALL, 0, 1, &n);
-    /* If after RaiseException we are still here, but Sleep_Mode != 0, this likely means
-       we've just called SC_SCHEDULE, SC_SWITCH or SC_DISPATCH, and it is putting us to sleep.
-       Sleep mode will be committed as soon as timer IRQ happens */
-    while(Sleep_Mode) {
-    	/* TODO: SwitchToThread() here maybe? But it's dangerous because context switch
-    	   will happen inside it and Windows will kill us */
-    }
-}
-
-unsigned char __declspec(dllexport) core_is_super(void)
-{
-    return Supervisor;
-}
-
-BOOL InitIntObjects(HANDLE *Objs)
-{
-    int i;
-
-    for (i = 0; i < INTERRUPTS_NUM; i++) {
-        Objs[i] = NULL;
-        PendingInts[i] = 0;
-    }
-    /* Timer interrupt is a waitable timer, it's not an event */
-    for (i = INT_IO; i < INTERRUPTS_NUM; i++) {
-        Objs[i] = CreateEvent(NULL, FALSE, FALSE, NULL);
-        if (!Objs[i])
-            return FALSE;
-    }
-    return TRUE;
-}
-
-void CleanupIntObjects(HANDLE *Objs)
-{
-    int i;
-
-    for (i = 0; i < INTERRUPTS_NUM; i++) {
-        if (Objs[i])
-            CloseHandle(Objs[i]);
-    }
+int core_in_supervisor(void) {
+    return in_supervisor;
 }
 
 pthread_t main_thread;
@@ -260,7 +78,7 @@ sem_t switcher_sem;
 
 ucontext_t main_ctx;
 
-void *timer_entry(void *arg) {
+static void *timer_entry(void *arg) {
     struct timespec ts;
 
     while (1) {
@@ -280,7 +98,7 @@ void *timer_entry(void *arg) {
     }
 }
 
-void *switcher_entry(void *arg) {
+static void *switcher_entry(void *arg) {
     irq_bits = 0;
 
     sem_init(&main_sem, 0, 0);
@@ -309,7 +127,7 @@ void *switcher_entry(void *arg) {
     return NULL;
 }
 
-void main_switch_handler(int signo, siginfo_t *si, void *vctx) {
+static void main_switch_handler(int signo, siginfo_t *si, void *vctx) {
     /* make sure we were signalled by the switcher thread and not somewhere else */
     if (sem_trywait(&main_sem) < 0)
         return;
@@ -336,9 +154,9 @@ int core_init(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struc
     SysBasePtr = SysBasePointer;
     KernelBasePtr = KernelBasePointer;
 
-    Ints_Enabled = 0;
-    Supervisor = 0;
-    Sleep_Mode = 0;
+    irq_enabled = 0;
+    in_supervisor = 0;
+    sleep_state = 0;
 
     timer_period = TimerPeriod;
 
@@ -356,20 +174,4 @@ int core_init(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struc
     D(printf("[kernel] threads started, switcher id %d, timer id %d\n", switcher_thread, timer_thread));
 
     return 0;
-}
-
-/*
- * This is the only function to be called by modules other than kernel.resource.
- * It is used for causing interrupts from within asynchronous threads of
- * emul.handler and wingdi.hidd.
- */
-
-unsigned long __declspec(dllexport) KrnCauseIRQ(unsigned char irq)
-{
-    unsigned long res;
-
-    D(printf("[kernel IRQ] Causing IRQ %u\n", irq));
-    res = SetEvent(SwData.IntObjects[irq]);
-    D(printf("[kernel IRQ] Result: %ld\n", res));
-    return res;
 }
