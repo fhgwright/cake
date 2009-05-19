@@ -21,7 +21,7 @@
  * - switcher loops and waits for the next interrupt
  */
 
-#define DEBUG 1
+#define DEprintf 1
 
 #include <aros/system.h>
 #include <exec/types.h>
@@ -37,7 +37,7 @@
 #include <exec/execbase.h>
 #include "kernel_intern.h"
 #include "syscall.h"
-#include "host_debug.h"
+#include "host_deprintf.h"
 #include "cpucontext.h"
 
 struct ExecBase **SysBasePtr;
@@ -48,14 +48,14 @@ int in_supervisor;
 int sleep_state;
 
 void core_intr_disable(void) {
-    D(bug("[kernel] disabling interrupts\n"));
+    D(printf("[kernel] disabling interrupts\n"));
     irq_enabled = 0;
 }
 
 void core_intr_enable(void) {
     int i;
 
-    D(bug("[kernel] enabling interrupts\n"));
+    D(printf("[kernel] enabling interrupts\n"));
     irq_enabled = 1;
 }
 
@@ -109,7 +109,7 @@ static void *switcher_entry(void *arg) {
         pthread_mutex_lock(&irq_lock);
         pthread_cond_wait(&irq_cond, &irq_lock);
 
-        D(bug("[kernel] interrupt received, irq bits are 0x%x\n", irq_bits));
+        D(printf("[kernel] interrupt received, irq bits are 0x%x\n", irq_bits));
 
         /* tell the main task to stop and wait for its signal to proceed */
         sem_post(&main_sem);
@@ -152,7 +152,7 @@ int core_init(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struc
     struct sigaction sa;
     pthread_attr_t thread_attrs;
 
-    D(bug("[kernel] initialising interrupts and task switching\n"));
+    D(printf("[kernel] initialising interrupts and task switching\n"));
 
     SysBasePtr = SysBasePointer;
     KernelBasePtr = KernelBasePointer;
@@ -174,7 +174,7 @@ int core_init(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struc
     pthread_create(&switcher_thread, &thread_attrs, switcher_entry, NULL);
     pthread_create(&timer_thread, &thread_attrs, timer_entry, NULL);
 
-    D(bug("[kernel] threads started, switcher id %d, timer id %d\n", switcher_thread, timer_thread));
+    D(printf("[kernel] threads started, switcher id %d, timer id %d\n", switcher_thread, timer_thread));
 
     return 0;
 }
