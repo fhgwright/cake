@@ -1,16 +1,38 @@
-#define DEBUG 0
+/* theory of operation
+ *
+ * at the start, there's a single process. core_init() is called system
+ * initialisation. it starts a thread, the switcher thread.
+ *
+ * the main thread runs the "current" aros task. thats all. if left unchecked,
+ * it would run the same task forever. thats not much fun though, which is
+ * what the switcher thread is for.
+ *
+ * the switcher thread receives interrupts from a variety of sources (virtual
+ * hardware) including its own timer (for normal task switch operation). when
+ * an interrupt occurs, the following happens (high level)
+ *
+ * - switcher signals main that its time for a context switch
+ * - main responds by storing the current context and then waiting
+ * - switcher saves the current context into the current aros task
+ * - switcher runs the scheduler with the current interrupt state
+ * - switcher loads the context for the scheduled task as the new current context
+ * - switcher signals main
+ * - main wakes up and jumps to the current context
+ * - switcher loops and waits for the next interrupt
+ */
+
+#define DEBUG 1
 
 #include <aros/system.h>
-#include <windows.h>
-#define __typedef_LONG /* LONG, ULONG, WORD, BYTE and BOOL are declared in Windows headers. Looks like everything  */
-#define __typedef_WORD /* is the same except BOOL. It's defined to short on AROS and to int on Windows. This means */
-#define __typedef_BYTE /* that you can't use it in OS-native part of the code and can't use any AROS structure     */
-#define __typedef_BOOL /* definition that contains BOOL.                                                           */
-typedef unsigned AROS_16BIT_TYPE UWORD;
-typedef unsigned char UBYTE;
+#include <exec/types.h>
 
 #include <stddef.h>
 #include <stdio.h>
+#include <ucontext.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <time.h>
+
 #include <exec/lists.h>
 #include <exec/execbase.h>
 #include "kernel_intern.h"
@@ -223,77 +245,116 @@ void CleanupIntObjects(HANDLE *Objs)
     }
 }
 
-int __declspec(dllexport) core_init(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struct KernelBase **KernelBasePointer)
-{
-    HANDLE ThisProcess;
-    HANDLE SwitcherThread;
-    LARGE_INTEGER VBLPeriod;
-    OSVERSIONINFO osver;
-    void *MainTEB;
-    int i;
-    DWORD SwitcherId;
-    ULONG LastErrOffset = 0;
+pthread_t main_thread;
+pthread_t switcher_thread;
+pthread_t timer_thread;
 
-    D(printf("[KRN] Setting up interrupts, SysBasePtr = 0x%08lX, KernelBasePtr = 0x%08lX\n", SysBasePointer, KernelBasePointer));
+unsigned long timer_period;
+
+pthread_mutex_t irq_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t irq_cond = PTHREAD_COND_INITIALIZER;
+uint32_t irq_bits;
+
+sem_t main_sem;
+sem_t switcher_sem;
+
+ucontext_t main_ctx;
+
+void *timer_entry(void *arg) {
+    struct timespec ts;
+
+    while (1) {
+        clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_nsec += 1000000000 / timer_period;
+        if (ts.tv_nsec > 999999999) {
+            ts.tv_nsec -= 1000000000;
+            ts.tv_sec++;
+        }
+        clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &ts, NULL);
+
+        pthread_mutex_lock(&irq_lock);
+        irq_bits |= 0x1;
+        pthread_mutex_unlock(&irq_lock);
+
+        pthread_cond_signal(&irq_cond);
+    }
+}
+
+void *switcher_entry(void *arg) {
+    irq_bits = 0;
+
+    sem_init(&main_sem, 0, 0);
+    sem_init(&switcher_sem, 0, 0);
+
+    while (1) {
+        /* wait for an interrupt */
+        pthread_mutex_lock(&irq_lock);
+        pthread_cond_wait(&irq_cond, &irq_lock);
+
+        /* tell the main task to stop and wait for its signal to proceed */
+        sem_post(&main_sem);
+        pthread_kill(main_thread, SIGUSR1);
+        sem_wait(&switcher_sem);
+
+        /* allow new interrupts */
+        pthread_mutex_unlock(&irq_lock);
+
+        /* run the scheduler */
+        core_ExitInterrupt(&main_ctx);
+
+        /* tell the main task to switch the context */
+        sem_post(&main_sem);
+    }
+
+    return NULL;
+}
+
+void main_switch_handler(int signo, siginfo_t *si, void *vctx) {
+    /* make sure we were signalled by the switcher thread and not somewhere else */
+    if (sem_trywait(&main_sem) < 0)
+        return;
+
+    /* switcher thread is now waiting for us. save the current context somewhere it can get it */
+    memcpy(&main_ctx, vctx, sizeof(ucontext_t));
+
+    /* tell the switcher to proceed */
+    sem_post(&switcher_sem);
+
+    /* wait for it to run the scheduler and whatever else */
+    sem_wait(&main_sem);
+
+    /* switcher has given us the new context, jump to it */
+    setcontext(&main_ctx);
+}
+
+int core_init(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struct KernelBase **KernelBasePointer) {
+    struct sigaction sa;
+    pthread_attr_t thread_attrs;
+
+    D(printf("[kernel] initialising interrupts and task switching\n"));
+
     SysBasePtr = SysBasePointer;
     KernelBasePtr = KernelBasePointer;
+
     Ints_Enabled = 0;
     Supervisor = 0;
     Sleep_Mode = 0;
-    SetUnhandledExceptionFilter(ExceptionHandler);
-    if (InitIntObjects(SwData.IntObjects)) {
-    	SwData.IntObjects[INT_TIMER] = CreateWaitableTimer(NULL, 0, NULL);
-    	if (SwData.IntObjects[INT_TIMER]) {
-	    ThisProcess = GetCurrentProcess();
-	    if (DuplicateHandle(ThisProcess, GetCurrentThread(), ThisProcess, &SwData.MainThread, 0, TRUE, DUPLICATE_SAME_ACCESS)) {
-	        FillMemory(&osver, sizeof(osver), 0);
-	        osver.dwOSVersionInfoSize = sizeof(osver);
-	        GetVersionEx(&osver);
-	        /* LastError value is part of our context. In order to manipulate it we have to hack
-	           into Windows TEB (thread environment block).
-	           Since this structure is private, error code offset changes from version to version.
-	           The following offsets are known:
-	           * Windows 95 and 98 - 0x60
-	           * Windows Me - 0x74
-	           * Windows NT (all family, fixed at last) - 0x34
-	         */
-	        switch(osver.dwPlatformId) {
-	        case VER_PLATFORM_WIN32_WINDOWS:
-	            if (osver.dwMajorVersion == 4) {
-	                if (osver.dwMinorVersion > 10)
-	                    LastErrOffset = 0x74;
-	                else
-	                    LastErrOffset = 0x60;
-	            }
-	            break;
-	        case VER_PLATFORM_WIN32_NT:
-	            LastErrOffset = 0x34;
-	            break;
-	        }
-	        if (LastErrOffset) {
-		    MainTEB = NtCurrentTeb();
-		    LastErrorPtr = MainTEB + LastErrOffset;
-		    SwitcherThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)TaskSwitcher, &SwData, 0, &SwitcherId);
-		    if (SwitcherThread) {
-			D(printf("[KRN] Task switcher started, ID %lu\n", SwitcherId));
-#ifdef SLOW
-			TimerPeriod = 5000;
-#else
-			TimerPeriod = 1000/TimerPeriod;
-#endif
-			VBLPeriod.QuadPart = -10000*(LONGLONG)TimerPeriod;
-			return SetWaitableTimer(SwData.IntObjects[INT_TIMER], &VBLPeriod, TimerPeriod, NULL, NULL, 0);
-		    }
-			D(else printf("[KRN] Failed to run task switcher thread\n");)
-		} else
-		    printf("Unsupported Windows version %u.%u, platform ID %u\n", osver.dwMajorVersion, osver.dwMinorVersion, osver.dwPlatformId);
-	    }
-		D(else printf("[KRN] failed to get thread handle\n");)
-	}
-	    D(else printf("[KRN] Failed to create timer interrupt\n");)
-    }
-        D(else printf("[KRN] failed to create interrupt objects\n");)
-    CleanupIntObjects(SwData.IntObjects);
+
+    timer_period = TimerPeriod;
+
+    sa.sa_flags = SA_SIGINFO;
+    sa.sa_sigaction = main_switch_handler;
+    sigaction(SIGUSR1, &sa, NULL);
+
+    main_thread = pthread_self();
+
+    pthread_attr_init(&thread_attrs);
+    pthread_attr_setattr(&thread_attrs, PTHREAD_CREATE_DETACHED);
+    pthread_create(&switcher_thread, &thread_attrs, switcher_entry, NULL);
+    pthread_create(&timer_thread, &thread_attrs, timer_entry, NULL);
+
+    D(printf("[kernel] threads started, switcher id %d, timer id %d\n", switcher_thread, timer_thread));
+
     return 0;
 }
 
