@@ -109,12 +109,15 @@ static void *switcher_entry(void *arg) {
         pthread_mutex_lock(&irq_lock);
         pthread_cond_wait(&irq_cond, &irq_lock);
 
+        D(bug("[kernel] interrupt received, irq bits are 0x%x\n", irq_bits));
+
         /* tell the main task to stop and wait for its signal to proceed */
         sem_post(&main_sem);
         pthread_kill(main_thread, SIGUSR1);
         sem_wait(&switcher_sem);
 
         /* allow new interrupts */
+        irq_bits = 0;
         pthread_mutex_unlock(&irq_lock);
 
         /* run the scheduler */
