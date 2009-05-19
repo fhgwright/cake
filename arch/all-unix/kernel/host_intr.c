@@ -21,7 +21,7 @@
  * - switcher loops and waits for the next interrupt
  */
 
-#define DEprintf 1
+#define DEBUG 1
 
 #include <aros/system.h>
 #include <exec/types.h>
@@ -37,7 +37,7 @@
 #include <exec/execbase.h>
 #include "kernel_intern.h"
 #include "syscall.h"
-#include "host_deprintf.h"
+#include "host_debug.h"
 #include "cpucontext.h"
 
 struct ExecBase **SysBasePtr;
