@@ -99,6 +99,8 @@ static void *timer_entry(void *arg) {
 }
 
 static void *switcher_entry(void *arg) {
+    uint32_t irq_bits_current;
+
     irq_bits = 0;
 
     sem_init(&main_sem, 0, 0);
@@ -112,9 +114,14 @@ static void *switcher_entry(void *arg) {
         D(printf("[kernel] interrupt received, irq bits are 0x%x\n", irq_bits));
 
         /* tell the main task to stop and wait for its signal to proceed */
-        sem_post(&main_sem);
-        pthread_kill(main_thread, SIGUSR1);
-        sem_wait(&switcher_sem);
+        if (sleep_state != ss_SLEEPING) {
+            sem_post(&main_sem);
+            pthread_kill(main_thread, SIGUSR1);
+            sem_wait(&switcher_sem);
+        }
+
+        if (irq_enabled) {
+            in_supervisor++;
 
         /* allow new interrupts */
         irq_bits = 0;

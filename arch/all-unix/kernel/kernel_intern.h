@@ -109,9 +109,11 @@ static inline void bug(const char *format, ...)
 
 #else
 
-#define SLEEP_MODE_OFF     0
-#define SLEEP_MODE_PENDING 1
-#define SLEEP_MODE_ON      2
+enum {
+    ss_RUNNING,
+    ss_SLEEP_PENDING,
+    ss_SLEEPING
+};
 
 extern DWORD SwitcherId;
 extern DWORD *LastErrorPtr;
