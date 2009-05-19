@@ -48,14 +48,14 @@ int in_supervisor;
 int sleep_state;
 
 void core_intr_disable(void) {
-    D(printf("[kernel] disabling interrupts\n"));
+    D(bug("[kernel] disabling interrupts\n"));
     irq_enabled = 0;
 }
 
 void core_intr_enable(void) {
     int i;
 
-    D(printf("[kernel] enabling interrupts\n"));
+    D(bug("[kernel] enabling interrupts\n"));
     irq_enabled = 1;
 }
 
@@ -149,7 +149,7 @@ int core_init(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struc
     struct sigaction sa;
     pthread_attr_t thread_attrs;
 
-    D(printf("[kernel] initialising interrupts and task switching\n"));
+    D(bug("[kernel] initialising interrupts and task switching\n"));
 
     SysBasePtr = SysBasePointer;
     KernelBasePtr = KernelBasePointer;
@@ -171,7 +171,7 @@ int core_init(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struc
     pthread_create(&switcher_thread, &thread_attrs, switcher_entry, NULL);
     pthread_create(&timer_thread, &thread_attrs, timer_entry, NULL);
 
-    D(printf("[kernel] threads started, switcher id %d, timer id %d\n", switcher_thread, timer_thread));
+    D(bug("[kernel] threads started, switcher id %d, timer id %d\n", switcher_thread, timer_thread));
 
     return 0;
 }
