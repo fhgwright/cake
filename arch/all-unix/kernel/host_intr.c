@@ -74,7 +74,8 @@ uint32_t irq_bits;
 sem_t main_sem;
 sem_t switcher_sem;
 
-ucontext_t main_ctx;
+ucontext_t last_ctx;
+ucontext_t next_ctx;
 
 static void *timer_entry(void *arg) {
     struct timespec ts;
@@ -126,7 +127,7 @@ static void *switcher_entry(void *arg) {
         /* if interrupts are enabled, then its time to schedule a new task */
         if (irq_enabled) {
             in_supervisor++;
-            core_ExitInterrupt(&main_ctx);
+            core_ExitInterrupt(&last_ctx, &next_ctx);
             in_supervisor--;
         }
 
@@ -148,7 +149,7 @@ static void main_switch_handler(int signo, siginfo_t *si, void *vctx) {
         return;
 
     /* switcher thread is now waiting for us. save the current context somewhere it can get it */
-    memcpy(&main_ctx, vctx, sizeof(ucontext_t));
+    memcpy(&last_ctx, vctx, sizeof(ucontext_t));
 
     /* tell the switcher to proceed */
     sem_post(&switcher_sem);
@@ -157,7 +158,7 @@ static void main_switch_handler(int signo, siginfo_t *si, void *vctx) {
     sem_wait(&main_sem);
 
     /* switcher has given us the new context, jump to it */
-    setcontext(&main_ctx);
+    setcontext(&next_ctx);
 }
 
 int core_init(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struct KernelBase **KernelBasePointer) {
