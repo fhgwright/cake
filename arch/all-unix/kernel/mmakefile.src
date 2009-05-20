@@ -1,10 +1,10 @@
 # $Id$
 include $(TOP)/config/make.cfg
 
-#MM kernel-kernel-mingw32 : includes linklibs kernel-kernel-mingw32-native
-#MM kernel-kernel-mingw32-kobj : includes linklibs kernel-kernel-mingw32-native
+#MM kernel-kernel-linux : includes linklibs kernel-kernel-linux-native
+#MM kernel-kernel-linux-kobj : includes linklibs kernel-kernel-linux-native
 
-%build_module mmake=kernel-kernel-mingw32 	\
+%build_module mmake=kernel-kernel-linux 	\
   modname=kernel modtype=resource		\
   cflags="$(CFLAGS) -I$(TOP)/rom/exec"		\
   files="kernel_init debug intr scheduler mmu" uselibs="rom"
@@ -12,11 +12,11 @@ include $(TOP)/config/make.cfg
 NATIVE_BINDIR := $(BINDIR)/Libs/Host
 NATIVE_DIR := $(GENDIR)/native
 NATIVE_OBJS := $(NATIVE_DIR)/host_intr.o $(NATIVE_DIR)/host_scheduler.o
-SOEXT := .dll
+SOEXT := .so
 SO_LDFLAGS := -shared
 
 #MM
-kernel-kernel-mingw32-native: $(NATIVE_BINDIR)/kernel$(SOEXT)
+kernel-kernel-linux-native: $(NATIVE_BINDIR)/kernel$(SOEXT)
 
 $(NATIVE_BINDIR)/kernel$(SOEXT): $(NATIVE_OBJS) $(NATIVE_BINDIR)
 	$(KERNEL_CC) $(KERNEL_CFLAGS) $(SO_LDFLAGS) -o $@ $(NATIVE_OBJS) -Wl,--out-implib,$(NATIVE_DIR)/libkernel.a
@@ -28,4 +28,4 @@ $(NATIVE_DIR) :
 	mkdir $(NATIVE_DIR)
 	 
 $(NATIVE_DIR)/%.o : %.c $(NATIVE_DIR)
-	$(KERNEL_CC) $(KERNEL_CFLAGS) -o $@ -c $< -I$(GENINCDIR) -I$(TOP)/rom/exec -I$(TOP)/arch/all-mingw32/exec
+	$(KERNEL_CC) $(KERNEL_CFLAGS) -o $@ -c $< -I$(GENINCDIR) -I$(TOP)/rom/exec -I$(TOP)/arch/all-linux/exec
