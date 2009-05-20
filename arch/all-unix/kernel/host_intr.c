@@ -123,17 +123,18 @@ static void *switcher_entry(void *arg) {
             sem_wait(&switcher_sem);
         }
 
+        /* if interrupts are enabled, then its time to schedule a new task */
         if (irq_enabled) {
             in_supervisor++;
             core_ExitInterrupt(&main_ctx);
             in_supervisor--;
         }
 
-        /* unless we're running, we're sleeping */
+        /* if we're sleeping then we don't want to wake the main task just now */
         if (sleep_state != ss_RUNNING)
             sleep_state = ss_SLEEPING;
 
-        /* there's an active task, tell the main thread to jump to it */
+        /* ready to go, give the main task a kick */
         else
             sem_post(&main_sem);
     }
