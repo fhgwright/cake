@@ -1,19 +1,15 @@
 #define DEBUG 0
 
 #include <aros/system.h>
-#include <windows.h>
-#define __typedef_LONG /* LONG, ULONG, WORD, BYTE and BOOL are declared in Windows headers. Looks like everything  */
-#define __typedef_WORD /* is the same except BOOL. It's defined to short on AROS and to int on Windows. This means */
-#define __typedef_BYTE /* that you can't use it in OS-native part of the code and can't use any AROS structure     */
-#define __typedef_BOOL /* definition that contains BOOL.                                                           */
-typedef unsigned AROS_16BIT_TYPE UWORD;
-typedef unsigned char UBYTE;
 
 #include <stddef.h>
 #include <stdio.h>
+#include <ucontext.h>
+
 #include <exec/lists.h>
 #include <exec/execbase.h>
 #include <hardware/intbits.h>
+
 #include "etask.h"
 #include "kernel_intern.h"
 #include "host_debug.h"
@@ -59,6 +55,7 @@ static inline void core_LeaveInterrupt(void)
 /*
  * Task dispatcher. Basically it may be the same one no matter what scheduling algorithm is used
  */
+#if 0
 void core_Dispatch(CONTEXT *regs)
 {
     struct ExecBase *SysBase = *SysBasePtr;
@@ -115,7 +112,9 @@ void core_Dispatch(CONTEXT *regs)
     /* Leave interrupt and jump to the new task */
     core_LeaveInterrupt();
 }
+#endif
 
+#if 0
 void core_Switch(CONTEXT *regs)
 {
     struct ExecBase *SysBase = *SysBasePtr;
@@ -149,8 +148,10 @@ void core_Switch(CONTEXT *regs)
     
     core_Dispatch(regs);
 }
+#endif
 
 
+#if 0
 /*
  * Schedule the currently running task away. Put it into the TaskReady list 
  * in some smart way. This function is subject of change and it will be probably replaced
@@ -201,8 +202,10 @@ void core_Schedule(CONTEXT *regs)
     /* Select new task to run */
     core_Switch(regs);
 }
+#endif
 
 
+#if 0
 /*
  * Leave the interrupt. This function receives the register frame used to leave the supervisor
  * mode. It reschedules the task if it was asked for.
@@ -244,7 +247,9 @@ void core_ExitInterrupt(CONTEXT *regs)
     }
     	DS(else printf("[Scheduler] SysBase is NULL\n");)
 }
+#endif
 
+#if 0
 void core_Cause(struct ExecBase *SysBase)
 {
     struct IntVector *iv = &SysBase->IntVects[INTB_SOFTINT];
@@ -255,3 +260,4 @@ void core_Cause(struct ExecBase *SysBase)
         iv->iv_Code(0, 0, 0, iv->iv_Code, SysBase);
     }
 }
+#endif

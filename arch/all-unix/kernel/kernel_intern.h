@@ -115,20 +115,22 @@ enum {
     ss_SLEEPING
 };
 
-extern DWORD SwitcherId;
-extern DWORD *LastErrorPtr;
-extern unsigned char Ints_Enabled;
-extern unsigned char Sleep_Mode;
-extern unsigned char PendingInts[INTERRUPTS_NUM];
+extern int irq_enabled;
+extern int in_supervisor;
+extern int sleep_state;
 extern struct ExecBase **SysBasePtr;
 extern struct KernelBase **KernelBasePtr;
 
+/*
 void core_Dispatch(CONTEXT *regs);
 void core_Switch(CONTEXT *regs);
 void core_Schedule(CONTEXT *regs);
 void core_ExitInterrupt(CONTEXT *regs);
 void core_Cause(struct ExecBase *SysBase);
 long core_intr_enable(void);
+*/
+void core_ExitInterrupt(ucontext_t *last_ctx, ucontext_t *next_ctx);
+void core_intr_enable(void);
 
 #endif
 

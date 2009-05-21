@@ -28,6 +28,7 @@
 
 #include <stddef.h>
 #include <stdio.h>
+#include <string.h>
 #include <ucontext.h>
 #include <pthread.h>
 #include <semaphore.h>
@@ -35,6 +36,7 @@
 
 #include <exec/lists.h>
 #include <exec/execbase.h>
+
 #include "kernel_intern.h"
 #include "syscall.h"
 #include "host_debug.h"
