@@ -36,7 +36,7 @@ APTR KernelBase = NULL;
 #undef rkprintf
 #undef vkprintf
 
-int mykprintf(const UBYTE * fmt, ...)
+int mykprintf(const char *fmt, ...)
 {
     va_list args;
     int r;
@@ -51,7 +51,7 @@ int mykprintf(const UBYTE * fmt, ...)
     return r;
 }
 
-int myvkprintf (const UBYTE *fmt, va_list args)
+int myvkprintf (const char *fmt, va_list args)
 {
     int res;
     
@@ -63,7 +63,7 @@ int myvkprintf (const UBYTE *fmt, va_list args)
     return res;
 }
 
-int myrkprintf(const STRPTR foo, const STRPTR bar, int baz, const UBYTE * fmt, ...)
+int myrkprintf(const char *foo, const char *bar, int baz, const char *fmt, ...)
 {
   va_list args;
   int r;
@@ -171,7 +171,7 @@ int __startup startup(struct TagItem *msg)
   void * klo = (void*)krnGetTagData(KRN_KernelLowest, 0, msg);
   void * khi = (void*)krnGetTagData(KRN_KernelHighest, 0, msg);
   void * memory = (void*)krnGetTagData(KRN_MEMLower, 0, msg);
-  void * memupper = krnGetTagData(KRN_MEMUpper, 0, msg);
+  void * memupper = (void*)krnGetTagData(KRN_MEMUpper, 0, msg);
   HostIFace = (struct HostInterface *)krnGetTagData(KRN_HostInterface, 0, msg);
 
   hostlib = HostIFace->HostLib_Open("Libs\\Host\\kernel.dll", &errstr);
@@ -180,7 +180,7 @@ int __startup startup(struct TagItem *msg)
       HostIFace->HostLib_FreeErrorStr(errstr);
       return -1;
   }
-  badsyms = HostIFace->HostLib_GetInterface(hostlib, kernel_functions, &KernelIFace);
+  badsyms = HostIFace->HostLib_GetInterface(hostlib, kernel_functions, (void **) &KernelIFace);
   if (badsyms) {
       mykprintf("[Kernel] failed to resolve %lu symbols\n", badsyms);
       HostIFace->HostLib_Close(hostlib, NULL);
