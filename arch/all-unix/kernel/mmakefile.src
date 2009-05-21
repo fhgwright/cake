@@ -19,7 +19,7 @@ SO_LDFLAGS := -shared
 kernel-kernel-linux-native: $(NATIVE_BINDIR)/kernel$(SOEXT)
 
 $(NATIVE_BINDIR)/kernel$(SOEXT): $(NATIVE_OBJS) $(NATIVE_BINDIR)
-	$(KERNEL_CC) $(KERNEL_CFLAGS) $(SO_LDFLAGS) -o $@ $(NATIVE_OBJS) -Wl,--out-implib,$(NATIVE_DIR)/libkernel.a
+	$(KERNEL_CC) $(KERNEL_CFLAGS) $(SO_LDFLAGS) -o $@ $(NATIVE_OBJS) #-Wl,--out-implib,$(NATIVE_DIR)/libkernel.a
 
 $(NATIVE_BINDIR) :
 	mkdir -p $(NATIVE_BINDIR)
