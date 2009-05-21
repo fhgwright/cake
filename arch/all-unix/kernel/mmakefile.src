@@ -12,14 +12,13 @@ include $(TOP)/config/make.cfg
 NATIVE_BINDIR := $(BINDIR)/Libs/Host
 NATIVE_DIR := $(GENDIR)/native
 NATIVE_OBJS := $(NATIVE_DIR)/host_intr.o $(NATIVE_DIR)/host_scheduler.o
-SOEXT := .so
 SO_LDFLAGS := -shared
 
 #MM
-kernel-kernel-linux-native: $(NATIVE_BINDIR)/kernel$(SOEXT)
+kernel-kernel-linux-native: $(NATIVE_BINDIR)/libkernel.so
 
-$(NATIVE_BINDIR)/kernel$(SOEXT): $(NATIVE_OBJS) $(NATIVE_BINDIR)
-	$(KERNEL_CC) $(KERNEL_CFLAGS) $(SO_LDFLAGS) -o $@ $(NATIVE_OBJS) #-Wl,--out-implib,$(NATIVE_DIR)/libkernel.a
+$(NATIVE_BINDIR)/libkernel.so: $(NATIVE_OBJS) $(NATIVE_BINDIR)
+	$(KERNEL_CC) $(KERNEL_CFLAGS) $(SO_LDFLAGS) -o $@ $(NATIVE_OBJS)
 
 $(NATIVE_BINDIR) :
 	mkdir -p $(NATIVE_BINDIR)
