@@ -109,7 +109,7 @@ AROS_LH0I(void *, KrnCreateContext,
 {
     AROS_LIBFUNC_INIT
 
-    return AllocMem(sizeof(struct AROSCPUContext), MEMF_PUBLIC|MEMF_CLEAR);
+    return AllocMem(sizeof(ucontext_t), MEMF_PUBLIC|MEMF_CLEAR);
 
     AROS_LIBFUNC_EXIT
 }
@@ -120,7 +120,7 @@ AROS_LH1I(void, KrnDeleteContext,
 {
     AROS_LIBFUNC_INIT
 
-    FreeMem(context, sizeof(struct AROSCPUContext));
+    FreeMem(context, sizeof(ucontext_t));
 
     AROS_LIBFUNC_EXIT
 }
