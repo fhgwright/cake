@@ -1,7 +1,5 @@
 include $(TOP)/config/make.cfg
 
-USER_CFLAGS := -I$(GENINCDIR) -D__AROS__
-%build_module mmake=kernel-hostlib \
+%build_module mmake=kernel-hostlib-linux \
     modname=hostlib modtype=resource \
-    files=hostlib \
-    compiler=host
+    files=hostlib
