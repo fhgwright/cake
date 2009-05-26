@@ -33,8 +33,10 @@ AROS_LH0(void, KrnCause,
          struct KernelBase *, KernelBase, 3, Kernel)
 {
     AROS_LIBFUNC_INIT
-    
-    KernelIFace.core_syscall(SC_CAUSE);
+
+    in_supervisor++;
+    core_Cause(SysBase);
+    in_supervisor--;
 
     AROS_LIBFUNC_EXIT
 }
@@ -44,8 +46,15 @@ AROS_LH0(void , KrnDispatch,
 {
     AROS_LIBFUNC_INIT
 
+    ucontext_t ctx;
+
     D(bug("[KRN] KrnDispatch()\n"));
-    KernelIFace.core_syscall(SC_DISPATCH);
+
+    getcontext(&ctx);
+
+    in_supervisor++;
+    core_Dispatch(&ctx);
+    in_supervisor--;
 
     AROS_LIBFUNC_EXIT
 }
@@ -55,8 +64,15 @@ AROS_LH0(void, KrnSwitch,
 {
     AROS_LIBFUNC_INIT
 
+    ucontext_t ctx;
+
     D(bug("[KRN] KrnSwitch()\n"));
-    KernelIFace.core_syscall(SC_SWITCH);
+
+    getcontext(&ctx);
+
+    in_supervisor++;
+    core_Switch(&ctx);
+    in_supervisor--;
     
     AROS_LIBFUNC_EXIT
 }
@@ -66,8 +82,15 @@ AROS_LH0(void, KrnSchedule,
 {
     AROS_LIBFUNC_INIT
 
+    ucontext_t ctx;
+
     D(bug("[KRN] KrnSchedule()\n"));
-    KernelIFace.core_syscall(SC_SCHEDULE);
-        
+
+    getcontext(&ctx);
+
+    in_supervisor++;
+    core_Schedule(&ctx);
+    in_supervisor--;
+    
     AROS_LIBFUNC_EXIT
 }
