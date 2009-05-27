@@ -11,11 +11,8 @@
 #include <aros/libcall.h>
 #include <aros/atomic.h>
 #include <proto/exec.h>
+#include <proto/kernel.h>
 
-#include <stdlib.h>
-#include <signal.h>
-
-extern sigset_t sig_int_mask;	/* Mask of sig_t that are ints, not traps */
 #undef  Exec
 #ifdef UseExecstubs
 #    define Exec _Exec
@@ -26,19 +23,12 @@ AROS_LH0(void, Disable,
 {
 #undef Exec
     AROS_LIBFUNC_INIT
+    
+    /* Georg Steger */
+    if (KernelBase)
+        KrnCli();
 
-    sigprocmask(SIG_BLOCK, &sig_int_mask, NULL);
-    
     AROS_ATOMIC_INC(SysBase->IDNestCnt);
-    
-    if (SysBase->IDNestCnt < 0)
-    {
-	/* If we get here we have big trouble. Someone called
-	   1x Disable() and 2x Enable(). IDNestCnt < 0 would
-	   mean enable interrupts, but the caller of Disable
-	   relies on the function to disable them, so we don´t
-	   do anything here (or maybe a deadend alert?) */
-    }
 
     AROS_LIBFUNC_EXIT
 }

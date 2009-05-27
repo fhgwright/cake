@@ -1,121 +1,117 @@
 /*
-    Copyright © 1995-2001, The AROS Development Team. All rights reserved.
-    $Id$
+ Copyright © 1995-2008, The AROS Development Team. All rights reserved.
+ $Id$
+ 
+ Desc: mingw32 version of PrepareContext().
+ Lang: english
+ */
 
-    Desc: i386unix version of PrepareContext().
-    Lang: english
-*/
+#define DEBUG 0
 
+#include <aros/debug.h>
 #include <exec/types.h>
 #include <exec/execbase.h>
 #include <exec/memory.h>
 #include <utility/tagitem.h>
-#include <sigcore.h>
+#include <proto/kernel.h>
+#include <aros/kernel.h>
 #include "etask.h"
 #include "exec_util.h"
+#include "../kernel/cpucontext.h"
 
 #include <aros/libcall.h>
+#include <proto/arossupport.h>
+#include <proto/kernel.h>
+
+/* Put a value of type SP_TYPE on the stack or get it off the stack. */
+#define _PUSH(sp,val) (*--sp = (SP_TYPE)(val))
+#define _POP(sp)      (*sp++)
+
+#define SP_TYPE	IPTR
+
+#define GetSP(task) (*(SP_TYPE **)(&task->tc_SPReg))
 
 AROS_LH4(BOOL, PrepareContext,
-    AROS_LHA(struct Task *, task, A0),
-    AROS_LHA(APTR, entryPoint, A1),
-    AROS_LHA(APTR, fallBack, A2),
-    AROS_LHA(struct TagItem *, tagList, A3),
-    struct ExecBase *, SysBase, 6, Exec)
+		 AROS_LHA(struct Task *, task, A0),
+		 AROS_LHA(APTR, entryPoint, A1),
+		 AROS_LHA(APTR, fallBack, A2),
+		 AROS_LHA(struct TagItem *, tagList, A3),
+		 struct ExecBase *, SysBase, 6, Exec)
 {
-    AROS_LIBFUNC_INIT
+  AROS_LIBFUNC_INIT
+  IPTR args[8] = {0};
+  WORD numargs = 0;
+  struct AROSCPUContext *ctx;
 
-    IPTR args[8] = {0};
-    WORD numargs = 0;
-    
-    while(tagList)
-    {
-    	switch(tagList->ti_Tag)
+  D(kprintf("[PrepareContext] preparing task \"%s\" entry: %p fallback: %p\n",task->tc_Node.ln_Name,entryPoint,fallBack));
+ 
+  if (!(task->tc_Flags & TF_ETASK) )
+	  return FALSE;
+  
+  ctx = KrnCreateContext();
+  GetIntETask (task)->iet_Context = ctx;
+  if (!ctx)
+	  return FALSE;
+
+  while(tagList)
+  {
+	switch(tagList->ti_Tag)
 	{
-	    case TAG_MORE:
-	    	tagList = (struct TagItem *)tagList->ti_Data;
+	  case TAG_MORE:
+		tagList = (struct TagItem *)tagList->ti_Data;
 		continue;
 		
-	    case TAG_SKIP:
-	    	tagList += tagList->ti_Data;
+	  case TAG_SKIP:
+		tagList += tagList->ti_Data;
 		break;
 		
-	    case TAG_DONE:
-	    	tagList = NULL;
-    	    	break;
-		
-	    #define HANDLEARG(x) \
-	    case TASKTAG_ARG ## x: \
-	    	args[x - 1] = (IPTR)tagList->ti_Data; \
-		if (x > numargs) numargs = x; \
+	  case TAG_DONE:
+		tagList = NULL;
 		break;
 		
-	    HANDLEARG(1)
-	    HANDLEARG(2)
-	    HANDLEARG(3)
-	    HANDLEARG(4)
-	    HANDLEARG(5)
-	    HANDLEARG(6)
-	    HANDLEARG(7)
-	    HANDLEARG(8)
-	    	
-	    #undef HANDLEARG
+#define HANDLEARG(x) \
+case TASKTAG_ARG ## x: \
+args[x - 1] = (IPTR)tagList->ti_Data; \
+if (x > numargs) numargs = x; \
+break;
+		
+		HANDLEARG(1)
+		HANDLEARG(2)
+		HANDLEARG(3)
+		HANDLEARG(4)
+		HANDLEARG(5)
+		HANDLEARG(6)
+		HANDLEARG(7)
+		HANDLEARG(8)
+		
+#undef HANDLEARG
 	}
 	
 	if (tagList) tagList++;
-    }
-    
-    /*
-	There is not much to do here, or at least that is how it
-	appears. Most of the work is done in the sigcore.h macros.
-    */
+  }
+  if (numargs)
+  {
 
-    if (!(task->tc_Flags & TF_ETASK) )
-	return FALSE;
-
-    GetIntETask (task)->iet_Context = AllocTaskMem (task
-	, SIZEOF_ALL_REGISTERS
-	, MEMF_PUBLIC|MEMF_CLEAR
-    );
-
-    if (!GetIntETask (task)->iet_Context)
-	return FALSE;
-
-    if (numargs)
-    {
-    	#ifdef PREPARE_INITIAL_ARGS
-	
-	PREPARE_INITIAL_ARGS(task, args, numargs);
-	
-	#else
-	
 	/* Assume C function gets all param on stack */
 	
 	while(numargs--)
 	{
-	    _PUSH(GetSP(task), args[numargs]);
+	  D(kprintf("  arg %i: %p\n",numargs, args[numargs]));
+	  _PUSH(GetSP(task), args[numargs]);
 	}
 	
-	#endif
-    }
+  }
+  
+  /* First we push the return address */
+  _PUSH(GetSP(task), fallBack);
+  
+  /* Then set up the context */
+  PREPARE_INITIAL_CONTEXT(ctx, GetSP(task), entryPoint);
 
-    #ifdef PREPARE_RETURN_ADDRESS
-    
-    PREPARE_RETURN_ADDRESS(task, fallBack);
-    
-    #else
-    
-    /* First we push the return address */
-    _PUSH(GetSP(task), fallBack);
-    
-    #endif
-    
-    /* Then set up the frame to be used by Dispatch() */
-    PREPARE_INITIAL_FRAME(GetSP(task), entryPoint);
-    PREPARE_INITIAL_CONTEXT(task, entryPoint);
+  D(kprintf("Prepared task context: *****\n"));
+  D(PRINT_CPUCONTEXT(ctx));
 
-    /* We return the new stack pointer back to the caller. */
-    return TRUE;
-
-    AROS_LIBFUNC_EXIT
+  return TRUE;
+  
+  AROS_LIBFUNC_EXIT
 }

@@ -1,25 +1,20 @@
 /*
-    Copyright © 1995-2009, The AROS Development Team. All rights reserved.
-    $Id: shutdowna.c 29957 2008-11-01 19:06:57Z neil $
+    Copyright © 1995-2001, The AROS Development Team. All rights reserved.
+    $Id: coldreboot.c 18441 2003-07-07 20:01:00Z hkiel $
 
     Desc: ShutdownA() - Shut down the operating system.
     Lang: english
 */
-#define DEBUG 0
 
 #include <aros/debug.h>
-#include <proto/exec.h>
+#include "../kernel/hostinterface.h"
 
-#include <signal.h>
-#include <unistd.h>
-
-/* These variables come from bootstrap */
-extern char bootstrapdir[];
-extern char **Kernel_ArgV;
+extern struct HostInterface *HostIFace;
 
 /*****************************************************************************
 
     NAME */
+#include <proto/exec.h>
 
 	AROS_LH1(ULONG, ShutdownA,
 
@@ -57,21 +52,11 @@ extern char **Kernel_ArgV;
 {
     AROS_LIBFUNC_INIT
 
-    struct MsgPort *port;
-    
-    switch(action) {
-    case SD_ACTION_POWEROFF:
-	raise(SIGINT);
-	break;
-    case SD_ACTION_COLDREBOOT:
-	D(bug("[exec] Machine reboot, re-executing %s\n", Kernel_ArgV[0]));
-	/* SIGARLM during execvp() aborts the whole thing.
-           In order to avoid it we Disable() */
-	Disable();
-	chdir(bootstrapdir);
-	execvp(Kernel_ArgV[0], Kernel_ArgV);
-	Enable();
-    }
+    /* WinAPI CreateProcess() call may silently abort if scheduler attempts task switching
+       while it's running. There's no sense in this beyond this point, so we simply Disable() */
+    Disable();
+    HostIFace->_Shutdown(action);
+    Enable();
     return 0;
 
     AROS_LIBFUNC_EXIT
