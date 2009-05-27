@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include "hostinterface.h"
+#include "syscall.h"
 
 #define STACK_SIZE 4096
 
@@ -82,8 +83,8 @@ struct KernelInterface {
     long (*core_init)(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, APTR *KernelBasePointer);
     long (*core_intr_disable)(void);
     long (*core_intr_enable)(void);
-    void (*core_syscall)(unsigned long n);
     unsigned char (*core_is_super)(void);
+    void (*core_syscall)(syscall_id_t n);
 };
 
 extern struct HostInterface *HostIFace;
@@ -121,15 +122,11 @@ extern int sleep_state;
 extern struct ExecBase **SysBasePtr;
 extern struct KernelBase **KernelBasePtr;
 
-/*
-void core_Dispatch(CONTEXT *regs);
-void core_Switch(CONTEXT *regs);
-void core_Schedule(CONTEXT *regs);
-void core_ExitInterrupt(CONTEXT *regs);
-void core_Cause(struct ExecBase *SysBase);
-long core_intr_enable(void);
-*/
+void core_Dispatch(ucontext_t *last_ctx, ucontext_t *next_ctx);
+void core_Switch(ucontext_t *last_ctx, ucontext_t *next_ctx);
+void core_Schedule(ucontext_t *last_ctx, ucontext_t *next_ctx);
 void core_ExitInterrupt(ucontext_t *last_ctx, ucontext_t *next_ctx);
+void core_Cause(struct ExecBase *SysBase);
 void core_intr_enable(void);
 
 #endif

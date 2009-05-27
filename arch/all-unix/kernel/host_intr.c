@@ -79,6 +79,18 @@ sem_t switcher_sem;
 ucontext_t last_ctx;
 ucontext_t next_ctx;
 
+syscall_id_t syscall;
+
+void core_syscall(syscall_id_t type) {
+    syscall = type;
+
+    pthread_mutex_lock(&irq_lock);
+    irq_bits |= 0x2;
+    pthread_mutex_unlock(&irq_lock);
+
+    pthread_cond_signal(&irq_cond);
+}
+
 static void *timer_entry(void *arg) {
     struct timespec ts;
 
@@ -126,12 +138,33 @@ static void *switcher_entry(void *arg) {
             sem_wait(&switcher_sem);
         }
 
-        /* if interrupts are enabled, then its time to schedule a new task */
-        if (irq_enabled) {
-            in_supervisor++;
-            core_ExitInterrupt(&last_ctx, &next_ctx);
-            in_supervisor--;
+        in_supervisor++;
+
+        if (irq_bits_current & 0x2) {
+            switch (syscall) {
+                case sc_CAUSE:
+                    core_Cause(*SysBasePtr);
+                    break;
+
+                case sc_DISPATCH:
+                    core_Dispatch(&last_ctx, &next_ctx);
+                    break;
+
+                case sc_SWITCH:
+                    core_Switch(&last_ctx, &next_ctx);
+                    break;
+
+                case sc_SCHEDULE:
+                    core_Schedule(&last_ctx, &next_ctx);
+                    break;
+            }
         }
+
+        /* if interrupts are enabled, then its time to schedule a new task */
+        if (irq_enabled)
+            core_ExitInterrupt(&last_ctx, &next_ctx);
+
+        in_supervisor--;
 
         /* if we're sleeping then we don't want to wake the main task just now */
         if (sleep_state != ss_RUNNING)

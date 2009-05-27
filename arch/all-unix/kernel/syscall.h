@@ -6,6 +6,6 @@ typedef enum {
     sc_DISPATCH,
     sc_SWITCH,
     sc_SCHEDULE
-} syscall_type_t;
+} syscall_id_t;
 
 #endif /*SYSCALL_H_*/

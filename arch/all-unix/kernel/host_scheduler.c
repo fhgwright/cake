@@ -2,6 +2,8 @@
 
 #include <aros/system.h>
 
+#define _GNU_SOURCE 1
+
 #include <stddef.h>
 #include <stdio.h>
 #include <ucontext.h>
@@ -55,14 +57,13 @@ static inline void core_LeaveInterrupt(void)
 /*
  * Task dispatcher. Basically it may be the same one no matter what scheduling algorithm is used
  */
-#if 0
-void core_Dispatch(CONTEXT *regs)
+void core_Dispatch(ucontext_t *last_ctx, ucontext_t *next_ctx)
 {
     struct ExecBase *SysBase = *SysBasePtr;
     struct Task *task;
     struct AROSCPUContext *ctx;
 
-    Ints_Enabled = 0;
+    irq_enabled = 0;
     D(bug("[KRN] core_Dispatch()\n"));
 
     /* 
@@ -70,19 +71,19 @@ void core_Dispatch(CONTEXT *regs)
      */
     if (IsListEmpty(&SysBase->TaskReady))
     {
-        if (!Sleep_Mode) {
+        if (sleep_state != ss_RUNNING) {
             SysBase->IdleCount++;
             SysBase->AttnResched |= ARF_AttnSwitch;
             DSLEEP(bug("[KRN] TaskReady list empty. Sleeping for a while...\n"));
             /* We are entering sleep mode */
-	    Sleep_Mode = SLEEP_MODE_PENDING;
+	    sleep_state = ss_SLEEP_PENDING;
         }
 
         core_LeaveInterrupt();
         return;
     }
 
-    Sleep_Mode = SLEEP_MODE_OFF;
+    sleep_state = ss_RUNNING;
     SysBase->DispCount++;
         
     /* Get the first task from the TaskReady list, and populate it's settings through Sysbase */
@@ -106,22 +107,19 @@ void core_Dispatch(CONTEXT *regs)
         
     /* Restore the task's state */
     ctx = (struct AROSCPUContext *)GetIntETask(task)->iet_Context;
-    CopyMemory(regs, ctx, sizeof(CONTEXT));
-    *LastErrorPtr = ctx->LastError;
+    CopyMemory(next_ctx, ctx, sizeof(ucontext_t));
         
     /* Leave interrupt and jump to the new task */
     core_LeaveInterrupt();
 }
-#endif
 
-#if 0
-void core_Switch(CONTEXT *regs)
+void core_Switch(ucontext_t *last_ctx, ucontext_t *next_ctx)
 {
     struct ExecBase *SysBase = *SysBasePtr;
     struct Task *task;
     struct AROSCPUContext *ctx;
     
-    Ints_Enabled = 0;
+    irq_enabled = 0;
     D(bug("[KRN] core_Switch()\n"));
     
     task = SysBase->ThisTask;
@@ -130,12 +128,11 @@ void core_Switch(CONTEXT *regs)
         
     /* Copy current task's context into the ETask structure */
     ctx = (struct AROSCPUContext *)GetIntETask(task)->iet_Context;
-    CopyMemory(ctx, regs, sizeof(CONTEXT));
-    ctx->LastError = *LastErrorPtr;
+    CopyMemory(ctx, last_ctx, sizeof(ucontext_t));
         
     /* store IDNestCnt into tasks's structure */  
     task->tc_IDNestCnt = SysBase->IDNestCnt;
-    task->tc_SPReg = (APTR)regs->Esp;
+    task->tc_SPReg = (APTR)last_ctx->uc_mcontext.gregs[REG_ESP];
         
     /* And enable interrupts */
     SysBase->IDNestCnt = -1;
@@ -146,23 +143,21 @@ void core_Switch(CONTEXT *regs)
         task->tc_Switch(SysBase);
     }
     
-    core_Dispatch(regs);
+    core_Dispatch(last_ctx, next_ctx);
 }
-#endif
 
 
-#if 0
 /*
  * Schedule the currently running task away. Put it into the TaskReady list 
  * in some smart way. This function is subject of change and it will be probably replaced
  * by some plugin system in the future
  */
-void core_Schedule(CONTEXT *regs)
+void core_Schedule(ucontext_t *last_ctx, ucontext_t *next_ctx)
 {
     struct ExecBase *SysBase = *SysBasePtr;
     struct Task *task;
 
-    Ints_Enabled = 0;
+    irq_enabled = 0;
     D(bug("[KRN] core_Schedule()\n"));
             
     task = SysBase->ThisTask;
@@ -200,17 +195,15 @@ void core_Schedule(CONTEXT *regs)
     Enqueue(&SysBase->TaskReady, (struct Node *)task);
     
     /* Select new task to run */
-    core_Switch(regs);
+    core_Switch(last_ctx, next_ctx);
 }
-#endif
 
 
-#if 0
 /*
  * Leave the interrupt. This function receives the register frame used to leave the supervisor
  * mode. It reschedules the task if it was asked for.
  */
-void core_ExitInterrupt(CONTEXT *regs) 
+void core_ExitInterrupt(ucontext_t *last_ctx, ucontext_t *next_ctx)
 {
     struct ExecBase *SysBase = *SysBasePtr;
     char TDNestCnt;
@@ -224,8 +217,8 @@ void core_ExitInterrupt(CONTEXT *regs)
             core_Cause(SysBase);
         }
     
-        if (Sleep_Mode) {
-            core_Dispatch(regs);
+        if (sleep_state != ss_RUNNING) {
+            core_Dispatch(last_ctx, next_ctx);
             return;
         }
     
@@ -241,15 +234,13 @@ void core_ExitInterrupt(CONTEXT *regs)
             if (SysBase->AttnResched & ARF_AttnSwitch)
             {
                 DS(bug("[Scheduler] Rescheduling\n"));
-                core_Schedule(regs);
+                core_Schedule(last_ctx, next_ctx);
             }
         }
     }
     	DS(else printf("[Scheduler] SysBase is NULL\n");)
 }
-#endif
 
-#if 0
 void core_Cause(struct ExecBase *SysBase)
 {
     struct IntVector *iv = &SysBase->IntVects[INTB_SOFTINT];
@@ -260,4 +251,3 @@ void core_Cause(struct ExecBase *SysBase)
         iv->iv_Code(0, 0, 0, iv->iv_Code, SysBase);
     }
 }
-#endif
