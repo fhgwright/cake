@@ -85,6 +85,9 @@ struct KernelInterface {
     long (*core_intr_enable)(void);
     unsigned char (*core_is_super)(void);
     void (*core_syscall)(syscall_id_t n);
+    int (*core_get_context_size)(void);
+    void (*core_print_context)(void *vctx);
+    void (*core_prepare_context)(void *vctx, void *sp, void *pc);
 };
 
 extern struct HostInterface *HostIFace;

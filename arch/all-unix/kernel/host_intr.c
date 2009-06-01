@@ -40,7 +40,6 @@
 #include "kernel_intern.h"
 #include "syscall.h"
 #include "host_debug.h"
-#include "cpucontext.h"
 
 struct ExecBase **SysBasePtr;
 struct KernelBase **KernelBasePtr;

@@ -15,7 +15,6 @@
 #include "etask.h"
 #include "kernel_intern.h"
 #include "host_debug.h"
-#include "cpucontext.h"
 
 /* We have to redefine these flags here because including exec_intern.h causes conflicts
    between dos.h and WinAPI headers. This needs to be fixed - Pavel Fedin <sonic_amiga@rambler.ru */

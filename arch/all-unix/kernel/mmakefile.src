@@ -7,11 +7,11 @@ include $(TOP)/config/make.cfg
 %build_module mmake=kernel-kernel-linux 	\
   modname=kernel modtype=resource		\
   cflags="$(CFLAGS) -I$(TOP)/rom/exec"		\
-  files="kernel_init debug intr scheduler mmu" uselibs="rom"
+  files="kernel_init debug context intr scheduler mmu" uselibs="rom"
 
 NATIVE_BINDIR := $(BINDIR)/Libs/Host
 NATIVE_DIR := $(GENDIR)/native
-NATIVE_OBJS := $(NATIVE_DIR)/host_intr.o $(NATIVE_DIR)/host_scheduler.o
+NATIVE_OBJS := $(NATIVE_DIR)/host_intr.o $(NATIVE_DIR)/host_scheduler.o $(NATIVE_DIR)/host_context.o
 SO_LDFLAGS := -shared
 
 #MM
