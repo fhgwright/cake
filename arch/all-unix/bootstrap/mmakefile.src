@@ -30,7 +30,7 @@ KOBJS_HANDLERS  := $(KOBJSDIR)/emul_handler.o	     $(KOBJSDIR)/packet_handler.o	
 KOBJS := $(K_RES) $(KOBJS_HANDLERS) $(KOBJS_LIBS) $(KOBJS_DEVICES) $(KOBJS_HIDD)
 
 #MM- AROS-unix-i386: kernel-link-unix workbench-hosted kernel-bootstrap-unix arch-common-boot-generatebootsig
-#MM kernel-link-unix: kernel-kernel-unix-kobj	    \
+#MM kernel-link-unix: kernel-kernel-linux-kobj	    \
 #MM		      kernel-bootloader-unix-kobj	    \
 #MM		      kernel-hostlib-unix-kobj	    \
 #MM		      kernel				    \
