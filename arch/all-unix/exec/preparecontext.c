@@ -17,7 +17,6 @@
 #include <aros/kernel.h>
 #include "etask.h"
 #include "exec_util.h"
-#include "../kernel/cpucontext.h"
 
 #include <aros/libcall.h>
 #include <proto/arossupport.h>
@@ -41,7 +40,7 @@ AROS_LH4(BOOL, PrepareContext,
   AROS_LIBFUNC_INIT
   IPTR args[8] = {0};
   WORD numargs = 0;
-  struct AROSCPUContext *ctx;
+  void *ctx;
 
   D(kprintf("[PrepareContext] preparing task \"%s\" entry: %p fallback: %p\n",task->tc_Node.ln_Name,entryPoint,fallBack));
  
@@ -106,10 +105,10 @@ break;
   _PUSH(GetSP(task), fallBack);
   
   /* Then set up the context */
-  PREPARE_INITIAL_CONTEXT(ctx, GetSP(task), entryPoint);
+  KrnPrepareContext(ctx, GetSP(task), entryPoint);
 
   D(kprintf("Prepared task context: *****\n"));
-  D(PRINT_CPUCONTEXT(ctx));
+  D(KrnPrintContext(ctx));
 
   return TRUE;
   
