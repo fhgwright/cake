@@ -3,11 +3,11 @@ include $(TOP)/config/make.cfg
 
 USER_INCLUDES	:= -I$(GENINCDIR)
 USER_CFLAGS	:= -I$(SRCDIR)/rom/dos -I$(SRCDIR)/$(CURDIR)/..
-%build_archspecific \
-  mainmmake=kernel-dos maindir=rom/dos \
-  arch=unix \
-  files="runprocess" \
-  compiler=host
+#%build_archspecific \
+#  mainmmake=kernel-dos maindir=rom/dos \
+#  arch=unix \
+#  files="runprocess" \
+#  compiler=host
 
 TESTS		:= runprocess
 
