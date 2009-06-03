@@ -6,8 +6,9 @@
 */
 
 #define DEBUG 0
-#include <aros/debug.h>
 
+#include <aros/debug.h>
+#include <aros/kernel.h>
 #include <exec/types.h>
 #include <exec/memory.h>
 #include <exec/resident.h>
@@ -15,6 +16,7 @@
 #include <utility/tagitem.h>
 #include <proto/exec.h>
 #include <proto/bootloader.h>
+#include <proto/kernel.h>
 #include <proto/utility.h>
 
 #include <aros/symbolsets.h>
@@ -22,22 +24,22 @@
 #include "bootloader_intern.h"
 #include LC_LIBDEFS_FILE
 
-#include <ctype.h>
 #include <string.h>
-
-/* These come from exec/init.c */
-extern char *Kernel_Args;
-extern char *BootLoader_Name;
 
 static int GM_UNIQUENAME(Init)(LIBBASETYPEPTR BootLoaderBase)
 {
-    D(bug("[Bootldr] Init\n"));
+    struct TagItem *bootinfo;
+    STRPTR Kernel_Args;
+
+    D(bug("[BootLdr] Init\n"));
+
     BootLoaderBase->Flags = 0;
-    
     NEWLIST(&(BootLoaderBase->Args));
 
-    D(if (BootLoader_Name) bug("[BootLdr] Init: Loadername = %s\n",BootLoader_Name);)
-    BootLoaderBase->LdrName = BootLoader_Name;
+    bootinfo = KrnGetBootInfo();
+    BootLoaderBase->LdrName = (STRPTR)GetTagData(KRN_BootLoader, 0, bootinfo);
+
+    Kernel_Args = (STRPTR)GetTagData(KRN_CmdLine, 0, bootinfo);
     if (Kernel_Args) {
 	    STRPTR cmd,buff;
 	    ULONG temp;
@@ -68,6 +70,7 @@ static int GM_UNIQUENAME(Init)(LIBBASETYPEPTR BootLoaderBase)
 		BootLoaderBase->Flags |= BL_FLAGS_CMDLINE;
 	    }
 	}
+
     return TRUE;
 }
 
