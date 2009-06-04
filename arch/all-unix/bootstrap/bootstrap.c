@@ -27,13 +27,12 @@
 static unsigned char __bss_track[32768];
 struct TagItem km[64];
 char bootstrapdir[PATH_MAX];
-char SystemVersion[256];
 
 char *bootstrap_bin;
 char **bootstrap_args;
 char *kernel_bin = DEFAULT_KERNEL;
 
-char cmdline[256];
+char kernel_args[256];
 
 typedef int (*kernel_entry_fun_t)(struct TagItem *);
 
@@ -55,8 +54,7 @@ struct HostInterface HostIFace = {
 void *SysBase;
 
 static void usage (void) {
-    printf ("AROS for Linux\n"
-            "usage: %s [options] [--] [kernel arguments]\n"
+    printf ("usage: %s [options] [--] [kernel arguments]\n"
 	    "Availible options:\n"
             " -h                 show this page\n"
             " -m <size>          allocate <size> Megabytes of memory for AROS\n"
@@ -69,6 +67,10 @@ static void usage (void) {
 }
 
 int main (int argc, char **argv) {
+    struct utsname utsname;
+    char host_version[256];
+    char opt;
+    char *c;
     char *error;
     unsigned long BadSyms;
     struct TagItem *t;
@@ -77,8 +79,8 @@ int main (int argc, char **argv) {
     int i;
     unsigned int memSize = DEFAULT_MEMSIZE;
     char *KernelArgs = NULL;
-    struct utsname utsname;
-    char opt;
+
+    printf("AROS for Linux, built " __DATE__ "\n");
 
     getcwd(bootstrapdir, PATH_MAX);
     bootstrap_bin = argv[0];
@@ -100,23 +102,20 @@ int main (int argc, char **argv) {
         }
     }
 
-    D(printf("[Bootstrap] %ld arguments processed\n", optind));
-
-    KernelArgs = cmdline;
-    for (i = optind; i < argc; i++) {
-        strcpy(KernelArgs, argv[i]);
-        KernelArgs += strlen(argv[i]);
-        *KernelArgs++ = ' ';
-    }
-    KernelArgs--;
-    *KernelArgs = '\0';
-
-    D(printf("[Bootstrap] Kernel arguments: %s\n", cmdline));
-
     uname(&utsname);
-    sprintf(SystemVersion, "%s %s %s %s %s", utsname.sysname, utsname.nodename, utsname.release, utsname.version, utsname.machine);
-    D(printf("[Bootstrap] OS version: %s\n", SystemVersion));
+    snprintf(host_version, sizeof(host_version), "%s %s %s %s %s", utsname.sysname, utsname.nodename, utsname.release, utsname.version, utsname.machine);
+    printf("[boot] OS version: %s\n", host_version);
     
+    c = kernel_args;
+    for (i = optind; i < argc; i++) {
+        strcpy(c, argv[i]);
+        c += strlen(argv[i]);
+        *c++ = ' ';
+    }
+    *--c = '\0';
+
+    printf("[boot] Kernel arguments: %s\n", kernel_args);
+
     if (!stat("..\\AROS.boot", &st)) {
             chdir("..");
     }
@@ -173,11 +172,11 @@ int main (int argc, char **argv) {
     tag++;
 
     tag->ti_Tag = KRN_BootLoader;
-    tag->ti_Data = SystemVersion;
+    tag->ti_Data = host_version;
     tag++;
 
     tag->ti_Tag = KRN_CmdLine;
-    tag->ti_Data = cmdline;
+    tag->ti_Data = kernel_args;
     tag++;
     
     tag->ti_Tag = KRN_HostInterface;
