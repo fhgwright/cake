@@ -4,6 +4,8 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
+#include <limits.h>
+
 #include <aros/system.h>
 
 #include <aros/kernel.h>
@@ -19,10 +21,10 @@
 
 static unsigned char __bss_track[32768];
 struct TagItem km[64];
-char bootstrapdir[MAX_PATH];
+char bootstrapdir[PATH_MAX];
 char SystemVersion[256];
 char *bootstrapname;
-char *cmdline;
+char **args;
 
 typedef int (*kernel_entry_fun_t)(struct TagItem *);
 
@@ -56,9 +58,9 @@ int main(int argc, char ** argv)
   char *KernelArgs = NULL;
   struct utsname utsname;
 
-  GetCurrentDirectory(MAX_PATH, bootstrapdir);
+  getcwd(bootstrapdir, PATH_MAX);
   bootstrapname = argv[0];
-  cmdline = GetCommandLine();
+  args = &argv[1];
 
   while (i < argc)
   {
@@ -73,7 +75,7 @@ int main(int argc, char ** argv)
             " -m <size>          allocate <size> Megabytes of memory for AROS\n"
             "                    (default is 64M)\n"
             " -k <file>          use <file> as a kernel\n"
-            "                    (default is boot\\aros-mingw32)\n"
+            "                    (default is boot\\aros-unix)\n"
             " --help             same as '-h'\n"
             " --memsize <size>   same as '-m <size>'\n"
             " --kernel <file>    same as '-k'\n"

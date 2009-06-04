@@ -6,6 +6,8 @@
  $Id$
  */
 
+#include <stdint.h>
+
 #define SHT_PROGBITS    1
 #define SHT_SYMTAB  2
 #define SHT_STRTAB  3
@@ -94,7 +96,7 @@ struct relo
   unsigned int info;     /* Type of the relocation */
 };
 
-int load_elf_file(void *, ULONG_PTR);
+int load_elf_file(void *, intptr_t);
 void *kernel_lowest();
 void *kernel_highest();
 void set_base_address(void *tracker, void ** sysbaseaddr);

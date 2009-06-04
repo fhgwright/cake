@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <dlfcn.h>
 
 
 #include "hostlib.h"

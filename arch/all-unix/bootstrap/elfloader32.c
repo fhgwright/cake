@@ -9,13 +9,16 @@
 #include "elfloader32.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <strings.h>
+#include <string.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #define D(X)
 #define DREL(x)
 
 #define kprintf printf
+
+#define ULONG_PTR intptr_t
 
 /*
  * These two pointers are used by the ELF loader to claim for memory ranges for both
