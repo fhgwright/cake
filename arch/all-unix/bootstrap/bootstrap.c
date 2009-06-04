@@ -147,7 +147,7 @@ int main (int argc, char **argv) {
     }
     D(printf("[Bootstrap] RAM memory allocated: %p-%p (%lu bytes)\n", memory, memory + memlen, memlen));
     
-    kernel_entry_fun_t kernel_entry_fun = kernel_lowest();
+    kernel_entry_fun_t kernel_entry_fun = kernel_entry();
 
     //fill in kernel message
     struct TagItem *tag = km;

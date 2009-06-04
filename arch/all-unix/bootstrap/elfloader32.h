@@ -99,6 +99,7 @@ struct relo
 int load_elf_file(void *, intptr_t);
 void *kernel_lowest();
 void *kernel_highest();
+void *kernel_entry();
 void set_base_address(void *tracker, void ** sysbaseaddr);
 
 #endif /*ELFLOADER_H_*/

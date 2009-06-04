@@ -12,8 +12,9 @@
 #include <string.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/mman.h>
 
-#define D(X)
+#define D(X) X
 #define DREL(x)
 
 #define kprintf printf
@@ -26,6 +27,7 @@
  */
 char *kbase;
 char *ptr_ro;
+char *entry = NULL;
 void ** SysBaseAddr;
 
 struct _bss_tracker {
@@ -41,6 +43,11 @@ void *kernel_lowest()
 void *kernel_highest()
 {
     return ptr_ro - 1;
+}
+
+void *kernel_entry()
+{
+    return entry;
 }
 
 void set_base_address(void *tracker, void ** sysbaseaddr)
@@ -175,7 +182,7 @@ static int relocate(struct elfheader *eh, struct sheader *sh, long shrel_idx, UL
 		
 	case SHN_ABS:
 	    if (SysBase_sym == NULL) {
-	        if (strncmp(name, "SysBase", 8) == 0) {
+                if (strncmp(name, "SysBase", 8) == 0) {
 		    DREL(kprintf("[ELF Loader] got SysBase\n"));
 			SysBase_sym = sym;
 			goto SysBase_yes;
@@ -273,7 +280,14 @@ int load_elf_file(void *file, ULONG_PTR virt)
 	    {
 		kprintf("[ELF Loader] Error at loading of the hunk!\n");
 	    }
-	        D(else printf("[ELF Loader] shared mem@0x%x\n", sh[i].addr));
+            D(else printf("[ELF Loader] shared mem@0x%x\n", sh[i].addr));
+
+            if (sh[i].flags & SHF_EXECINSTR && entry == NULL) {
+                entry = sh[i].addr;
+                D(printf("[ELF Loader] first executable section, entry point is 0x%x\n", entry));
+                if (mprotect(sh[i].addr, sh[i].size, PROT_READ | PROT_EXEC))
+                    perror("mprotect");
+            }
 	}
     }
   
