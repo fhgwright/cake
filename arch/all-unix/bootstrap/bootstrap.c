@@ -19,7 +19,7 @@
 #include "shutdown.h"
 #include "../kernel/hostinterface.h"
 
-#define D(x)
+#define D(x) x
 
 #define DEFAULT_KERNEL  "boot/aros-unix"
 #define DEFAULT_MEMSIZE (64)
@@ -111,7 +111,7 @@ int main (int argc, char **argv) {
     KernelArgs--;
     *KernelArgs = '\0';
 
-    D(printf("[Bootstrap] Kernel arguments: %s\n", KernelArgs));
+    D(printf("[Bootstrap] Kernel arguments: %s\n", cmdline));
 
     uname(&utsname);
     sprintf(SystemVersion, "%s %s %s %s %s", utsname.sysname, utsname.nodename, utsname.release, utsname.version, utsname.machine);
