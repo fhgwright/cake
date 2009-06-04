@@ -16,7 +16,7 @@ void Host_Shutdown(unsigned long action)
     case SD_ACTION_COLDREBOOT:
         D(printf("[Shutdown] Cold reboot, dir: %s, name: %s, command line: %s\n", bootstrapdir, bootstrapname, cmdline));
         chdir(bootstrapdir);
-        execvp(bootstrapname, cmdline);
+        execvp(bootstrap_bin, bootstrap_args);
         D(printf("[Shutdown] Unable to re-run AROS: %s\n", strerror(errno)));
     }
 }
