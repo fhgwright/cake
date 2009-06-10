@@ -219,26 +219,24 @@ static int relocate(struct elfheader *eh, struct sheader *sh, long shrel_idx, UL
 }
 
 int load_elf_image(void *image, void *memory) {
-}
-
-int load_elf_file(FILE *file, void *memory) {
-    struct elfheader eh;
+    struct elfheader *eh;
     struct sheader *sh;
     unsigned long i;
     size_t ksize = 0;
     ULONG_PTR virt = 0;
 
     D(kprintf("[elf] Loading ELF module from virtual address %p\n", virt));
-  
-    /* Check the header of ELF file */
-    if (!read_block(file, 0, &eh, sizeof(eh)) ||
-	!check_header(&eh) ||
-	!(sh = load_block(file, eh.shoff, eh.shnum * eh.shentsize))) {
-	kprintf("[elf] Wrong module header, aborting.\n");
-	return;
+
+    eh = (struct elfheader *) image;
+    if (!check_header(eh)) {
+        printf("[elf] this is not an ELF image\n");
+        return -1;
     }
+
+#if 0
+    sh = (struct sheader *) (image + eh->shoff);
   
-    for(i = 0; i < eh.shnum; i++) {
+    for(i = 0; i < eh->shnum; i++) {
         if (sh[i].flags & SHF_ALLOC)
             ksize += (sh[i].size + sh[i].addralign - 1);
     }
@@ -252,7 +250,7 @@ int load_elf_file(FILE *file, void *memory) {
     D(printf("[elf] Kernel memory allocated: %p-%p (%lu bytes)\n", kbase, kbase + ksize, ksize));
   
     /* Iterate over the section header in order to prepare memory and eventually load some hunks */
-    for (i=0; i < eh.shnum; i++)
+    for (i=0; i < eh->shnum; i++)
     {
         /* Load the symbol and string tables */
 	if (sh[i].type == SHT_SYMTAB || sh[i].type == SHT_STRTAB)
@@ -279,7 +277,7 @@ int load_elf_file(FILE *file, void *memory) {
     }
   
     /* For every loaded section perform the relocations */
-    for (i=0; i < eh.shnum; i++)
+    for (i=0; i < eh->shnum; i++)
     {
 	if ((sh[i].type == SHT_RELA || sh[i].type == SHT_REL) && sh[sh[i].info].addr)
 	{
@@ -294,6 +292,7 @@ int load_elf_file(FILE *file, void *memory) {
 	  free_block(sh[i].addr);
     }
     free_block(sh);
+#endif
     return 1;
 }
 
