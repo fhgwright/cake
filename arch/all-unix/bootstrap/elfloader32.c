@@ -232,7 +232,7 @@ SysBase_no:     s = sym->value;
   return 1;
 }
 
-int load_elf_file(void *file, ULONG_PTR virt)
+int load_elf_file(FILE *file, ULONG_PTR virt)
 {
     struct elfheader eh;
     struct sheader *sh;

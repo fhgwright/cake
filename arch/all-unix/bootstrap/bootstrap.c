@@ -7,6 +7,7 @@
 #include <limits.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 
 #include <aros/system.h>
 
@@ -70,15 +71,16 @@ int main (int argc, char **argv) {
     struct utsname utsname;
     char host_version[256];
     char opt;
+    uint32_t memsize = DEFAULT_MEMSIZE << 20;
     char *c;
+    FILE *kernel;
+
     char *error;
     unsigned long BadSyms;
     struct TagItem *t;
     int x;
     struct stat st;
     int i;
-    unsigned int memSize = DEFAULT_MEMSIZE;
-    char *KernelArgs = NULL;
 
     printf("AROS for Linux, built " __DATE__ "\n");
 
@@ -89,7 +91,7 @@ int main (int argc, char **argv) {
     while ((opt = getopt(argc, argv, "m:k:h?")) >= 0) {
         switch (opt) {
             case 'm':
-                memSize = atoi(optarg);
+                memsize = atoi(optarg) << 20;
                 continue;
             
             case 'k':
@@ -116,35 +118,31 @@ int main (int argc, char **argv) {
 
     printf("[boot] Kernel arguments: %s\n", kernel_args);
 
-    if (!stat("..\\AROS.boot", &st)) {
-            chdir("..");
+    if (stat("../AROS.boot", &st) == 0) {
+        chdir("..");
     }
 
-    //load elf-kernel and fill in the bootinfo
-    void * file = fopen(kernel_bin, "rb");
-
-    if (!file)
-    {
-    	printf("[Bootstrap] unable to open kernel \"%s\"\n", kernel_bin);
-    	return -1;
+    kernel = fopen(kernel_bin, "rb");
+    if (kernel == NULL) {
+        fprintf(stderr, "[boot] unable to open kernel '%s': %s", kernel_bin, strerror(errno));
+        return -1;
     }
+
     set_base_address(__bss_track, &SysBase);
-    i = load_elf_file(file,0);
-    fclose(file);
+    i = load_elf_file(kernel, 0);
+    fclose(kernel);
     if (!i) {
             printf("[Bootstrap] Failed to load kernel \"%s\"\n", kernel_bin);
             return -1;
     }
-    D(printf("[Bootstrap] allocating working mem: %iMb\n",memSize));
+    D(printf("[Bootstrap] allocating working mem: %d bytes\n", memsize));
 
-    size_t memlen = memSize << 20;
-    void * memory = malloc(memlen);
-
+    void *memory = malloc(memsize);
     if (!memory) {
             printf("[Bootstrap] Failed to allocate RAM!\n");
             return -1;
     }
-    D(printf("[Bootstrap] RAM memory allocated: %p-%p (%lu bytes)\n", memory, memory + memlen, memlen));
+    D(printf("[Bootstrap] RAM memory allocated: %p-%p (%lu bytes)\n", memory, memory + memsize, memsize));
     
     kernel_entry_fun_t kernel_entry_fun = kernel_entry();
 
@@ -156,7 +154,7 @@ int main (int argc, char **argv) {
     tag++;
     
     tag->ti_Tag = KRN_MEMUpper;
-    tag->ti_Data = memory + memlen - 1;
+    tag->ti_Data = memory + memsize - 1;
     tag++;
 
     tag->ti_Tag = KRN_KernelLowest;
