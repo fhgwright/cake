@@ -55,14 +55,12 @@ struct HostInterface HostIFace = {
 
 static void usage (void) {
     printf ("usage: %s [options] [--] [kernel arguments]\n"
-	    "Availible options:\n"
-            " -h                 show this page\n"
-            " -m <size>          allocate <size> Megabytes of memory for AROS\n"
-            "                    (default is %d)\n"
-            " -k <file>          use <file> as a kernel\n"
-            "                    (default is %s)\n"
-            "\n"
-            "Please report bugs to the AROS development team. http://www.aros.org/\n",
+	    "availible options:\n"
+            " -h         show this help\n"
+            " -m <size>  allocate <size> megabytes of memory for AROS\n"
+            "                (default is %d)\n"
+            " -k <file>  use <file> as a kernel\n"
+            "                (default is %s)\n",
             bootstrap_bin, DEFAULT_MEMSIZE, DEFAULT_KERNEL);
 }
 
@@ -72,14 +70,9 @@ int main (int argc, char **argv) {
     char opt;
     uint32_t memsize = DEFAULT_MEMSIZE << 20;
     char *c;
-    FILE *kernel;
-
-    char *error;
-    unsigned long BadSyms;
-    struct TagItem *t;
-    int x;
-    struct stat st;
     int i;
+    struct stat st;
+    FILE *kernel;
 
     printf("AROS for Linux, built " __DATE__ "\n");
 
@@ -115,34 +108,33 @@ int main (int argc, char **argv) {
     }
     *--c = '\0';
 
-    printf("[boot] Kernel arguments: %s\n", kernel_args);
+    printf("[boot] kernel arguments: %s\n", kernel_args);
 
     if (stat("../AROS.boot", &st) == 0) {
         chdir("..");
     }
 
+    void *memory = malloc(memsize);
+    if (!memory) {
+            fprintf(stderr, "[boot] failed to allocate memory for system\n");
+            return -1;
+    }
+    printf("[boot] allocated 0x%x bytes at 0x%x for system memory\n", memsize, memory);
+    
     kernel = fopen(kernel_bin, "rb");
     if (kernel == NULL) {
-        fprintf(stderr, "[boot] unable to open kernel '%s': %s", kernel_bin, strerror(errno));
+        fprintf(stderr, "[boot] unable to open kernel '%s': %s\n", kernel_bin, strerror(errno));
         return -1;
     }
 
     set_base_address(__bss_track);
-    i = load_elf_file(kernel, 0);
+    if (load_elf_file(kernel, 0) != 0) {
+        fclose(kernel);
+        fprintf(stderr, "[boot] failed to load kernel '%s'\n", kernel_bin);
+        return -1;
+    }
     fclose(kernel);
-    if (!i) {
-            printf("[Bootstrap] Failed to load kernel \"%s\"\n", kernel_bin);
-            return -1;
-    }
-    D(printf("[Bootstrap] allocating working mem: %d bytes\n", memsize));
 
-    void *memory = malloc(memsize);
-    if (!memory) {
-            printf("[Bootstrap] Failed to allocate RAM!\n");
-            return -1;
-    }
-    D(printf("[Bootstrap] RAM memory allocated: %p-%p (%lu bytes)\n", memory, memory + memsize, memsize));
-    
     kernel_entry_fun_t kernel_entry_fun = kernel_entry();
 
     //fill in kernel message
