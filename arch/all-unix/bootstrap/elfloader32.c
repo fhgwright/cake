@@ -58,7 +58,7 @@ void set_base_address(void *tracker)
 /*
  * read_block interface. we want to read from files here
  */
-static int read_block(void *file, long offset, void *dest, long length)
+static int read_block(FILE *file, long offset, void *dest, long length)
 {
   fseek(file, offset, SEEK_SET);
   fread(dest,(size_t)length, 1, file);
@@ -68,7 +68,7 @@ static int read_block(void *file, long offset, void *dest, long length)
 /*
  * load_block also allocates teh memory
  */
-static void *load_block(void *file, long offset, long length)
+static void *load_block(FILE *file, long offset, long length)
 {
   void * dest = malloc(length);
   fseek(file, offset, SEEK_SET);
@@ -110,7 +110,7 @@ static int check_header(struct elfheader *eh)
 /*
  * Get the memory for chunk and load it
  */
-static int load_hunk(void *file, struct sheader *sh)
+static int load_hunk(FILE *file, struct sheader *sh)
 {
     void *ptr=(void*)0;
   
