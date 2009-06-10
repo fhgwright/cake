@@ -52,7 +52,6 @@ struct HostInterface HostIFace = {
     Host_Shutdown
 };
 
-void *SysBase;
 
 static void usage (void) {
     printf ("usage: %s [options] [--] [kernel arguments]\n"
@@ -128,7 +127,7 @@ int main (int argc, char **argv) {
         return -1;
     }
 
-    set_base_address(__bss_track, &SysBase);
+    set_base_address(__bss_track);
     i = load_elf_file(kernel, 0);
     fclose(kernel);
     if (!i) {

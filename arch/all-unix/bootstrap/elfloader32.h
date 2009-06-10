@@ -101,6 +101,6 @@ int load_elf_file(FILE *, intptr_t);
 void *kernel_lowest();
 void *kernel_highest();
 void *kernel_entry();
-void set_base_address(void *tracker, void ** sysbaseaddr);
+void set_base_address(void *tracker);
 
 #endif /*ELFLOADER_H_*/

@@ -28,7 +28,6 @@
 char *kbase;
 char *ptr_ro;
 char *entry = NULL;
-void ** SysBaseAddr;
 
 struct _bss_tracker {
   void *addr;
@@ -50,11 +49,10 @@ void *kernel_entry()
     return entry;
 }
 
-void set_base_address(void *tracker, void ** sysbaseaddr)
+void set_base_address(void *tracker)
 {
-  D(printf("[ELF Loader] set_base_address %p %p\n", tracker, sysbaseaddr));
+  D(printf("[ELF Loader] set_base_address %p\n", tracker));
   bss_tracker = (struct _bss_tracker *)tracker;
-  SysBaseAddr = sysbaseaddr;
 }
 
 /*
@@ -155,8 +153,6 @@ static int relocate(struct elfheader *eh, struct sheader *sh, long shrel_idx, UL
   unsigned int numrel = (unsigned long)shrel->size / (unsigned long)shrel->entsize;
   unsigned int i;
   
-  struct symbol *SysBase_sym = NULL;
-  
   DREL(kprintf("[ELF Loader] performing %d relocations, virtual address %p\n", numrel, virt));
   
   for (i=0; i<numrel; i++, rel++)
@@ -181,17 +177,7 @@ static int relocate(struct elfheader *eh, struct sheader *sh, long shrel_idx, UL
 	    return 0;
 		
 	case SHN_ABS:
-	    if (SysBase_sym == NULL) {
-                if (strncmp(name, "SysBase", 8) == 0) {
-		    DREL(kprintf("[ELF Loader] got SysBase\n"));
-			SysBase_sym = sym;
-			goto SysBase_yes;
-		} else
-		    goto SysBase_no;
-	    } else if (SysBase_sym == sym) {
-SysBase_yes:    s = (ULONG_PTR)SysBaseAddr;
-	    } else
-SysBase_no:     s = sym->value;
+            s = sym->value;
 	    break;
 		
 	default:
