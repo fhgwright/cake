@@ -218,6 +218,9 @@ static int relocate(struct elfheader *eh, struct sheader *sh, long shrel_idx, UL
   return 1;
 }
 
+int load_elf_image(void *image, void *memory) {
+}
+
 int load_elf_file(FILE *file, void *memory) {
     struct elfheader eh;
     struct sheader *sh;

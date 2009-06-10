@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <strings.h>
 #include <signal.h>
+#include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <sys/utsname.h>
 #include <sys/mman.h>
 #include <limits.h>
@@ -67,13 +69,11 @@ static void usage (void) {
 
 int main (int argc, char **argv) {
     struct utsname utsname;
-    char host_version[256];
-    char opt;
-    uint32_t memsize = DEFAULT_MEMSIZE << 20;
-    char *c;
-    int i;
+    char host_version[256], opt, *c;
+    uint32_t memsize = DEFAULT_MEMSIZE << 20, imagesize;
+    int i, fd;
     struct stat st;
-    FILE *kernel;
+    void *memory, *image;
 
     printf("AROS for Linux, built " __DATE__ "\n");
 
@@ -115,26 +115,41 @@ int main (int argc, char **argv) {
         chdir("..");
     }
 
-    void *memory = mmap(NULL, memsize, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    memory = mmap(NULL, memsize, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (!memory) {
             fprintf(stderr, "[boot] failed to allocate memory for system\n");
             return -1;
     }
     printf("[boot] allocated 0x%x bytes at 0x%x for system memory\n", memsize, memory);
     
-    kernel = fopen(kernel_bin, "rb");
-    if (kernel == NULL) {
+    fd = open(kernel_bin, O_RDONLY);
+    if (fd < 0) {
         fprintf(stderr, "[boot] unable to open kernel '%s': %s\n", kernel_bin, strerror(errno));
+        munmap(memory, memsize);
+        return -1;
+    }
+
+    imagesize = lseek(fd, 0, SEEK_END);
+    image = mmap(NULL, imagesize, PROT_READ, MAP_SHARED, fd, 0);
+    if (image == NULL) {
+        fprintf(stderr, "[boot] unable to map kernel image: %s\n", strerror(errno));
+        close(fd);
+        munmap(memory, memsize);
         return -1;
     }
 
     set_base_address(__bss_track);
-    if (load_elf_file(kernel, memory) != 0) {
-        fclose(kernel);
+
+    if (load_elf_image(image, memory) != 0) {
+        munmap(image, imagesize);
+        close(fd);
+        munmap(memory, memsize);
         fprintf(stderr, "[boot] failed to load kernel '%s'\n", kernel_bin);
         return -1;
     }
-    fclose(kernel);
+
+    munmap(image, memsize);
+    close(fd);
 
     kernel_entry_fun_t kernel_entry_fun = kernel_entry();
 
