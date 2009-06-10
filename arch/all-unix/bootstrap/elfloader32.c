@@ -271,8 +271,6 @@ int load_elf_file(FILE *file, ULONG_PTR virt)
             if (sh[i].flags & SHF_EXECINSTR && entry == NULL) {
                 entry = sh[i].addr;
                 D(printf("[ELF Loader] first executable section, entry point is 0x%x\n", entry));
-                if (mprotect(sh[i].addr, sh[i].size, PROT_READ | PROT_EXEC))
-                    perror("mprotect");
             }
 	}
     }

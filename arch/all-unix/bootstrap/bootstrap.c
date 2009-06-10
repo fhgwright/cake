@@ -4,6 +4,7 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
+#include <sys/mman.h>
 #include <limits.h>
 #include <unistd.h>
 #include <string.h>
@@ -114,7 +115,7 @@ int main (int argc, char **argv) {
         chdir("..");
     }
 
-    void *memory = malloc(memsize);
+    void *memory = mmap(NULL, memsize, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (!memory) {
             fprintf(stderr, "[boot] failed to allocate memory for system\n");
             return -1;
