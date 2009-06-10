@@ -129,7 +129,7 @@ int main (int argc, char **argv) {
     }
 
     set_base_address(__bss_track);
-    if (load_elf_file(kernel, 0) != 0) {
+    if (load_elf_file(kernel, memory) != 0) {
         fclose(kernel);
         fprintf(stderr, "[boot] failed to load kernel '%s'\n", kernel_bin);
         return -1;

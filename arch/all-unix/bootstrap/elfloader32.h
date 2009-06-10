@@ -97,7 +97,7 @@ struct relo
   unsigned int info;     /* Type of the relocation */
 };
 
-int load_elf_file(FILE *, intptr_t);
+int load_elf_file(FILE *, void *);
 void *kernel_lowest();
 void *kernel_highest();
 void *kernel_entry();

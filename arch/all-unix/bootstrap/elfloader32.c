@@ -51,7 +51,7 @@ void *kernel_entry()
 
 void set_base_address(void *tracker)
 {
-  D(printf("[ELF Loader] set_base_address %p\n", tracker));
+  D(printf("[elf] set_base_address %p\n", tracker));
   bss_tracker = (struct _bss_tracker *)tracker;
 }
 
@@ -95,13 +95,13 @@ static int check_header(struct elfheader *eh)
 	 eh->ident[3] != 'F'
 	 )
   {
-	D(kprintf("[ELF Loader] Not an ELF object\n"));
+	D(kprintf("[elf] Not an ELF object\n"));
 	return 0;
   }
   
   if (eh->type != ET_REL || eh->machine != EM_386)
   {
-	D(kprintf("[ELF Loader] Wrong object type or wrong architecture\n"));
+	D(kprintf("[elf] Wrong object type or wrong architecture\n"));
 	return 0;
   }
   return 1;
@@ -118,7 +118,7 @@ static int load_hunk(void *file, struct sheader *sh)
     if (!sh->size)
 	return 1;
 
-    D(kprintf("[ELF Loader] Chunk (%d bytes, align=%d) @ ", (unsigned int)sh->size, (unsigned int)sh->addralign));
+    D(kprintf("[elf] Chunk (%d bytes, align=%d) @ ", (unsigned int)sh->size, (unsigned int)sh->addralign));
     ptr_ro = (char *)(((unsigned long)ptr_ro + (unsigned long)sh->addralign - 1) & ~((unsigned long)sh->addralign-1));
     ptr = ptr_ro;
     ptr_ro = ptr_ro + sh->size;
@@ -153,7 +153,7 @@ static int relocate(struct elfheader *eh, struct sheader *sh, long shrel_idx, UL
   unsigned int numrel = (unsigned long)shrel->size / (unsigned long)shrel->entsize;
   unsigned int i;
   
-  DREL(kprintf("[ELF Loader] performing %d relocations, virtual address %p\n", numrel, virt));
+  DREL(kprintf("[elf] performing %d relocations, virtual address %p\n", numrel, virt));
   
   for (i=0; i<numrel; i++, rel++)
   {
@@ -164,13 +164,13 @@ static int relocate(struct elfheader *eh, struct sheader *sh, long shrel_idx, UL
 	switch (sym->shindex)
 	{
 	case SHN_UNDEF:
-	    DREL(kprintf("[ELF Loader] Undefined symbol '%s' while relocating the section '%s'\n",
+	    DREL(kprintf("[elf] Undefined symbol '%s' while relocating the section '%s'\n",
 				  (char *)((unsigned long)sh[shsymtab->link].addr) + sym->name,
 				  (char *)((unsigned long)sh[eh->shstrndx].addr) + toreloc->name));
 	    return 0;
 		
 	case SHN_COMMON:
-	    DREL(kprintf("[ELF Loader] COMMON symbol '%s' while relocating the section '%s'\n",
+	    DREL(kprintf("[elf] COMMON symbol '%s' while relocating the section '%s'\n",
 				  (char *)((unsigned long)sh[shsymtab->link].addr) + sym->name,
 				  (char *)((unsigned long)sh[eh->shstrndx].addr) + toreloc->name));
 		
@@ -186,7 +186,7 @@ static int relocate(struct elfheader *eh, struct sheader *sh, long shrel_idx, UL
 
 	s += virt;
 
-        DREL(printf("[ELF Loader] Relocating symbol "));
+        DREL(printf("[elf] Relocating symbol "));
         DREL(if (sym->name) printf("%s", name); else printf("<unknown>"));
         DREL(printf("type "));
 	switch (ELF32_R_TYPE(rel->info))
@@ -210,7 +210,7 @@ static int relocate(struct elfheader *eh, struct sheader *sh, long shrel_idx, UL
 	    break;
 		
 	default:
-	    printf("[ELF Loader] Unrecognized relocation type %d %d\n", i, (unsigned int)ELF32_R_TYPE(rel->info));
+	    printf("[elf] Unrecognized relocation type %d %d\n", i, (unsigned int)ELF32_R_TYPE(rel->info));
 	    return 0;
 	}
 	DREL(printf(" -> 0x%p\n", *p));
@@ -218,20 +218,20 @@ static int relocate(struct elfheader *eh, struct sheader *sh, long shrel_idx, UL
   return 1;
 }
 
-int load_elf_file(FILE *file, ULONG_PTR virt)
-{
+int load_elf_file(FILE *file, void *memory) {
     struct elfheader eh;
     struct sheader *sh;
     unsigned long i;
     size_t ksize = 0;
+    ULONG_PTR virt = 0;
 
-    D(kprintf("[ELF Loader] Loading ELF module from virtual address %p\n", virt));
+    D(kprintf("[elf] Loading ELF module from virtual address %p\n", virt));
   
     /* Check the header of ELF file */
     if (!read_block(file, 0, &eh, sizeof(eh)) ||
 	!check_header(&eh) ||
 	!(sh = load_block(file, eh.shoff, eh.shnum * eh.shentsize))) {
-	kprintf("[ELF Loader] Wrong module header, aborting.\n");
+	kprintf("[elf] Wrong module header, aborting.\n");
 	return;
     }
   
@@ -243,10 +243,10 @@ int load_elf_file(FILE *file, ULONG_PTR virt)
     kbase = malloc(ksize);
     ptr_ro = kbase;
     if (!kbase) {
-        printf("[ELF Loader] Failed to allocate %lu bytes for kernel\n", ksize);
+        printf("[elf] Failed to allocate %lu bytes for kernel\n", ksize);
         return 0;
     }
-    D(printf("[ELF Loader] Kernel memory allocated: %p-%p (%lu bytes)\n", kbase, kbase + ksize, ksize));
+    D(printf("[elf] Kernel memory allocated: %p-%p (%lu bytes)\n", kbase, kbase + ksize, ksize));
   
     /* Iterate over the section header in order to prepare memory and eventually load some hunks */
     for (i=0; i < eh.shnum; i++)
@@ -254,23 +254,23 @@ int load_elf_file(FILE *file, ULONG_PTR virt)
         /* Load the symbol and string tables */
 	if (sh[i].type == SHT_SYMTAB || sh[i].type == SHT_STRTAB)
 	{
-            D(printf("[ELF Loader] Symbol table\n"));
+            D(printf("[elf] Symbol table\n"));
 	    sh[i].addr = load_block(file, sh[i].offset, sh[i].size);
 	}
 	/* Does the section require memoy allcation? */
 	else if (sh[i].flags & SHF_ALLOC)
 	{
-            D(printf("[ELF Loader] Allocated section\n"));
+            D(printf("[elf] Allocated section\n"));
 	    /* Yup, it does. Load the hunk */
 	    if (!load_hunk(file, &sh[i]))
 	    {
-		kprintf("[ELF Loader] Error at loading of the hunk!\n");
+		kprintf("[elf] Error at loading of the hunk!\n");
 	    }
-            D(else printf("[ELF Loader] shared mem@0x%x\n", sh[i].addr));
+            D(else printf("[elf] shared mem@0x%x\n", sh[i].addr));
 
             if (sh[i].flags & SHF_EXECINSTR && entry == NULL) {
                 entry = sh[i].addr;
-                D(printf("[ELF Loader] first executable section, entry point is 0x%x\n", entry));
+                D(printf("[elf] first executable section, entry point is 0x%x\n", entry));
             }
 	}
     }
@@ -283,7 +283,7 @@ int load_elf_file(FILE *file, ULONG_PTR virt)
 	  sh[i].addr = load_block(file, sh[i].offset, sh[i].size);
 	  if (!sh[i].addr || !relocate(&eh, sh, i, virt))
 	  {
-		kprintf("[ELF Loader] Relocation error!\n");
+		kprintf("[elf] Relocation error!\n");
 	  }
 	  free_block(sh[i].addr);
 	}
