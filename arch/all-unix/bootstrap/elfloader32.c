@@ -221,7 +221,7 @@ static int relocate(struct elfheader *eh, struct sheader *sh, long shrel_idx, UL
 int load_elf_image(void *image, void *memory) {
     struct elfheader *eh;
     struct sheader *sh;
-    unsigned long i;
+    int i;
     size_t ksize = 0;
     ULONG_PTR virt = 0;
 
@@ -229,13 +229,13 @@ int load_elf_image(void *image, void *memory) {
 
     eh = (struct elfheader *) image;
     if (!check_header(eh)) {
-        printf("[elf] this is not an ELF image\n");
+        fprintf(stderr, "[elf] this is not an ELF image\n");
         return -1;
     }
 
-#if 0
     sh = (struct sheader *) (image + eh->shoff);
-  
+
+#if 0
     for(i = 0; i < eh->shnum; i++) {
         if (sh[i].flags & SHF_ALLOC)
             ksize += (sh[i].size + sh[i].addralign - 1);
@@ -248,10 +248,18 @@ int load_elf_image(void *image, void *memory) {
         return 0;
     }
     D(printf("[elf] Kernel memory allocated: %p-%p (%lu bytes)\n", kbase, kbase + ksize, ksize));
-  
+#endif
+
+    for (i = 0; i < eh->shnum; i++) {
+        if (sh[i].flags & SHF_ALLOC) {
+            D(printf("[elf] section '%s' requires allocation\n", (char *) (image + sh[eh->shstrndx].offset + sh[i].name)));
+        }
+    }
+
+#if 0
     /* Iterate over the section header in order to prepare memory and eventually load some hunks */
-    for (i=0; i < eh->shnum; i++)
-    {
+    for (i = 0; i < eh->shnum; i++) {
+
         /* Load the symbol and string tables */
 	if (sh[i].type == SHT_SYMTAB || sh[i].type == SHT_STRTAB)
 	{
