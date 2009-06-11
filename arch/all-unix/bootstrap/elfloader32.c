@@ -21,6 +21,9 @@
 
 #define ULONG_PTR intptr_t
 
+#define SECTION_NAME(section_index)         ((char *) (image + sh[eh->shstrndx].offset + sh[section_index].name))
+#define SYMBOL_NAME(symtab_index, symbol)   ((char *) (image + sh[sh[symtab_index].link].offset + symbol->name))
+
 /*
  * These two pointers are used by the ELF loader to claim for memory ranges for both
  * the RW sections (.data, .bss and such) and RO sections (.text, .rodata....) of executable.
@@ -252,7 +255,7 @@ int load_elf_image(void *image, void *memory) {
 
     for (i = 0; i < eh->shnum; i++) {
         if (sh[i].flags & SHF_ALLOC) {
-            D(printf("[elf] section '%s' requires allocation\n", (char *) (image + sh[eh->shstrndx].offset + sh[i].name)));
+            D(printf("[elf] section '%s' requires allocation\n", SECTION_NAME(i)));
         }
     }
 
