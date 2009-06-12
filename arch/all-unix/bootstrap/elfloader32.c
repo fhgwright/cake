@@ -271,6 +271,17 @@ int load_elf_image(void *image, void *memory) {
         }
     }
 
+    for (i = 0; i < eh->shnum; i++) {
+        if (sh[i].type == SHT_REL || sh[i].type == SHT_RELA) {
+            if(sh[sh[i].info].addr == NULL) {
+                D(printf("[elf] section '%s' has relocations for section '%s', but that section has no allocation, skipping it\n", SECTION_NAME(i), SECTION_NAME(sh[i].info)));
+                continue;
+            }
+
+            D(printf("[elf] applying relocations in section '%s' to section '%s'\n", SECTION_NAME(i), SECTION_NAME(sh[i].info)));
+        }
+    }
+
  #if 0 
     /* For every loaded section perform the relocations */
     for (i=0; i < eh->shnum; i++)
