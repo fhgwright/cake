@@ -194,4 +194,6 @@ int main (int argc, char **argv) {
     int retval = kernel_entry_fun(km);
 
     printf("kernel returned %i\n",retval);
+
+    munmap(memory, memsize);
 }    
