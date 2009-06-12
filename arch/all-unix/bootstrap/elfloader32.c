@@ -238,21 +238,6 @@ int load_elf_image(void *image, void *memory) {
 
     sh = (struct sheader *) (image + eh->shoff);
 
-#if 0
-    for(i = 0; i < eh->shnum; i++) {
-        if (sh[i].flags & SHF_ALLOC)
-            ksize += (sh[i].size + sh[i].addralign - 1);
-    }
-    
-    kbase = malloc(ksize);
-    ptr_ro = kbase;
-    if (!kbase) {
-        printf("[elf] Failed to allocate %lu bytes for kernel\n", ksize);
-        return 0;
-    }
-    D(printf("[elf] Kernel memory allocated: %p-%p (%lu bytes)\n", kbase, kbase + ksize, ksize));
-#endif
-
     for (i = 0; i < eh->shnum; i++) {
         if (sh[i].flags & SHF_ALLOC) {
             alloc = (alloc + sh[i].addralign - 1) & ~(sh[i].addralign - 1);
@@ -286,34 +271,7 @@ int load_elf_image(void *image, void *memory) {
         }
     }
 
-#if 0
-    /* Iterate over the section header in order to prepare memory and eventually load some hunks */
-    for (i = 0; i < eh->shnum; i++) {
-
-        /* Load the symbol and string tables */
-	if (sh[i].type == SHT_SYMTAB || sh[i].type == SHT_STRTAB)
-	{
-            D(printf("[elf] Symbol table\n"));
-	    sh[i].addr = load_block(file, sh[i].offset, sh[i].size);
-	}
-	/* Does the section require memoy allcation? */
-	else if (sh[i].flags & SHF_ALLOC)
-	{
-            D(printf("[elf] Allocated section\n"));
-	    /* Yup, it does. Load the hunk */
-	    if (!load_hunk(file, &sh[i]))
-	    {
-		kprintf("[elf] Error at loading of the hunk!\n");
-	    }
-            D(else printf("[elf] shared mem@0x%x\n", sh[i].addr));
-
-            if (sh[i].flags & SHF_EXECINSTR && entry == NULL) {
-                entry = sh[i].addr;
-                D(printf("[elf] first executable section, entry point is 0x%x\n", entry));
-            }
-	}
-    }
-  
+ #if 0 
     /* For every loaded section perform the relocations */
     for (i=0; i < eh->shnum; i++)
     {
