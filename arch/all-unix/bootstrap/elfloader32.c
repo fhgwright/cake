@@ -256,19 +256,25 @@ int load_elf_image(void *image, void *memory) {
     for (i = 0; i < eh->shnum; i++) {
         if (sh[i].flags & SHF_ALLOC) {
             alloc = (alloc + sh[i].addralign - 1) & ~(sh[i].addralign - 1);
-            sh[i].addr = (void *) alloc;
+            sh[i].addr = (void *) memory + alloc;
 
             D(printf("[elf] allocating 0x%x bytes at 0x%x (alignment 0x%x) for section '%s'\n", sh[i].size, sh[i].addr, sh[i].addralign, SECTION_NAME(i)));
 
             switch (sh[i].type) {
                 case SHT_PROGBITS:
                     D(printf("[elf] section is SHT_PROGBITS, copying 0x%x bytes\n", sh[i].size));
-                    memcpy(memory + alloc, image + sh[i].offset, sh[i].size);
+                    memcpy(sh[i].addr, image + sh[i].offset, sh[i].size);
+
+                    if (sh[i].flags & SHF_EXECINSTR && entry == NULL) {
+                        entry = sh[i].addr;
+                        D(printf("[elf] first executable section, entry point is 0x%x\n", entry));
+                    }
+
                     break;
 
                 case SHT_NOBITS:
                     D(printf("[elf] section is SHT_NOBITS, clearing 0x%x bytes\n", sh[i].size));
-                    memset(memory + alloc, 0, sh[i].size);
+                    memset(sh[i].addr, 0, sh[i].size);
                     break;
 
                 default:
