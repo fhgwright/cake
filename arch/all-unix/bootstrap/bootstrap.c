@@ -130,7 +130,7 @@ int main (int argc, char **argv) {
     }
 
     imagesize = lseek(fd, 0, SEEK_END);
-    image = mmap(NULL, imagesize, PROT_READ, MAP_SHARED, fd, 0);
+    image = mmap(NULL, imagesize, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
     if (image == NULL) {
         fprintf(stderr, "[boot] unable to map kernel image: %s\n", strerror(errno));
         close(fd);
