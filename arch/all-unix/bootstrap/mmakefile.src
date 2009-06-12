@@ -70,6 +70,6 @@ DEPS		:= $(foreach f, $(FILES), $(TARGETDIR)/$(f).d)
 -include $(DEPS)
 
 $(TARGETDIR)/%.o : %.c
-	$(KERNEL_CC) $(KERNEL_CFLAGS) -o $@ -c $< -I$(GENINCDIR) -I$(TOP)/rom/exec
+	$(KERNEL_CC) -g $(KERNEL_CFLAGS) -o $@ -c $< -I$(GENINCDIR) -I$(TOP)/rom/exec
 
 %common
