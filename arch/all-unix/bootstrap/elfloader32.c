@@ -225,7 +225,7 @@ int load_elf_image(void *image, void *memory) {
     struct elfheader *eh;
     struct sheader *sh;
     int i;
-    size_t ksize = 0;
+    uint32_t alloc = 0;
     ULONG_PTR virt = 0;
 
     D(kprintf("[elf] Loading ELF module from virtual address %p\n", virt));
@@ -255,7 +255,28 @@ int load_elf_image(void *image, void *memory) {
 
     for (i = 0; i < eh->shnum; i++) {
         if (sh[i].flags & SHF_ALLOC) {
-            D(printf("[elf] section '%s' requires allocation\n", SECTION_NAME(i)));
+            alloc = (alloc + sh[i].addralign - 1) & ~(sh[i].addralign - 1);
+            sh[i].addr = (void *) alloc;
+
+            D(printf("[elf] allocating 0x%x bytes at 0x%x (alignment 0x%x) for section '%s'\n", sh[i].size, sh[i].addr, sh[i].addralign, SECTION_NAME(i)));
+
+            switch (sh[i].type) {
+                case SHT_PROGBITS:
+                    D(printf("[elf] section is SHT_PROGBITS, copying 0x%x bytes\n", sh[i].size));
+                    memcpy(memory + alloc, image + sh[i].offset, sh[i].size);
+                    break;
+
+                case SHT_NOBITS:
+                    D(printf("[elf] section is SHT_NOBITS, clearing 0x%x bytes\n", sh[i].size));
+                    memset(memory + alloc, 0, sh[i].size);
+                    break;
+
+                default:
+                    fprintf(stderr, "[elf] no support to allocate for type 0x%x section\n", sh[i].type);
+                    return -1;
+            }
+
+            alloc += sh[i].size;
         }
     }
 
