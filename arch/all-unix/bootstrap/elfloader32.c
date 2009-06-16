@@ -278,7 +278,22 @@ int load_elf_image(void *image, void *memory) {
                 continue;
             }
 
-            D(printf("[elf] applying relocations in section '%s' to section '%s'\n", SECTION_NAME(i), SECTION_NAME(sh[i].info)));
+            int nrelocs = sh[i].size / sh[i].entsize;
+
+            D(printf("[elf] applying %d relocations in section '%s' to section '%s' using symbol table in section '%s'\n", nrelocs, SECTION_NAME(i), SECTION_NAME(sh[i].info), SECTION_NAME(sh[i].link)));
+
+            int j;
+            for (j = 0; j < nrelocs; j++) {
+                struct relo *rel = image + sh[i].offset + sizeof(struct relo) * j;
+                struct symbol *sym = image + sh[sh[i].link].offset + sizeof(struct symbol) * ELF32_R_SYM(rel->info);
+                uint32_t *p = image + sh[sh[i].info].offset + rel->offset;
+
+                D(printf("[elf] symbol '%s'\n", SYMBOL_NAME(sh[i].link, sym)));
+
+                switch (sym->shindex) {
+
+                }
+            }
         }
     }
 
