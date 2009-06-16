@@ -22,7 +22,7 @@
 #define ULONG_PTR intptr_t
 
 #define SECTION_NAME(section_index)         ((char *) (image + sh[eh->shstrndx].offset + sh[section_index].name))
-#define SYMBOL_NAME(symtab_index, symbol)   ((char *) (image + sh[sh[symtab_index].link].offset + symbol->name))
+#define SYMBOL_NAME(symtab_index, symbol)   ((char *) (symbol->name ? (image + sh[sh[symtab_index].link].offset + symbol->name) : "<anonymous>"))
 
 /*
  * These two pointers are used by the ELF loader to claim for memory ranges for both
@@ -110,6 +110,7 @@ static int check_header(struct elfheader *eh)
   return 1;
 }
 
+#if 0
 /*
  * Get the memory for chunk and load it
  */
@@ -220,6 +221,7 @@ static int relocate(struct elfheader *eh, struct sheader *sh, long shrel_idx, UL
   }
   return 1;
 }
+#endif
 
 int load_elf_image(void *image, void *memory) {
     struct elfheader *eh;
@@ -286,13 +288,55 @@ int load_elf_image(void *image, void *memory) {
             for (j = 0; j < nrelocs; j++) {
                 struct relo *rel = image + sh[i].offset + sizeof(struct relo) * j;
                 struct symbol *sym = image + sh[sh[i].link].offset + sizeof(struct symbol) * ELF32_R_SYM(rel->info);
-                uint32_t *p = image + sh[sh[i].info].offset + rel->offset;
-
-                D(printf("[elf] symbol '%s'\n", SYMBOL_NAME(sh[i].link, sym)));
+                uint32_t *src = image + sh[sh[i].info].offset + rel->offset;
+                uint32_t *dst = sh[sym->shindex].addr + rel->offset;
+                uint32_t s;
 
                 switch (sym->shindex) {
+                    case SHN_UNDEF:
+                        fprintf(stderr, "[elf] undefined symbol '%s' in section '%s', relocation failed\n", SYMBOL_NAME(sh[i].link, sym), SECTION_NAME(sh[i].info));
+                        return -1;
 
+                    case SHN_COMMON:
+                        fprintf(stderr, "[elf] undefined symbol '%s' in section '%s', relocation failed\n", SYMBOL_NAME(sh[i].link, sym), SECTION_NAME(sh[i].info));
+                        return -1;
+
+                    case SHN_ABS:
+                        if (strcmp(SYMBOL_NAME(sh[i].link, sym), "SysBase") == 0) {
+                            fprintf(stderr, "[elf] absolute SysBase relocation wanted in section '%s'. that's bad for kernel code, and may cause a crash\n", SECTION_NAME(sh[i].info));
+                            s = 0;
+                        }
+                        else
+                            s = sym->value;
+                        break;
+
+                    default:
+                        s = (uint32_t) sh[sym->shindex].addr + sym->value;
+                        break;
                 }
+
+                switch (ELF32_R_TYPE(rel->info)) {
+                    case R_386_32:
+                        *dst = *src + s;
+                        break;
+
+                    case R_386_PC32:
+                        *dst += (s - (uint32_t) src);
+                        break;
+
+                    case R_386_NONE:
+                        break;
+
+                    default:
+                        fprintf(stderr, "[elf] unknown relocation type 0x%02x for symbol '%s' in section '%s', relocation failed\n", ELF32_R_TYPE(rel->info), SYMBOL_NAME(sh[i].link, sym), SECTION_NAME(sh[i].info));
+                        return -1;
+                }
+
+                D(printf("[elf] relocated symbol '%s' type %s value 0x%p\n", SYMBOL_NAME(sh[i].link, sym),
+                                                                             ELF32_R_TYPE(rel->info) == R_386_32   ? "R_386_32"   :
+                                                                             ELF32_R_TYPE(rel->info) == R_386_PC32 ? "R_386_PC32" :
+                                                                                                                     "<unknown>",
+                                                                             *dst));
             }
         }
     }
@@ -315,6 +359,6 @@ int load_elf_image(void *image, void *memory) {
     }
     free_block(sh);
 #endif
-    return 1;
+    return 0;
 }
 
