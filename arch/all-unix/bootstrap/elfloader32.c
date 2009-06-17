@@ -59,33 +59,6 @@ void set_base_address(void *tracker)
 }
 
 /*
- * read_block interface. we want to read from files here
- */
-static int read_block(FILE *file, long offset, void *dest, long length)
-{
-  fseek(file, offset, SEEK_SET);
-  fread(dest,(size_t)length, 1, file);
-  return 1;
-}
-
-/*
- * load_block also allocates teh memory
- */
-static void *load_block(FILE *file, long offset, long length)
-{
-  void * dest = malloc(length);
-  fseek(file, offset, SEEK_SET);
-  fread(dest, (size_t)length, 1, file);
-  return dest;
-}
-
-static void free_block(void * block)
-{
-  free(block);
-}
-
-
-/*
  * Test for correct ELF header here
  */
 static int check_header(struct elfheader *eh)
@@ -109,119 +82,6 @@ static int check_header(struct elfheader *eh)
   }
   return 1;
 }
-
-#if 0
-/*
- * Get the memory for chunk and load it
- */
-static int load_hunk(FILE *file, struct sheader *sh)
-{
-    void *ptr=(void*)0;
-  
-    /* empty chunk? Who cares :) */
-    if (!sh->size)
-	return 1;
-
-    D(kprintf("[elf] Chunk (%d bytes, align=%d) @ ", (unsigned int)sh->size, (unsigned int)sh->addralign));
-    ptr_ro = (char *)(((unsigned long)ptr_ro + (unsigned long)sh->addralign - 1) & ~((unsigned long)sh->addralign-1));
-    ptr = ptr_ro;
-    ptr_ro = ptr_ro + sh->size;
-    D(kprintf("%p\n", (unsigned int)ptr));
-  
-    sh->addr = ptr;
-  
-    /* copy block of memory from ELF file if it exists */
-    if (sh->type != SHT_NOBITS)
-	return read_block(file, sh->offset, (void *)((unsigned long)sh->addr), sh->size);
-    else
-    {
-	memset(ptr, 0, sh->size);
-	bss_tracker->addr = ptr;
-	bss_tracker->len = sh->size;
-	bss_tracker++;
-    }
-    return 1;
-}
-
-/* Perform relocations of given section */
-static int relocate(struct elfheader *eh, struct sheader *sh, long shrel_idx, ULONG_PTR virt)
-
-  struct sheader *shrel    = &sh[shrel_idx];
-  struct sheader *shsymtab = &sh[shrel->link];
-  struct sheader *toreloc  = &sh[shrel->info];
-  
-  struct symbol *symtab   = (struct symbol *)((unsigned long)shsymtab->addr);
-  struct relo   *rel      = (struct relo *)((unsigned long)shrel->addr);
-  char          *section  = (char *)((unsigned long)toreloc->addr);
-  
-  unsigned int numrel = (unsigned long)shrel->size / (unsigned long)shrel->entsize;
-  unsigned int i;
-  
-  DREL(kprintf("[elf] performing %d relocations, virtual address %p\n", numrel, virt));
-  
-  for (i=0; i<numrel; i++, rel++)
-  {
-	struct symbol *sym = &symtab[ELF32_R_SYM(rel->info)];
-	unsigned long *p = (unsigned long *)&section[rel->offset];
-	ULONG_PTR s;
-	const char * name = (char *)((unsigned long)sh[shsymtab->link].addr) + sym->name;
-	switch (sym->shindex)
-	{
-	case SHN_UNDEF:
-	    DREL(kprintf("[elf] Undefined symbol '%s' while relocating the section '%s'\n",
-				  (char *)((unsigned long)sh[shsymtab->link].addr) + sym->name,
-				  (char *)((unsigned long)sh[eh->shstrndx].addr) + toreloc->name));
-	    return 0;
-		
-	case SHN_COMMON:
-	    DREL(kprintf("[elf] COMMON symbol '%s' while relocating the section '%s'\n",
-				  (char *)((unsigned long)sh[shsymtab->link].addr) + sym->name,
-				  (char *)((unsigned long)sh[eh->shstrndx].addr) + toreloc->name));
-		
-	    return 0;
-		
-	case SHN_ABS:
-            s = sym->value;
-	    break;
-		
-	default:
-	    s = (unsigned long)sh[sym->shindex].addr + sym->value;
-	}
-
-	s += virt;
-
-        DREL(printf("[elf] Relocating symbol "));
-        DREL(if (sym->name) printf("%s", name); else printf("<unknown>"));
-        DREL(printf("type "));
-	switch (ELF32_R_TYPE(rel->info))
-	{
-	case R_386_32: /* 32bit absolute */
-            DREL(printf("R_386_32"));
-	    *p += s;
-        if (*p < kbase) {
-            exit(0);
-        }
-
-	    break;
-		
-	case R_386_PC32: /* 32bit PC relative */
-            DREL(printf("R_386_PC32"));
-	    *p += (s - (ULONG_PTR)p);
-	    break;
-		
-	case R_386_NONE:
-            DREL(printf("R_386_NONE"));
-	    break;
-		
-	default:
-	    printf("[elf] Unrecognized relocation type %d %d\n", i, (unsigned int)ELF32_R_TYPE(rel->info));
-	    return 0;
-	}
-	DREL(printf(" -> 0x%p\n", *p));
-  }
-  return 1;
-}
-#endif
 
 int load_elf_image(void *image, void *memory) {
     struct elfheader *eh;
@@ -341,24 +201,6 @@ int load_elf_image(void *image, void *memory) {
         }
     }
 
- #if 0 
-    /* For every loaded section perform the relocations */
-    for (i=0; i < eh->shnum; i++)
-    {
-	if ((sh[i].type == SHT_RELA || sh[i].type == SHT_REL) && sh[sh[i].info].addr)
-	{
-	  sh[i].addr = load_block(file, sh[i].offset, sh[i].size);
-	  if (!sh[i].addr || !relocate(&eh, sh, i, virt))
-	  {
-		kprintf("[elf] Relocation error!\n");
-	  }
-	  free_block(sh[i].addr);
-	}
-	else if (sh[i].type == SHT_SYMTAB || sh[i].type == SHT_STRTAB)
-	  free_block(sh[i].addr);
-    }
-    free_block(sh);
-#endif
     return 0;
 }
 
