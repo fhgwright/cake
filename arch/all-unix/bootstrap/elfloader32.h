@@ -97,7 +97,7 @@ struct relo
   unsigned int info;     /* Type of the relocation */
 };
 
-int load_elf_image(void *, void *);
+int load_elf_image(void *image, void *memory, uint32_t virt);
 void *kernel_lowest();
 void *kernel_highest();
 void *kernel_entry();

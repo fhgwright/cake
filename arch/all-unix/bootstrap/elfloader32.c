@@ -58,14 +58,13 @@ void set_base_address(void *tracker)
   bss_tracker = (struct _bss_tracker *)tracker;
 }
 
-int load_elf_image(void *image, void *memory) {
+int load_elf_image(void *image, void *memory, uint32_t virt) {
     struct elfheader *eh;
     struct sheader *sh;
     int i;
-    uint32_t alloc = 0;
-    ULONG_PTR virt = 0;
+    uint32_t alloc = virt;
 
-    D(kprintf("[elf] Loading ELF module from virtual address %p\n", virt));
+    D(printf("[elf] loading ELF module to virtual address %p\n", virt));
 
     eh = (struct elfheader *) image;
     if (eh->ident[0] != 0x7f || eh->ident[1] != 'E' || eh->ident[2] != 'L' || eh->ident[3] != 'F') {

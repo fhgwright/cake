@@ -140,7 +140,7 @@ int main (int argc, char **argv) {
 
     set_base_address(__bss_track);
 
-    if (load_elf_image(image, memory) != 0) {
+    if (load_elf_image(image, memory, 0) != 0) {
         munmap(image, imagesize);
         close(fd);
         munmap(memory, memsize);
