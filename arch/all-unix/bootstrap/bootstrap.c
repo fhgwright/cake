@@ -148,7 +148,7 @@ int main (int argc, char **argv) {
         return -1;
     }
 
-    munmap(image, memsize);
+    munmap(image, imagesize);
     close(fd);
 
     kernel_entry_fun_t kernel_entry_fun = kernel_entry();
