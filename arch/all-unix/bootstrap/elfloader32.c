@@ -14,8 +14,8 @@
 #include <stdint.h>
 #include <sys/mman.h>
 
-#define D(x) x
-#define DREL(x) x
+#define D(x)
+#define DREL(x)
 
 #define kprintf printf
 
