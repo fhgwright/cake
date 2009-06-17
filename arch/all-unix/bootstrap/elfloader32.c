@@ -321,7 +321,7 @@ int load_elf_image(void *image, void *memory) {
                         break;
 
                     case R_386_PC32:
-                        *dst += (s - (uint32_t) src);
+                        *dst = *src + s - (uint32_t) dst;
                         break;
 
                     case R_386_NONE:
