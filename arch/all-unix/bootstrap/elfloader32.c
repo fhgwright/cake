@@ -58,31 +58,6 @@ void set_base_address(void *tracker)
   bss_tracker = (struct _bss_tracker *)tracker;
 }
 
-/*
- * Test for correct ELF header here
- */
-static int check_header(struct elfheader *eh)
-{
-  if
-    (
-	 eh->ident[0] != 0x7f ||
-	 eh->ident[1] != 'E'  ||
-	 eh->ident[2] != 'L'  ||
-	 eh->ident[3] != 'F'
-	 )
-  {
-	D(kprintf("[elf] Not an ELF object\n"));
-	return 0;
-  }
-  
-  if (eh->type != ET_REL || eh->machine != EM_386)
-  {
-	D(kprintf("[elf] Wrong object type or wrong architecture\n"));
-	return 0;
-  }
-  return 1;
-}
-
 int load_elf_image(void *image, void *memory) {
     struct elfheader *eh;
     struct sheader *sh;
@@ -93,8 +68,12 @@ int load_elf_image(void *image, void *memory) {
     D(kprintf("[elf] Loading ELF module from virtual address %p\n", virt));
 
     eh = (struct elfheader *) image;
-    if (!check_header(eh)) {
-        fprintf(stderr, "[elf] this is not an ELF image\n");
+    if (eh->ident[0] != 0x7f || eh->ident[1] != 'E' || eh->ident[2] != 'L' || eh->ident[3] != 'F') {
+        fprintf(stderr, "[elf] kernel image is not an ELF image\n");
+        return -1;
+    }
+    if (eh->type != ET_REL || eh->machine != EM_386) {
+        fprintf(stderr, "[elf] kernel image has wrong type or architecture\n");
         return -1;
     }
 
