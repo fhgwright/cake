@@ -28,7 +28,6 @@
 #define DEFAULT_KERNEL  "boot/aros-unix"
 #define DEFAULT_MEMSIZE (64)
 
-static unsigned char __bss_track[32768];
 struct TagItem km[64];
 char bootstrapdir[PATH_MAX];
 
