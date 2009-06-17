@@ -122,6 +122,9 @@ int load_elf_image(void *image, void *memory) {
                 case SHT_NOBITS:
                     D(printf("[elf] section is SHT_NOBITS, clearing 0x%x bytes\n", sh[i].size));
                     memset(sh[i].addr, 0, sh[i].size);
+                    bss_tracker->addr = sh[i].addr;
+                    bss_tracker->len = sh[i].size;
+                    bss_tracker++;
                     break;
 
                 default:
