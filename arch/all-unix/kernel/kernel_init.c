@@ -77,22 +77,6 @@ int myrkprintf(const char *foo, const char *bar, int baz, const char *fmt, ...)
   return r;
 }
 
-void __clear_bss(struct TagItem *msg)
-{
-    struct KernelBSS *bss;
-
-    bss = (struct KernelBSS *)krnGetTagData(KRN_KernelBss, 0, msg);
-    
-    if (bss)
-    {
-        while (bss->addr)
-        {
-		  bzero((void*)bss->addr, bss->len);
-            bss++;
-        }   
-    }
-}
-
 AROS_LH0I(struct TagItem *, KrnGetBootInfo,
          struct KernelBase *, KernelBase, 1, Kernel)
 {

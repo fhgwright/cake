@@ -138,8 +138,6 @@ int main (int argc, char **argv) {
         return -1;
     }
 
-    set_base_address(__bss_track);
-
     if (load_elf_image(image, memory, 0) != 0) {
         munmap(image, imagesize);
         close(fd);
@@ -172,10 +170,6 @@ int main (int argc, char **argv) {
         
     tag->ti_Tag = KRN_KernelHighest;
     tag->ti_Data = kernel_highest();
-    tag++;
-
-    tag->ti_Tag = KRN_KernelBss;
-    tag->ti_Data = (unsigned long)__bss_track;
     tag++;
 
     tag->ti_Tag = KRN_BootLoader;

@@ -32,11 +32,6 @@ char *kbase;
 char *ptr_ro;
 char *entry = NULL;
 
-struct _bss_tracker {
-  void *addr;
-  size_t len;
-} *bss_tracker;
-
 void *kernel_lowest()
 {
     return kbase;
@@ -50,12 +45,6 @@ void *kernel_highest()
 void *kernel_entry()
 {
     return entry;
-}
-
-void set_base_address(void *tracker)
-{
-  D(printf("[elf] set_base_address %p\n", tracker));
-  bss_tracker = (struct _bss_tracker *)tracker;
 }
 
 int load_elf_image(void *image, void *memory, uint32_t virt) {
@@ -100,9 +89,6 @@ int load_elf_image(void *image, void *memory, uint32_t virt) {
                 case SHT_NOBITS:
                     D(printf("[elf] section is SHT_NOBITS, clearing 0x%x bytes\n", sh[i].size));
                     memset(sh[i].addr, 0, sh[i].size);
-                    bss_tracker->addr = sh[i].addr;
-                    bss_tracker->len = sh[i].size;
-                    bss_tracker++;
                     break;
 
                 default:

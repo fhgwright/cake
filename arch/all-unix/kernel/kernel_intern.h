@@ -55,11 +55,6 @@ struct KernelBase {
     struct List         kb_Interrupts[INTERRUPTS_NUM];
 };
 
-struct KernelBSS {
-    void *addr;
-    IPTR len;
-};
-
 enum intr_types {
     it_exception = 0xe0,
     it_interrupt = 0xf0
