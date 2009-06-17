@@ -38,7 +38,7 @@ char *kernel_bin = DEFAULT_KERNEL;
 
 char kernel_args[256];
 
-typedef int (*kernel_entry_fun_t)(struct TagItem *);
+typedef int (*kernel_entry_fn_t)(struct TagItem *);
 
 /*
  * Some helpful functions that link us to the underlying host OS.
@@ -151,44 +151,42 @@ int main (int argc, char **argv) {
 
     printf("[boot] kernel image '%s' loaded\n", kernel_bin);
 
-    kernel_entry_fun_t kernel_entry_fun = entry;
-
     //fill in kernel message
     struct TagItem *tag = km;
 
     tag->ti_Tag = KRN_MEMLower;
-    tag->ti_Data = (unsigned long)memory;
+    tag->ti_Data = (STACKIPTR) memory;
     tag++;
     
     tag->ti_Tag = KRN_MEMUpper;
-    tag->ti_Data = memory + memsize - 1;
+    tag->ti_Data = (STACKIPTR) memory + memsize - 1;
     tag++;
 
     tag->ti_Tag = KRN_KernelLowest;
-    tag->ti_Data = start;
+    tag->ti_Data = (STACKIPTR) start;
     tag++;
         
     tag->ti_Tag = KRN_KernelHighest;
-    tag->ti_Data = end;
+    tag->ti_Data = (STACKIPTR) end;
     tag++;
 
     tag->ti_Tag = KRN_BootLoader;
-    tag->ti_Data = host_version;
+    tag->ti_Data = (STACKIPTR) host_version;
     tag++;
 
     tag->ti_Tag = KRN_CmdLine;
-    tag->ti_Data = kernel_args;
+    tag->ti_Data = (STACKIPTR) kernel_args;
     tag++;
     
     tag->ti_Tag = KRN_HostInterface;
-    tag->ti_Data = &HostIFace;
+    tag->ti_Data = (STACKIPTR) &HostIFace;
     tag++;
 
     tag->ti_Tag = TAG_DONE;
 
     printf("[boot] handing control to kernel\n");
 
-    int retval = kernel_entry_fun(km);
+    int retval = ((kernel_entry_fn_t) entry)(km);
 
     printf("[boot] kernel returned %d\n", retval);
 
