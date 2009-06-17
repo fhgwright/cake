@@ -15,7 +15,7 @@
 #include <sys/mman.h>
 
 #define D(x) x
-#define DREL(x)
+#define DREL(x) x
 
 #define kprintf printf
 
@@ -145,7 +145,7 @@ static int load_hunk(FILE *file, struct sheader *sh)
 
 /* Perform relocations of given section */
 static int relocate(struct elfheader *eh, struct sheader *sh, long shrel_idx, ULONG_PTR virt)
-{
+
   struct sheader *shrel    = &sh[shrel_idx];
   struct sheader *shsymtab = &sh[shrel->link];
   struct sheader *toreloc  = &sh[shrel->info];
@@ -289,7 +289,7 @@ int load_elf_image(void *image, void *memory) {
                 struct relo *rel = image + sh[i].offset + sizeof(struct relo) * j;
                 struct symbol *sym = image + sh[sh[i].link].offset + sizeof(struct symbol) * ELF32_R_SYM(rel->info);
                 uint32_t *src = image + sh[sh[i].info].offset + rel->offset;
-                uint32_t *dst = sh[sym->shindex].addr + rel->offset;
+                uint32_t *dst = sh[sh[i].info].addr + rel->offset;
                 uint32_t s;
 
                 switch (sym->shindex) {
@@ -332,11 +332,11 @@ int load_elf_image(void *image, void *memory) {
                         return -1;
                 }
 
-                DREL(printf("[elf] relocated symbol '%s' type %s value 0x%p\n", SYMBOL_NAME(sh[i].link, sym),
-                                                                                ELF32_R_TYPE(rel->info) == R_386_32   ? "R_386_32"   :
-                                                                                ELF32_R_TYPE(rel->info) == R_386_PC32 ? "R_386_PC32" :
+                DREL(printf("[elf] relocated symbol '%s' type %s value %p at %p\n", SYMBOL_NAME(sh[i].link, sym),
+                                                                                        ELF32_R_TYPE(rel->info) == R_386_32   ? "R_386_32"   :
+                                                                                        ELF32_R_TYPE(rel->info) == R_386_PC32 ? "R_386_PC32" :
                                                                                                                         "<unknown>",
-                                                                                *dst));
+                                                                                        *dst, dst));
             }
         }
     }
