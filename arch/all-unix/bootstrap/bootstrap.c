@@ -28,7 +28,7 @@
 #define DEFAULT_KERNEL  "boot/aros-unix"
 #define DEFAULT_MEMSIZE (64)
 
-struct TagItem km[64];
+struct TagItem kernel_tags[8];
 char bootstrapdir[PATH_MAX];
 
 char *bootstrap_bin;
@@ -150,42 +150,32 @@ int main (int argc, char **argv) {
 
     printf("[boot] kernel image '%s' loaded\n", kernel_bin);
 
-    //fill in kernel message
-    struct TagItem *tag = km;
-
-    tag->ti_Tag = KRN_MEMLower;
-    tag->ti_Data = (STACKIPTR) memory;
-    tag++;
+    kernel_tags[0].ti_Tag = KRN_MEMLower;
+    kernel_tags[0].ti_Data = (STACKIPTR) memory;
     
-    tag->ti_Tag = KRN_MEMUpper;
-    tag->ti_Data = (STACKIPTR) memory + memsize - 1;
-    tag++;
+    kernel_tags[1].ti_Tag = KRN_MEMUpper;
+    kernel_tags[1].ti_Data = (STACKIPTR) memory + memsize - 1;
 
-    tag->ti_Tag = KRN_KernelLowest;
-    tag->ti_Data = (STACKIPTR) start;
-    tag++;
+    kernel_tags[2].ti_Tag = KRN_KernelLowest;
+    kernel_tags[2].ti_Data = (STACKIPTR) start;
         
-    tag->ti_Tag = KRN_KernelHighest;
-    tag->ti_Data = (STACKIPTR) end;
-    tag++;
+    kernel_tags[3].ti_Tag = KRN_KernelHighest;
+    kernel_tags[3].ti_Data = (STACKIPTR) end;
 
-    tag->ti_Tag = KRN_BootLoader;
-    tag->ti_Data = (STACKIPTR) host_version;
-    tag++;
+    kernel_tags[4].ti_Tag = KRN_BootLoader;
+    kernel_tags[4].ti_Data = (STACKIPTR) host_version;
 
-    tag->ti_Tag = KRN_CmdLine;
-    tag->ti_Data = (STACKIPTR) kernel_args;
-    tag++;
+    kernel_tags[5].ti_Tag = KRN_CmdLine;
+    kernel_tags[5].ti_Data = (STACKIPTR) kernel_args;
     
-    tag->ti_Tag = KRN_HostInterface;
-    tag->ti_Data = (STACKIPTR) &HostIFace;
-    tag++;
+    kernel_tags[6].ti_Tag = KRN_HostInterface;
+    kernel_tags[6].ti_Data = (STACKIPTR) &HostIFace;
 
-    tag->ti_Tag = TAG_DONE;
+    kernel_tags[7].ti_Tag = TAG_DONE;
 
     printf("[boot] handing control to kernel\n");
 
-    int retval = ((kernel_entry_fn_t) entry)(km);
+    int retval = ((kernel_entry_fn_t) entry)(kernel_tags);
 
     printf("[boot] kernel returned %d\n", retval);
 
