@@ -97,10 +97,6 @@ struct relo
   unsigned int info;     /* Type of the relocation */
 };
 
-int load_elf_image(void *image, void *memory, uint32_t virt);
-void *kernel_lowest();
-void *kernel_highest();
-void *kernel_entry();
-void set_base_address(void *tracker);
+int load_elf_image(void *image, void *memory, uint32_t virt, void **start, void **end, void **entry);
 
 #endif /*ELFLOADER_H_*/

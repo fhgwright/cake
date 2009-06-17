@@ -17,37 +17,10 @@
 #define D(x)
 #define DREL(x)
 
-#define kprintf printf
-
-#define ULONG_PTR intptr_t
-
 #define SECTION_NAME(section_index)         ((char *) (image + sh[eh->shstrndx].offset + sh[section_index].name))
 #define SYMBOL_NAME(symtab_index, symbol)   ((char *) (symbol->name ? (image + sh[sh[symtab_index].link].offset + symbol->name) : "<anonymous>"))
 
-/*
- * These two pointers are used by the ELF loader to claim for memory ranges for both
- * the RW sections (.data, .bss and such) and RO sections (.text, .rodata....) of executable.
- */
-char *kbase;
-char *ptr_ro;
-char *entry = NULL;
-
-void *kernel_lowest()
-{
-    return kbase;
-}
-
-void *kernel_highest()
-{
-    return ptr_ro - 1;
-}
-
-void *kernel_entry()
-{
-    return entry;
-}
-
-int load_elf_image(void *image, void *memory, uint32_t virt) {
+int load_elf_image(void *image, void *memory, uint32_t virt, void **start, void **end, void **entry) {
     struct elfheader *eh;
     struct sheader *sh;
     int i;
@@ -67,6 +40,12 @@ int load_elf_image(void *image, void *memory, uint32_t virt) {
 
     sh = (struct sheader *) (image + eh->shoff);
 
+    if (start != NULL)
+        *start = (void *) memory + alloc;
+
+    if (entry != NULL)
+        *entry = NULL;
+
     for (i = 0; i < eh->shnum; i++) {
         if (sh[i].flags & SHF_ALLOC) {
             alloc = (alloc + sh[i].addralign - 1) & ~(sh[i].addralign - 1);
@@ -79,9 +58,9 @@ int load_elf_image(void *image, void *memory, uint32_t virt) {
                     D(printf("[elf] section is SHT_PROGBITS, copying 0x%x bytes\n", sh[i].size));
                     memcpy(sh[i].addr, image + sh[i].offset, sh[i].size);
 
-                    if (sh[i].flags & SHF_EXECINSTR && entry == NULL) {
-                        entry = sh[i].addr;
-                        D(printf("[elf] first executable section, entry point is 0x%x\n", entry));
+                    if (sh[i].flags & SHF_EXECINSTR && entry != NULL && *entry == NULL) {
+                        *entry = sh[i].addr;
+                        D(printf("[elf] first executable section, entry point is 0x%x\n", *entry));
                     }
 
                     break;
@@ -99,6 +78,9 @@ int load_elf_image(void *image, void *memory, uint32_t virt) {
             alloc += sh[i].size;
         }
     }
+
+    if (end != NULL)
+        *end = (void *) memory + alloc - 1;
 
     for (i = 0; i < eh->shnum; i++) {
         if (sh[i].type == SHT_REL || sh[i].type == SHT_RELA) {

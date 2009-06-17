@@ -73,7 +73,7 @@ int main (int argc, char **argv) {
     uint32_t memsize = DEFAULT_MEMSIZE << 20, imagesize;
     int i, fd;
     struct stat st;
-    void *memory, *image;
+    void *memory, *image, *start, *end, *entry;
 
     printf("AROS for Linux, built " __DATE__ "\n");
 
@@ -138,7 +138,7 @@ int main (int argc, char **argv) {
         return -1;
     }
 
-    if (load_elf_image(image, memory, 0) != 0) {
+    if (load_elf_image(image, memory, 0, &start, &end, &entry) != 0) {
         munmap(image, imagesize);
         close(fd);
         munmap(memory, memsize);
@@ -151,7 +151,7 @@ int main (int argc, char **argv) {
 
     printf("[boot] kernel image '%s' loaded\n", kernel_bin);
 
-    kernel_entry_fun_t kernel_entry_fun = kernel_entry();
+    kernel_entry_fun_t kernel_entry_fun = entry;
 
     //fill in kernel message
     struct TagItem *tag = km;
@@ -165,11 +165,11 @@ int main (int argc, char **argv) {
     tag++;
 
     tag->ti_Tag = KRN_KernelLowest;
-    tag->ti_Data = kernel_entry_fun;
+    tag->ti_Data = start;
     tag++;
         
     tag->ti_Tag = KRN_KernelHighest;
-    tag->ti_Data = kernel_highest();
+    tag->ti_Data = end;
     tag++;
 
     tag->ti_Tag = KRN_BootLoader;
