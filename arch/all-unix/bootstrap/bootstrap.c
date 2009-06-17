@@ -17,8 +17,9 @@
 #include <aros/kernel.h>
 #include <utility/tagitem.h>
 
+#include "bootstrap.h"
+
 #include "debug.h"
-#include "elfloader32.h"
 #include "hostlib.h"
 #include "shutdown.h"
 #include "../kernel/hostinterface.h"
