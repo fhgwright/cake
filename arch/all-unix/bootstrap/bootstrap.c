@@ -151,6 +151,8 @@ int main (int argc, char **argv) {
     munmap(image, imagesize);
     close(fd);
 
+    printf("[boot] kernel image '%s' loaded\n", kernel_bin);
+
     kernel_entry_fun_t kernel_entry_fun = kernel_entry();
 
     //fill in kernel message
@@ -190,10 +192,13 @@ int main (int argc, char **argv) {
 
     tag->ti_Tag = TAG_DONE;
 
-    printf("[Bootstrap] entering kernel@%p...\n",kernel_entry_fun);
+    printf("[boot] handing control to kernel\n");
+
     int retval = kernel_entry_fun(km);
 
-    printf("kernel returned %i\n",retval);
+    printf("[boot] kernel returned %d\n", retval);
 
     munmap(memory, memsize);
+
+    return 0;
 }    
