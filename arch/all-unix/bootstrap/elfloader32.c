@@ -14,7 +14,7 @@
 #include <stdint.h>
 #include <sys/mman.h>
 
-#define D(X) X
+#define D(x) x
 #define DREL(x)
 
 #define kprintf printf
@@ -332,11 +332,11 @@ int load_elf_image(void *image, void *memory) {
                         return -1;
                 }
 
-                D(printf("[elf] relocated symbol '%s' type %s value 0x%p\n", SYMBOL_NAME(sh[i].link, sym),
-                                                                             ELF32_R_TYPE(rel->info) == R_386_32   ? "R_386_32"   :
-                                                                             ELF32_R_TYPE(rel->info) == R_386_PC32 ? "R_386_PC32" :
-                                                                                                                     "<unknown>",
-                                                                             *dst));
+                DREL(printf("[elf] relocated symbol '%s' type %s value 0x%p\n", SYMBOL_NAME(sh[i].link, sym),
+                                                                                ELF32_R_TYPE(rel->info) == R_386_32   ? "R_386_32"   :
+                                                                                ELF32_R_TYPE(rel->info) == R_386_PC32 ? "R_386_PC32" :
+                                                                                                                        "<unknown>",
+                                                                                *dst));
             }
         }
     }
