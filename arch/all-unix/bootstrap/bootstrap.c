@@ -18,10 +18,8 @@
 #include <utility/tagitem.h>
 
 #include "bootstrap.h"
+#include "host.h"
 
-#include "debug.h"
-#include "hostlib.h"
-#include "shutdown.h"
 #include "../kernel/hostinterface.h"
 
 #define D(x) x

@@ -3,10 +3,8 @@ include $(TOP)/config/make.cfg
 
 TARGETDIR 	:= $(GENDIR)/$(CURDIR)
 
-BOBJS		:= $(TARGETDIR)/bootstrap.o $(TARGETDIR)/elfloader32.o \
-		   $(TARGETDIR)/hostlib.o $(TARGETDIR)/debug.o	       \
-		   $(TARGETDIR)/shutdown.o
-FILES		:= bootstrap elfloader32 hostlib debug
+BOBJS		:= $(TARGETDIR)/bootstrap.o $(TARGETDIR)/elfloader32.o $(TARGETDIR)/host.o
+FILES		:= bootstrap elfloader32 host
 
 KOBJS_DEVICES   := $(KOBJSDIR)/timer_device.o	     $(KOBJSDIR)/gameport_device.o	   \
 		   $(KOBJSDIR)/input_device.o	     $(KOBJSDIR)/console_device.o	   \

@@ -1,15 +1,11 @@
 #include <stdio.h>
+#include <stdarg.h>
+#include <stdlib.h>
 #include <dlfcn.h>
 
-
-#include "hostlib.h"
+#include "host.h"
 
 #define D(x)
-
-void Host_HostLib_FreeErrorStr(char *error)
-{
-    /* libdl returns static strings, so nothing to do here */
-}
 
 void *Host_HostLib_Open(const char *filename, char **error)
 {
@@ -39,6 +35,11 @@ int Host_HostLib_Close(void *handle, char **error)
     return ret;
 }
 
+void Host_HostLib_FreeErrorStr(char *error)
+{
+    /* libdl returns static strings, so nothing to do here */
+}
+
 void *Host_HostLib_GetPointer(void *handle, const char *symbol, char **error)
 {
     void *ptr;
@@ -66,4 +67,29 @@ unsigned long Host_HostLib_GetInterface(void *handle, char **names, void **funcs
             unresolved++;
     }
     return unresolved;
+}
+
+int Host_VKPrintF(const char * fmt, va_list args)
+{
+    return vprintf(fmt, args);
+}
+
+int Host_PutChar(int c)
+{
+    return putchar(c);
+}
+
+void Host_Shutdown(unsigned long action)
+{
+    switch (action) {
+    case SD_ACTION_POWEROFF:
+        D(printf("[Shutdown] POWER OFF request\n"));
+        exit(0);
+    	break;
+    case SD_ACTION_COLDREBOOT:
+        D(printf("[Shutdown] Cold reboot, dir: %s, name: %s, command line: %s\n", bootstrapdir, bootstrapname, cmdline));
+        chdir(bootstrapdir);
+        execvp(bootstrap_bin, bootstrap_args);
+        D(printf("[Shutdown] Unable to re-run AROS: %s\n", strerror(errno)));
+    }
 }
