@@ -106,7 +106,7 @@ void core_Dispatch(ucontext_t *last_ctx, ucontext_t *next_ctx)
         
     /* Restore the task's state */
     ctx = (struct AROSCPUContext *)GetIntETask(task)->iet_Context;
-    CopyMemory(next_ctx, ctx, sizeof(ucontext_t));
+    memcpy(ctx, next_ctx, sizeof(ucontext_t));
         
     /* Leave interrupt and jump to the new task */
     core_LeaveInterrupt();
@@ -127,7 +127,7 @@ void core_Switch(ucontext_t *last_ctx, ucontext_t *next_ctx)
         
     /* Copy current task's context into the ETask structure */
     ctx = (struct AROSCPUContext *)GetIntETask(task)->iet_Context;
-    CopyMemory(ctx, last_ctx, sizeof(ucontext_t));
+    memcpy(last_ctx, ctx, sizeof(ucontext_t));
         
     /* store IDNestCnt into tasks's structure */  
     task->tc_IDNestCnt = SysBase->IDNestCnt;

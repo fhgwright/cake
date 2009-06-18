@@ -58,7 +58,7 @@ void core_intr_enable(void) {
     irq_enabled = 1;
 }
 
-int core_in_supervisor(void) {
+int core_is_super(void) {
     return in_supervisor;
 }
 

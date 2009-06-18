@@ -110,8 +110,11 @@ char *kernel_functions[] = {
     "core_init",
     "core_intr_disable",
     "core_intr_enable",
-    "core_syscall",
     "core_is_super",
+    "core_syscall",
+    "core_get_context_size",
+    "core_print_context",
+    "core_prepare_context",
     NULL
 };
 
