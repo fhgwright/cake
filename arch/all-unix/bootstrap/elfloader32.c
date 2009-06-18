@@ -113,7 +113,7 @@ int load_elf_image(void *image, void *memory, uint32_t virt, void **start, void 
     int i;
     uint32_t alloc = virt;
 
-    D(printf("[elf] loading ELF module to virtual address %p\n", virt));
+    D(printf("[elf] loading ELF module to virtual address 0x%x\n", virt));
 
     eh = (struct elfheader *) image;
     if (eh->ident[0] != 0x7f || eh->ident[1] != 'E' || eh->ident[2] != 'L' || eh->ident[3] != 'F') {
@@ -228,7 +228,7 @@ int load_elf_image(void *image, void *memory, uint32_t virt, void **start, void 
                         return -1;
                 }
 
-                DREL(printf("[elf] relocated symbol '%s' type %s value %p at %p\n", SYMBOL_NAME(sh[i].link, sym),
+                DREL(printf("[elf] relocated symbol '%s' type %s value 0x%x at 0x%x\n", SYMBOL_NAME(sh[i].link, sym),
                                                                                         ELF32_R_TYPE(rel->info) == R_386_32   ? "R_386_32"   :
                                                                                         ELF32_R_TYPE(rel->info) == R_386_PC32 ? "R_386_PC32" :
                                                                                                                         "<unknown>",
