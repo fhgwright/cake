@@ -217,7 +217,7 @@ int core_init(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struc
     main_thread = pthread_self();
 
     pthread_attr_init(&thread_attrs);
-    pthread_attr_setattr(&thread_attrs, PTHREAD_CREATE_DETACHED);
+    pthread_attr_setdetachstate(&thread_attrs, PTHREAD_CREATE_DETACHED);
     pthread_create(&switcher_thread, &thread_attrs, switcher_entry, NULL);
     pthread_create(&timer_thread, &thread_attrs, timer_entry, NULL);
 
