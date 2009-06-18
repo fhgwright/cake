@@ -28,8 +28,8 @@
 #define DEFAULT_MEMSIZE (64)
 
 struct TagItem kernel_tags[8];
-char bootstrapdir[PATH_MAX];
 
+char bootstrap_dir[PATH_MAX];
 char *bootstrap_bin;
 char **bootstrap_args;
 char *kernel_bin = DEFAULT_KERNEL;
@@ -75,7 +75,7 @@ int main (int argc, char **argv) {
 
     printf("AROS for Linux, built " __DATE__ "\n");
 
-    getcwd(bootstrapdir, PATH_MAX);
+    getcwd(bootstrap_dir, PATH_MAX);
     bootstrap_bin = argv[0];
     bootstrap_args = argv;
 

@@ -7,8 +7,7 @@
 
 #define D(x)
 
-void *Host_HostLib_Open(const char *filename, char **error)
-{
+void *Host_HostLib_Open (const char *filename, char **error) {
     void *handle;
 
     D(bug("[hostlib] Open: filename=%s\n", filename));
@@ -21,11 +20,10 @@ void *Host_HostLib_Open(const char *filename, char **error)
     return handle;
 }
 
-int Host_HostLib_Close(void *handle, char **error)
-{
+int Host_HostLib_Close (void *handle, char **error) {
     int ret;
 
-    D(bug("[hostlib] Close: handle=0x%08x\n", handle));
+    D(printf("[hostlib] Open: handle=0x%08x\n", handle));
 
     ret = dlclose(handle);
 
@@ -35,16 +33,14 @@ int Host_HostLib_Close(void *handle, char **error)
     return ret;
 }
 
-void Host_HostLib_FreeErrorStr(char *error)
-{
+void Host_HostLib_FreeErrorStr (char *error) {
     /* libdl returns static strings, so nothing to do here */
 }
 
-void *Host_HostLib_GetPointer(void *handle, const char *symbol, char **error)
-{
+void *Host_HostLib_GetPointer (void *handle, const char *symbol, char **error) {
     void *ptr;
 
-    D(bug("[hostlib] GetPointer: handle=0x%08x, symbol=%s\n", handle, symbol));
+    D(printf("[hostlib] GetPointer: handle=0x%08x, symbol=%s\n", handle, symbol));
 
     dlerror();
 
@@ -56,40 +52,41 @@ void *Host_HostLib_GetPointer(void *handle, const char *symbol, char **error)
     return ptr;
 }
 
-unsigned long Host_HostLib_GetInterface(void *handle, char **names, void **funcs)
-{
-    unsigned long unresolved = 0;
+int Host_HostLib_GetInterface (void *handle, char **names, void **funcs) {
+    int unresolved = 0;
 
-    for (; *names; names++) {
+    for (; *names != NULL; names++) {
         *funcs = dlsym(handle, *names);
         D(printf("[hostlib] GetInterface: handle=0x%08x, symbol=%s, value=0x%08x\n", handle, *names, *funcs));
         if (*funcs++ == NULL)
             unresolved++;
     }
+
     return unresolved;
 }
 
-int Host_VKPrintF(const char * fmt, va_list args)
-{
+int Host_VKPrintF (const char *fmt, va_list args) {
     return vprintf(fmt, args);
 }
 
-int Host_PutChar(int c)
-{
+int Host_PutChar (int c) {
     return putchar(c);
 }
 
-void Host_Shutdown(unsigned long action)
-{
+extern char bootstrap_dir[];
+extern char *bootstrap_bin;
+extern char **bootstrap_args;
+
+void Host_Shutdown (int action) {
     switch (action) {
-    case SD_ACTION_POWEROFF:
-        D(printf("[Shutdown] POWER OFF request\n"));
-        exit(0);
-    	break;
-    case SD_ACTION_COLDREBOOT:
-        D(printf("[Shutdown] Cold reboot, dir: %s, name: %s, command line: %s\n", bootstrapdir, bootstrapname, cmdline));
-        chdir(bootstrapdir);
-        execvp(bootstrap_bin, bootstrap_args);
-        D(printf("[Shutdown] Unable to re-run AROS: %s\n", strerror(errno)));
+        case 0:
+            printf("[shutdown] power off\n");
+            exit(0);
+
+        case 1:
+            printf("[shutdown] cold reboot\n");
+            chdir(bootstrap_dir);
+            execvp(bootstrap_bin, bootstrap_args);
+            D(printf("[shutdown] reboot failed: %s\n", strerror(errno)));
     }
 }
