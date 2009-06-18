@@ -54,12 +54,16 @@ void *Host_HostLib_GetPointer (void *handle, const char *symbol, char **error) {
 
 int Host_HostLib_GetInterface (void *handle, char **names, void **funcs) {
     int unresolved = 0;
+    char *err;
 
-    for (; *names != NULL; names++) {
+    dlerror();
+    for (; *names != NULL; names++, funcs++) {
         *funcs = dlsym(handle, *names);
         D(printf("[hostlib] GetInterface: handle=0x%08x, symbol=%s, value=0x%08x\n", handle, *names, *funcs));
-        if (*funcs++ == NULL)
+        if (*funcs == NULL && (err = dlerror()) != NULL) {
+            D(printf("[hostlib] error fetching value for symbol '%s': %s\n", *names, err));
             unresolved++;
+        }
     }
 
     return unresolved;
