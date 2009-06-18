@@ -55,7 +55,9 @@ extern struct HostInterface *HostIFace;
     /* WinAPI CreateProcess() call may silently abort if scheduler attempts task switching
        while it's running. There's no sense in this beyond this point, so we simply Disable() */
     Disable();
-    HostIFace->_Shutdown(action);
+    HostIFace->_Shutdown(action == SD_ACTION_POWEROFF   ?  0 : 
+                         action == SD_ACTION_COLDREBOOT ?  1 
+                                                        : -1);
     Enable();
     return 0;
 

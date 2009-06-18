@@ -7,5 +7,5 @@ struct HostInterface
     int (*HostLib_GetInterface)(void *, char **, void **);
     int (*VKPrintF)(const char *, va_list);
     int (*PutChar)(int c);
-    void (*Shutdown)(int action);
+    void (*_Shutdown)(int action);
 };
