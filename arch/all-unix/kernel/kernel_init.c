@@ -136,7 +136,7 @@ int __startup startup(struct TagItem *msg)
   void * memupper = (void*)krnGetTagData(KRN_MEMUpper, 0, msg);
   HostIFace = (struct HostInterface *)krnGetTagData(KRN_HostInterface, 0, msg);
 
-  hostlib = HostIFace->HostLib_Open("Libs\\Host\\kernel.dll", &errstr);
+  hostlib = HostIFace->HostLib_Open("Libs/Host/libkernel.so", &errstr);
   if (!hostlib) {
       mykprintf("[Kernel] failed to load host-side module: %s\n", errstr);
       HostIFace->HostLib_FreeErrorStr(errstr);
