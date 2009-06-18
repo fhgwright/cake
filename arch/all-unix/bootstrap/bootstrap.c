@@ -36,8 +36,6 @@ char *kernel_bin = DEFAULT_KERNEL;
 
 char kernel_args[256];
 
-typedef int (*kernel_entry_fn_t)(struct TagItem *);
-
 /*
  * Some helpful functions that link us to the underlying host OS.
  * Without them we would not be able to estabilish any interaction with it.
@@ -52,7 +50,6 @@ struct HostInterface HostIFace = {
     Host_PutChar,
     Host_Shutdown
 };
-
 
 static void usage (void) {
     printf ("usage: %s [options] [--] [kernel arguments]\n"
@@ -174,7 +171,7 @@ int main (int argc, char **argv) {
 
     printf("[boot] handing control to kernel\n");
 
-    int retval = ((kernel_entry_fn_t) entry)(kernel_tags);
+    int retval = ((int (*)(struct TagItem *)) entry)(kernel_tags);
 
     printf("[boot] kernel returned %d\n", retval);
 
