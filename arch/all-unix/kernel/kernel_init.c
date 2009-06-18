@@ -22,6 +22,8 @@
 #include "kernel_intern.h"
 #include LC_LIBDEFS_FILE
 
+#define HOST_MODULE "Libs/Host/libkernel.so"
+
 extern struct ExecBase * PrepareExecBase(struct MemHeader *);
 extern ULONG ** Exec_RomTagScanner(struct ExecBase*,UWORD**);
 
@@ -124,33 +126,51 @@ char *kernel_functions[] = {
 //make this the entry point
 //int startup(struct TagItem *msg) __attribute__ ((section (".aros.init")));
 
-int __startup startup(struct TagItem *msg)
-{
-  void *hostlib;
-  char *errstr;
-  unsigned long badsyms;
-  struct MemHeader *mh;
+int __startup startup(struct TagItem *msg) {
+    void *libkernel;
+    char *err;
+    int unresolved;
+    struct MemHeader *mh;
 
-  BootMsg = msg;
-  
-  void * klo = (void*)krnGetTagData(KRN_KernelLowest, 0, msg);
-  void * khi = (void*)krnGetTagData(KRN_KernelHighest, 0, msg);
-  void * memory = (void*)krnGetTagData(KRN_MEMLower, 0, msg);
-  void * memupper = (void*)krnGetTagData(KRN_MEMUpper, 0, msg);
-  HostIFace = (struct HostInterface *)krnGetTagData(KRN_HostInterface, 0, msg);
+    BootMsg = msg;
 
-  hostlib = HostIFace->HostLib_Open("Libs/Host/libkernel.so", &errstr);
-  if (!hostlib) {
-      mykprintf("[Kernel] failed to load host-side module: %s\n", errstr);
-      HostIFace->HostLib_FreeErrorStr(errstr);
-      return -1;
-  }
-  badsyms = HostIFace->HostLib_GetInterface(hostlib, kernel_functions, (void **) &KernelIFace);
-  if (badsyms) {
-      mykprintf("[Kernel] failed to resolve %lu symbols\n", badsyms);
-      HostIFace->HostLib_Close(hostlib, NULL);
-      return -1;
-  }
+    HostIFace = (struct HostInterface *)krnGetTagData(KRN_HostInterface, 0, msg);
+
+    mykprintf("[kernel] starting up\n");
+
+    void *kernel = (void *) krnGetTagData(KRN_KernelLowest, 0, msg);
+    void *kernel_end = (void *) krnGetTagData(KRN_KernelHighest, 0, msg);
+    void *memory = (void *) krnGetTagData(KRN_MEMLower, 0, msg);
+    void *memory_end = (void *) krnGetTagData(KRN_MEMUpper, 0, msg);
+
+    mykprintf("[kernel] system memory at 0x%x-0x%x (0x%x bytes)\n", memory, memory_end, memory_end-memory+1);
+    mykprintf("[kernel] kernel memory at 0x%x-0x%x (0x%x bytes)\n", kernel, kernel_end, kernel_end-kernel+1);
+
+    mykprintf("[kernel] initialising host module '%s'\n", HOST_MODULE);
+
+    libkernel = HostIFace->HostLib_Open(HOST_MODULE, &err);
+    if (libkernel == NULL) {
+        mykprintf("[kernel] failed to load host module: %s\n", err);
+        HostIFace->HostLib_FreeErrorStr(err);
+        return -1;
+    }
+
+    unresolved = HostIFace->HostLib_GetInterface(libkernel, kernel_functions, (void **) &KernelIFace);
+    if (unresolved > 0) {
+        char **names;
+        void **funcs;
+
+        mykprintf("[kernel] missing symbols in host module:\n");
+
+        for (names = kernel_functions, funcs = (void **) &KernelIFace; *names != NULL; names++, funcs++) {
+            if (*funcs == NULL)
+                mykprintf("             %s\n", *names);
+        }
+
+        HostIFace->HostLib_Close(libkernel, NULL);
+
+        return -1;
+    }
 
   mykprintf("[Kernel] preparing first mem header\n");
 
@@ -162,9 +182,9 @@ int __startup startup(struct TagItem *msg)
   mh->mh_Attributes = MEMF_CHIP | MEMF_PUBLIC | MEMF_LOCAL | MEMF_24BITDMA | MEMF_KICK;
   mh->mh_First = memory + MEMHEADER_TOTAL;
   mh->mh_First->mc_Next = NULL;
-  mh->mh_First->mc_Bytes = memupper - memory + 1 - MEMHEADER_TOTAL;
+  mh->mh_First->mc_Bytes = memory_end - memory + 1 - MEMHEADER_TOTAL;
   mh->mh_Lower = memory;
-  mh->mh_Upper = memupper;
+  mh->mh_Upper = memory_end;
   mh->mh_Free = mh->mh_First->mc_Bytes;
 
   mykprintf("[Kernel] calling PrepareExecBase@%p mh_First=%p\n",PrepareExecBase,mh->mh_First);
@@ -186,8 +206,8 @@ int __startup startup(struct TagItem *msg)
       mh->mh_Node.ln_Pri = -128;
       mh->mh_Attributes = MEMF_KICK;
       mh->mh_First = NULL;
-      mh->mh_Lower = klo;
-      mh->mh_Upper = khi;
+      mh->mh_Lower = kernel;
+      mh->mh_Upper = kernel_end;
       mh->mh_Free = 0;                        /* Never allocate from this chunk! */
       Enqueue(&SysBase->MemList, &mh->mh_Node);
    }
@@ -197,7 +217,7 @@ int __startup startup(struct TagItem *msg)
   ((struct AROSSupportBase *)(SysBase->DebugAROSBase))->vkprintf = myvkprintf;
       
   mykprintf("[Kernel] calling Exec_RomTagScanner@%p\n",Exec_RomTagScanner);
-  UWORD * ranges[] = {klo,khi,(UWORD *)~0};
+  UWORD * ranges[] = {kernel,kernel_end,(UWORD *)~0};
   /*
    * FIXME: Cross-module call again
    */
@@ -213,7 +233,7 @@ int __startup startup(struct TagItem *msg)
   InitCode(RTF_SINGLETASK, 0);
 
   mykprintf("leaving startup!\n");
-  HostIFace->HostLib_Close(hostlib, NULL);
+  HostIFace->HostLib_Close(libkernel, NULL);
   return 1;
 }
 
