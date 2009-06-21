@@ -138,14 +138,6 @@ int __startup startup(struct TagItem *msg) {
 
     mykprintf("[kernel] starting up\n");
 
-    void *kernel = (void *) krnGetTagData(KRN_KernelLowest, 0, msg);
-    void *kernel_end = (void *) krnGetTagData(KRN_KernelHighest, 0, msg);
-    void *memory = (void *) krnGetTagData(KRN_MEMLower, 0, msg);
-    void *memory_end = (void *) krnGetTagData(KRN_MEMUpper, 0, msg);
-
-    mykprintf("[kernel] system memory at 0x%x-0x%x (0x%x bytes)\n", memory, memory_end, memory_end-memory+1);
-    mykprintf("[kernel] kernel memory at 0x%x-0x%x (0x%x bytes)\n", kernel, kernel_end, kernel_end-kernel+1);
-
     mykprintf("[kernel] initialising host module '%s'\n", HOST_MODULE);
 
     libkernel = HostIFace->HostLib_Open(HOST_MODULE, &err);
@@ -171,6 +163,14 @@ int __startup startup(struct TagItem *msg) {
 
         return -1;
     }
+
+    void *kernel = (void *) krnGetTagData(KRN_KernelLowest, 0, msg);
+    void *kernel_end = (void *) krnGetTagData(KRN_KernelHighest, 0, msg);
+    void *memory = (void *) krnGetTagData(KRN_MEMLower, 0, msg);
+    void *memory_end = (void *) krnGetTagData(KRN_MEMUpper, 0, msg);
+
+    mykprintf("[kernel] system memory at 0x%x-0x%x (0x%x bytes)\n", memory, memory_end, memory_end-memory+1);
+    mykprintf("[kernel] kernel memory at 0x%x-0x%x (0x%x bytes)\n", kernel, kernel_end, kernel_end-kernel+1);
 
   mykprintf("[Kernel] preparing first mem header\n");
 
