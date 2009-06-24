@@ -17,7 +17,7 @@
 #include <aros/kernel.h>
 #include <utility/tagitem.h>
 
-#include "bootstrap.h"
+#include "elfloader32.h"
 #include "host.h"
 
 #include "../kernel/hostinterface.h"
@@ -65,10 +65,10 @@ static void usage (void) {
 int main (int argc, char **argv) {
     struct utsname utsname;
     char host_version[256], opt, *c;
-    uint32_t memsize = DEFAULT_MEMSIZE << 20, imagesize;
+    uint32_t memsize = DEFAULT_MEMSIZE << 20, imagesize, kernsize;
     int i, fd;
     struct stat st;
-    void *memory, *image, *start, *end, *entry;
+    void *kernel, *memory, *image, *start, *end, *entry;
 
     printf("AROS for Linux, built " __DATE__ "\n");
 
@@ -110,34 +110,55 @@ int main (int argc, char **argv) {
         chdir("..");
     }
 
-    memory = mmap(NULL, memsize, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (!memory) {
-            fprintf(stderr, "[boot] failed to allocate memory for system\n");
-            return -1;
-    }
-    printf("[boot] allocated 0x%x bytes at 0x%x for system memory\n", memsize, memory);
-    
     fd = open(kernel_bin, O_RDONLY);
     if (fd < 0) {
         fprintf(stderr, "[boot] unable to open kernel '%s': %s\n", kernel_bin, strerror(errno));
-        munmap(memory, memsize);
         return -1;
     }
 
     imagesize = lseek(fd, 0, SEEK_END);
     image = mmap(NULL, imagesize, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-    if (image == NULL) {
+    if (image == MAP_FAILED) {
         fprintf(stderr, "[boot] unable to map kernel image: %s\n", strerror(errno));
         close(fd);
-        munmap(memory, memsize);
         return -1;
     }
 
-    if (load_elf_image(image, memory, 0, &start, &end, &entry) != 0) {
+    kernsize = elf_count_allocation(image);
+    if (kernsize == -1) {
+        fprintf(stderr, "[boot] couldn't determine size of kernel memory\n");
         munmap(image, imagesize);
         close(fd);
-        munmap(memory, memsize);
+        return -1;
+    }
+
+    kernel = mmap(NULL, kernsize, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (kernel == MAP_FAILED) {
+        fprintf(stderr, "[boot] failed to map 0x%x bytes for kernel memory: %s\n", kernsize, strerror(errno));
+        munmap(image, imagesize);
+        close(fd);
+        return -1;
+    }
+
+    printf("[boot] allocated 0x%x bytes at 0x%x for kernel memory\n", kernsize, kernel);
+
+    memory = mmap(NULL, memsize, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (memory == MAP_FAILED) {
+        fprintf(stderr, "[boot] failed to allocate 0x%x bytes for system memory: %s\n", memsize, strerror(errno));
+        munmap(kernel, kernsize);
+        munmap(image, imagesize);
+        close(fd);
+        return -1;
+    }
+
+    printf("[boot] allocated 0x%x bytes at 0x%x for system memory\n", memsize, memory);
+    
+    if (elf_load_image(image, kernel, 0, &start, &end, &entry) != 0) {
         fprintf(stderr, "[boot] failed to load kernel '%s'\n", kernel_bin);
+        munmap(memory, memsize);
+        munmap(kernel, kernsize);
+        munmap(image, imagesize);
+        close(fd);
         return -1;
     }
 
@@ -176,6 +197,7 @@ int main (int argc, char **argv) {
     printf("[boot] kernel returned %d\n", retval);
 
     munmap(memory, memsize);
+    munmap(kernel, kernsize);
 
     return 0;
 }    

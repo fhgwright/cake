@@ -107,15 +107,7 @@ struct relo
 #define SECTION_NAME(section_index)         ((char *) (image + sh[eh->shstrndx].offset + sh[section_index].name))
 #define SYMBOL_NAME(symtab_index, symbol)   ((char *) (symbol->name ? (image + sh[sh[symtab_index].link].offset + symbol->name) : "<anonymous>"))
 
-int load_elf_image(void *image, void *memory, uint32_t virt, void **start, void **end, void **entry) {
-    struct elfheader *eh;
-    struct sheader *sh;
-    int i;
-    uint32_t alloc = virt;
-
-    D(printf("[elf] loading ELF module to virtual address 0x%x\n", virt));
-
-    eh = (struct elfheader *) image;
+static int _check_elf_header (struct elfheader *eh) {
     if (eh->ident[0] != 0x7f || eh->ident[1] != 'E' || eh->ident[2] != 'L' || eh->ident[3] != 'F') {
         fprintf(stderr, "[elf] kernel image is not an ELF image\n");
         return -1;
@@ -124,6 +116,57 @@ int load_elf_image(void *image, void *memory, uint32_t virt, void **start, void 
         fprintf(stderr, "[elf] kernel image has wrong type or architecture\n");
         return -1;
     }
+
+    return 0;
+}
+
+uint32_t elf_count_allocation (void *image) {
+    struct elfheader *eh;
+    struct sheader *sh;
+    int i;
+    uint32_t alloc = 0;
+
+    D(printf("[elf] counting allocation for image\n"));
+
+    eh = (struct elfheader *) image;
+    if (_check_elf_header(eh) < 0)
+        return -1;
+
+    sh = (struct sheader *) (image + eh->shoff);
+
+    for (i = 0; i < eh->shnum; i++) {
+        if (sh[i].flags & SHF_ALLOC) {
+            alloc = (alloc + sh[i].addralign - 1) & ~(sh[i].addralign - 1);
+
+            switch (sh[i].type) {
+                case SHT_PROGBITS: case SHT_NOBITS:
+                    D(printf("[elf] section is %s, adding 0x%x bytes to allocation\n", sh[i].type == SHT_PROGBITS ? "SHT_PROGBITS" : "SHT_NOBITS", sh[i].size));
+                    alloc += sh[i].size;
+                    break;
+
+                default:
+                    fprintf(stderr, "[elf] no support to allocate for type 0x%x section\n", sh[i].type);
+                    return -1;
+            }
+        }
+    }
+
+    D(printf("[elf] image allocation is 0x%x bytes\n", alloc));
+
+    return alloc;
+}
+
+int elf_load_image (void *image, void *memory, uint32_t virt, void **start, void **end, void **entry) {
+    struct elfheader *eh;
+    struct sheader *sh;
+    int i;
+    uint32_t alloc = virt;
+
+    D(printf("[elf] loading ELF module to virtual address 0x%x in memory 0x%x\n", virt, memory));
+
+    eh = (struct elfheader *) image;
+    if (_check_elf_header(eh) < 0)
+        return -1;
 
     sh = (struct sheader *) (image + eh->shoff);
 
@@ -239,4 +282,3 @@ int load_elf_image(void *image, void *memory, uint32_t virt, void **start, void 
 
     return 0;
 }
-
