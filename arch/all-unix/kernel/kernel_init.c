@@ -174,16 +174,16 @@ int __startup startup(struct TagItem *msg) {
 
     mykprintf("[Kernel] preparing first mem header\n");
 
-  /* Prepare the first mem header and hand it to PrepareExecBase to take SysBase live */
-  mh = (void*) ((uint32_t)(kernel_end + 1 + 0xf) & ~0xf);
+    /* Prepare the first mem header and hand it to PrepareExecBase to take SysBase live */
+  mh = memory;
   mh->mh_Node.ln_Type  = NT_MEMORY;
   mh->mh_Node.ln_Name = "chip memory";
   mh->mh_Node.ln_Pri = -5;
   mh->mh_Attributes = MEMF_CHIP | MEMF_PUBLIC | MEMF_LOCAL | MEMF_24BITDMA | MEMF_KICK;
-  mh->mh_First = (void *) mh + MEMHEADER_TOTAL;
+  mh->mh_First = memory + MEMHEADER_TOTAL;
   mh->mh_First->mc_Next = NULL;
-  mh->mh_First->mc_Bytes = memory_end + 1 - (void *) mh - MEMHEADER_TOTAL;
-  mh->mh_Lower = mh;
+  mh->mh_First->mc_Bytes = memory_end + 1 - memory - MEMHEADER_TOTAL;
+  mh->mh_Lower = memory;
   mh->mh_Upper = memory_end;
   mh->mh_Free = mh->mh_First->mc_Bytes;
 
