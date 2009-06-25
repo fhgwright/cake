@@ -337,11 +337,6 @@ APTR __exec_prepare(const char *filename, int searchpath, char *const argv[], ch
         privdata->acpd_exec_olderr = SelectError(err->fcb->fh);
 
     /* Clean up data */
-    if (privdata->acpd_exec_tmparray);
-    {
-        free((void *)privdata->acpd_exec_tmparray);
-        privdata->acpd_exec_tmparray = NULL;
-    }
     if (filenamefree)
         free(filenamefree);
 
@@ -367,11 +362,6 @@ APTR __exec_prepare(const char *filename, int searchpath, char *const argv[], ch
 error:
     __exec_cleanup(privdata);
     
-    if (privdata->acpd_exec_tmparray);
-    {
-        free((void *)privdata->acpd_exec_tmparray);
-        privdata->acpd_exec_tmparray = NULL;
-    }
     if (filenamefree)
         free(filenamefree);
     
@@ -463,6 +453,17 @@ char *const *__exec_valist2array(const char *arg1, va_list list)
     va_end(list2);
     
     return privdata->acpd_exec_tmparray;
+}
+
+
+void __exec_cleanup_array()
+{
+    struct arosc_privdata *privdata = __get_arosc_privdata();
+    if (privdata->acpd_exec_tmparray)
+    {
+        free((void *)privdata->acpd_exec_tmparray);
+        privdata->acpd_exec_tmparray = NULL;
+    }
 }
 
 

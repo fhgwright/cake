@@ -13,7 +13,7 @@
 
     SYNOPSIS
 
-        CX_PRIORITY/K/N,CX_POPUP/K/S,CX_POPKEY/K
+        CX_PRIORITY/N/K,CX_POPKEY/K,CX_POPUP/S
 
     LOCATION
 
@@ -26,8 +26,8 @@
     INPUTS
 
         CX_PRIORITY  --  Priority of the Exchange broker
-	CX_POPUP     --  Appear at startup
 	CX_POPKEY    --  Hotkey combination for Exchange
+	CX_POPUP     --  Appear at startup
 
     RESULT
 
@@ -78,7 +78,7 @@
 #else
 #define CATALOG_NAME     "System/Tools/Exchange.catalog"
 #endif
-#define CATALOG_VERSION  2
+#define CATALOG_VERSION  3
 
 TEXT version[] = "$VER: Exchange 1.1 (08.01.2009)";
 

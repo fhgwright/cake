@@ -1,5 +1,5 @@
 /*
-    Copyright © 1995-2001, The AROS Development Team. All rights reserved.
+    Copyright © 1995-2009, The AROS Development Team. All rights reserved.
     $Id$
 
     Desc: Early bootup section
@@ -142,6 +142,8 @@ extern struct Library * PrepareAROSSupportBase (void);
 extern ULONG SoftIntDispatch();
 extern void Exec_SerialRawIOInit();
 extern void Exec_SerialRawPutChar(UBYTE chr);
+extern void Exec_MemoryRawIOInit();
+extern void Exec_MemoryRawPutChar(UBYTE chr);
 
 extern void Exec_Switch_FPU();
 extern void Exec_PrepareContext_FPU();
@@ -228,11 +230,11 @@ const char exec_core[] __text       = "Native/CORE v2.0.1";
 const char exec_name[] __text       = "exec.library";
 
 /* Now ID string as it will be used in a minute in resident structure. */
-const char exec_idstring[] __text   = "$VER: exec 41.11 (16.12.2000)\r\n";
+const char exec_idstring[] __text = VERSION_STRING;
 
 /* We would need also version and revision fields placed somewhere here. */
-const short exec_Version __text     = 41;
-const short exec_Revision __text    = 11;
+const short exec_Version __text     = VERSION_NUMBER;
+const short exec_Revision __text    = REVISION_NUMBER;
 
 /*
  * The RomTag structure. It has to be placed inside .text block as there will
@@ -245,7 +247,7 @@ const struct Resident Exec_resident __text=
     &Exec_resident,         /* Points to Resident itself */
     &LIBEND,                /* Where could we find next Resident? */
     0,                      /* There are no flags!! */
-    41,                     /* Version */
+    VERSION_NUMBER,         /* Version */
     NT_LIBRARY,             /* Type */
     126,                    /* Very high startup priority. */
     (char *)exec_name,      /* Pointer to name string */
@@ -371,7 +373,7 @@ void exec_DummyInt();
 asm("\nexec_DummyInt:   iret");
 
 /*
- * RO copy of GlobalDescriptorTable. It's easyier to copy this table than
+ * RO copy of GlobalDescriptorTable. It's easier to copy this table than
  * to generate completely new one
  */
 const struct {UWORD l1, l2, l3, l4;}
@@ -599,7 +601,7 @@ void exec_cinit(unsigned long magic, unsigned long addr)
         while (*fp++ != (VOID *) -1) negsize += LIB_VECTSIZE;
 
         ExecBase = (struct ExecBase *) 0x00002000; /* Got ExecBase at the lowest possible addr */
-        ExecBase += negsize;   /* Substract lowest vector so jumpable would fit */
+        ExecBase += negsize;   /* Substract lowest vector so jump table would fit */
 
         /* Check whether we have some FAST memory,
          * If not, then use calculated ExecBase */
@@ -1071,13 +1073,24 @@ void exec_cinit(unsigned long magic, unsigned long addr)
 
     ExecBase->TDNestCnt++;
     Permit();
-#if (AROS_SERIAL_DEBUG >0)
-    SetFunction(&ExecBase->LibNode, -84*LIB_VECTSIZE, AROS_SLIB_ENTRY(SerialRawIOInit, Exec));
-    SetFunction(&ExecBase->LibNode, -86*LIB_VECTSIZE, AROS_SLIB_ENTRY(SerialRawPutChar, Exec));
-    RawIOInit();
-#endif
 
-    
+    /* Enable type of debug output chosen by user */
+    if (strstr(arosmb->cmdline, "debug=serial"))
+    {
+        SetFunction(&ExecBase->LibNode, -84 * LIB_VECTSIZE,
+            AROS_SLIB_ENTRY(SerialRawIOInit, Exec));
+        SetFunction(&ExecBase->LibNode, -86 * LIB_VECTSIZE,
+            AROS_SLIB_ENTRY(SerialRawPutChar, Exec));
+    }
+    else if (strstr(arosmb->cmdline, "debug=memory"))
+    {
+        SetFunction(&ExecBase->LibNode, -84 * LIB_VECTSIZE,
+            AROS_SLIB_ENTRY(MemoryRawIOInit, Exec));
+        SetFunction(&ExecBase->LibNode, -86 * LIB_VECTSIZE,
+            AROS_SLIB_ENTRY(MemoryRawPutChar, Exec));
+    }
+    RawIOInit();
+
     /* Scan for valid RomTags */
     ExecBase->ResModules = exec_RomTagScanner();
 
@@ -1111,10 +1124,11 @@ asm("\ndelay:\t.short   0x00eb\n\tret");
 
 /* Exec default trap routine */
 asm("\nexec_DefaultTrap:\n\t"
+    "popl   %eax\n\t"
+    "popl   %eax\n\t"
     "pushl  4\n\t"
-    "pushl  $0\n\t"
-    "pushl  $0\n\t"
-    "jmp    Exec_Alert");
+    "pushl  %eax\n\t"
+    "call    Exec_Alert");
 
 #warning "TODO: We should use info from BIOS here."
 int exec_RamCheck_dma(struct arosmb *arosmb)
@@ -1254,7 +1268,7 @@ int exec_check_base()
                     /*
                      * Really last thing. Check MaxLocMem and MaxExtMem fields
                      * in ExecBase. First cannot be grater than 16MB and smaller
-                     * than 2MB, second, if is not zero then has to be grater
+                     * than 2MB, second, if is not zero then has to be greater
                      * than 16MB
                      */
 
@@ -1425,6 +1439,7 @@ unsigned char setupVesa(struct multiboot *mbinfo)
     char *vesa = strstr(str, "vesa=");
     short r;
     unsigned char palwidth = 0;
+    BOOL prioritise_depth = FALSE;
 
     if (vesa)
     {
@@ -1434,27 +1449,29 @@ unsigned char setupVesa(struct multiboot *mbinfo)
         void *vesa_start = &_binary_vesa_start;
         vesa+=5;
 
-        while (*vesa && *vesa != ',' && *vesa != 'x' && *vesa != ' ')
+        while (*vesa >= '0' && *vesa <= '9')
+            x = x * 10 + *vesa++ - '0';
+        if (*vesa++ == 'x')
         {
-            x = x*10 + *vesa++ - '0';
+            while (*vesa >= '0' && *vesa <= '9')
+                y = y * 10 + *vesa++ - '0';
+            if (*vesa++ == 'x')
+            {
+                while (*vesa >= '0' && *vesa <= '9')
+                    d = d * 10 + *vesa++ - '0';
+            }
+            else
+                d = 32;
         }
-        vesa++;
-        while (*vesa && *vesa != ',' && *vesa != 'x' && *vesa != ' ')
-        {
-            y = y*10 + *vesa++ - '0';
-        }
-        vesa++;
-        while (*vesa && *vesa != ',' && *vesa != 'x' && *vesa != ' ')
-        {
-            d = d*10 + *vesa++ - '0';
-        }
-        
+        else
+            d = x, x = 10000, y = 10000, prioritise_depth = TRUE;
+
         rkprintf("[VESA] module (@ %p) size=%d\n", &_binary_vesa_start, &_binary_vesa_size);
         memcpy((void *)0x1000, vesa_start, vesa_size);
         rkprintf("[VESA] Module installed\n");
 
-        rkprintf("[VESA] BestModeMatch for %dx%dx%d = ",x,y,d);        
-        mode = findMode(x,y,d);
+        rkprintf("[VESA] BestModeMatch for %dx%dx%d = ", x, y, d);
+        mode = findMode(x, y, d, prioritise_depth);
 
         getModeInfo(mode);
 

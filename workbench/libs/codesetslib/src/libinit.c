@@ -122,6 +122,31 @@ static struct LibraryHeader * LIBFUNC LibOpen   (void);
 static BPTR                   LIBFUNC LibClose  (void);
 static LONG                   LIBFUNC LibNull   (void);
 
+#elif defined(__AROS__)
+
+#include <aros/libcall.h>
+
+#define Codesets_LibOpen LibOpen
+#define Codesets_LibClose LibClose
+#define Codesets_LibExpunge LibExpunge
+
+static AROS_UFP3 (struct LibraryHeader *, LibInit,
+                  AROS_UFPA(struct LibraryHeader *, base, D0),
+                  AROS_UFPA(BPTR, librarySegment, A0),
+                  AROS_UFPA(struct ExecBase *, sb, A6)
+);
+static AROS_LD1 (struct LibraryHeader *, LibOpen,
+                 AROS_LPA (UNUSED ULONG, version, D0),
+                 struct LibraryHeader *, base, 1, Codesets
+);
+static AROS_LD0 (BPTR, LibClose,
+                 struct LibraryHeader *, base, 2, Codesets
+);
+static AROS_LD1(BPTR, LibExpunge,
+                AROS_LPA(UNUSED struct LibraryHeader *, __extrabase, D0),
+                struct LibraryHeader *, base, 3, Codesets
+);
+
 #else
 
 static struct LibraryHeader * LIBFUNC LibInit    (REG(d0, struct LibraryHeader *lh), REG(a0, BPTR Segment), REG(a6, struct ExecBase *sb));
@@ -196,8 +221,8 @@ STATIC uint32 _manager_Release(struct LibraryManagerInterface *Self)
 
 STATIC CONST CONST_APTR lib_manager_vectors[] =
 {
-	(CONST_APTR)_manager_Obtain,
-	(CONST_APTR)_manager_Release,
+  (CONST_APTR)_manager_Obtain,
+  (CONST_APTR)_manager_Release,
   (CONST_APTR)NULL,
   (CONST_APTR)NULL,
   (CONST_APTR)LibOpen,
@@ -239,17 +264,17 @@ STATIC CONST CONST_APTR main_vectors[] =
 
 STATIC CONST struct TagItem mainTags[] =
 {
-	{ MIT_Name,         (Tag)"main" },
-	{ MIT_VectorTable,	(Tag)main_vectors	},
-	{ MIT_Version,      1 },
-	{ TAG_DONE,         0	}
+  { MIT_Name,         (Tag)"main" },
+  { MIT_VectorTable,  (Tag)main_vectors },
+  { MIT_Version,      1 },
+  { TAG_DONE,         0 }
 };
 
 STATIC CONST CONST_APTR libInterfaces[] =
 {
-	(CONST_APTR)lib_managerTags,
-	(CONST_APTR)mainTags,
-	(CONST_APTR)NULL
+  (CONST_APTR)lib_managerTags,
+  (CONST_APTR)mainTags,
+  (CONST_APTR)NULL
 };
 
 // Our libraries always have to carry a 68k jump table with it, so
@@ -305,7 +330,7 @@ static const USED_VAR struct Resident ROMTag =
   #if defined(__amigaos4__)
   RTF_AUTOINIT|RTF_NATIVE,      // The Library should be set up according to the given table.
   #elif defined(__MORPHOS__)
-  RTF_AUTOINIT|RTF_PPC,
+  RTF_AUTOINIT|RTF_EXTENDED|RTF_PPC,
   #elif defined(__AROS__)
   RTF_AUTOINIT|RTF_EXTENDED,
   #else
@@ -343,11 +368,12 @@ const USED_VAR ULONG __abox__ = 1;
 
 /* generic StackSwap() function which calls function() surrounded by
    StackSwap() calls */
-/*extern REGARGS ULONG stackswap_call(struct StackSwapStruct *stack,
-                            ULONG (*function)(struct LibraryHeader *),
-                            struct LibraryHeader *arg);*/
 
 #if defined(__mc68000__)
+ULONG stackswap_call(struct StackSwapStruct *stack,
+                     ULONG (*function)(struct LibraryHeader *),
+                     struct LibraryHeader *arg);
+
 asm(".text                    \n\
      .even                    \n\
      .globl _stackswap_call   \n\
@@ -377,6 +403,7 @@ ULONG stackswap_call(struct StackSwapStruct *stack,
    struct PPCStackSwapArgs swapargs;
 
    swapargs.Args[0] = (ULONG)arg;
+
    return NewPPCStackSwap(stack, function, &swapargs);
 }
 #else
@@ -384,13 +411,15 @@ ULONG stackswap_call(struct StackSwapStruct *stack,
           On AmigaOS v4 it ocassionally works because function's parameters are placed
           in registers on PPC */
 ULONG REGARGS stackswap_call(struct StackSwapStruct *stack,
-                     ULONG (*function)(struct LibraryHeader *),
-                     struct LibraryHeader *arg)
+                             ULONG (*function)(struct LibraryHeader *),
+                             struct LibraryHeader *arg)
 {
    register ULONG result;
+
    StackSwap(stack);
    result = function(arg);
    StackSwap(stack);
+
    return result;
 }
 #endif
@@ -453,6 +482,14 @@ static struct LibraryHeader * LibInit(struct LibraryHeader *base, BPTR librarySe
 #elif defined(__MORPHOS__)
 static struct LibraryHeader * LibInit(struct LibraryHeader *base, BPTR librarySegment, struct ExecBase *sb)
 {
+#elif defined(__AROS__)
+static AROS_UFH3(struct LibraryHeader *, LibInit,
+                 AROS_UFHA(struct LibraryHeader *, base, D0),
+                 AROS_UFHA(BPTR, librarySegment, A0),
+                 AROS_UFHA(struct ExecBase *, sb, A6)
+)
+{
+    AROS_USERFUNC_INIT
 #else
 static struct LibraryHeader * LIBFUNC LibInit(REG(d0, struct LibraryHeader *base), REG(a0, BPTR librarySegment), REG(a6, struct ExecBase *sb))
 {
@@ -535,7 +572,10 @@ static struct LibraryHeader * LIBFUNC LibInit(REG(d0, struct LibraryHeader *base
     #endif
   }
 
-  return(NULL);
+  return NULL;
+#ifdef __AROS__
+    AROS_USERFUNC_EXIT
+#endif
 }
 
 /****************************************************************************/
@@ -553,7 +593,14 @@ static BPTR LibExpunge(struct LibraryManagerInterface *Self)
 #elif defined(__MORPHOS__)
 static BPTR LibExpunge(void)
 {
-	struct LibraryHeader *base = (struct LibraryHeader*)REG_A6;
+  struct LibraryHeader *base = (struct LibraryHeader*)REG_A6;
+#elif defined(__AROS__)
+static AROS_LH1(BPTR, LibExpunge,
+		AROS_LHA(UNUSED struct LibraryHeader *, __extrabase, D0),
+		struct LibraryHeader *, base, 3, Codesets
+)
+{
+    AROS_LIBFUNC_INIT
 #else
 static BPTR LIBFUNC LibExpunge(REG(a6, struct LibraryHeader *base))
 {
@@ -605,6 +652,9 @@ static BPTR LIBFUNC LibExpunge(REG(a6, struct LibraryHeader *base))
   }
 
   return rc;
+#ifdef __AROS__
+  AROS_LIBFUNC_EXIT
+#endif
 }
 
 /****************************************************************************/
@@ -617,6 +667,13 @@ static struct LibraryHeader *LibOpen(struct LibraryManagerInterface *Self, ULONG
 static struct LibraryHeader *LibOpen(void)
 {
   struct LibraryHeader *base = (struct LibraryHeader*)REG_A6;
+#elif defined(__AROS__)
+static AROS_LH1(struct LibraryHeader *, LibOpen,
+                AROS_LHA(UNUSED ULONG, version, D0),
+                struct LibraryHeader *, base, 1, Codesets
+)
+{
+    AROS_LIBFUNC_INIT
 #else
 static struct LibraryHeader * LIBFUNC LibOpen(REG(d0, UNUSED ULONG version), REG(a6, struct LibraryHeader *base))
 {
@@ -642,6 +699,9 @@ static struct LibraryHeader * LIBFUNC LibOpen(REG(d0, UNUSED ULONG version), REG
   base->libBase.lib_Flags &= ~LIBF_DELEXP;
 
   return res;
+#ifdef __AROS__
+  AROS_LIBFUNC_EXIT
+#endif
 }
 
 /****************************************************************************/
@@ -653,7 +713,13 @@ static BPTR LibClose(struct LibraryManagerInterface *Self)
 #elif defined(__MORPHOS__)
 static BPTR LibClose(void)
 {
-	struct LibraryHeader *base = (struct LibraryHeader *)REG_A6;
+  struct LibraryHeader *base = (struct LibraryHeader *)REG_A6;
+#elif defined(__AROS__)
+static AROS_LH0(BPTR, LibClose,
+                struct LibraryHeader *, base, 2, Codesets
+)
+{
+    AROS_LIBFUNC_INIT
 #else
 static BPTR LIBFUNC LibClose(REG(a6, struct LibraryHeader *base))
 {
@@ -677,15 +743,21 @@ static BPTR LIBFUNC LibClose(REG(a6, struct LibraryHeader *base))
       rc = LibExpunge(Self);
       #elif defined(__MORPHOS__)
       rc = LibExpunge();
+      #elif defined(__AROS__)
+      rc = AROS_LC1(BPTR, LibExpunge,
+                    AROS_LCA(struct LibraryHeader *, base, D0),
+                    struct LibraryHeader *, base, 3, Codesets
+      );
       #else
       rc = LibExpunge(base);
       #endif
-
-      return rc;
     }
   }
 
   return rc;
+#ifdef __AROS__
+  AROS_LIBFUNC_EXIT
+#endif
 }
 
 /****************************************************************************/

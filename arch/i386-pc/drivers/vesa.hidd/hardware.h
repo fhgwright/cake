@@ -25,18 +25,21 @@ struct HWData
     ULONG	bytesperline;
     UBYTE	palettewidth;
     UBYTE	DAC[768];
+    BOOL    	use_updaterect;
 };
 
 extern OOP_AttrBase HiddPCIDeviceAttrBase;
 
 BOOL initVesaGfxHW(struct HWData *);
 void DACLoad(struct HWData *, unsigned char, int);
+void ClearBuffer(const struct HWData *data);
 
 #if BUFFERED_VRAM
 
 struct BitmapData;
 
 void vesaRefreshArea(struct BitmapData *data, LONG x1, LONG y1, LONG x2, LONG y2);
+void vesaDoRefreshArea(struct BitmapData *data, LONG x1, LONG y1, LONG x2, LONG y2);
 #endif
 
 #endif

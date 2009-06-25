@@ -1,5 +1,5 @@
 /*
-    Copyright © 1995-2001, The AROS Development Team. All rights reserved.
+    Copyright © 1995-2009, The AROS Development Team. All rights reserved.
     $Id$
 
     Desc: Common startup code
@@ -28,23 +28,16 @@
 	result in your program being detached from the shell before the main()
 	function is reached.
 */
+#define DEBUG 0
 
 #include <aros/config.h>
 #include <dos/dos.h>
 #include <proto/exec.h>
 #include <proto/dos.h>
 #include <aros/asmcall.h>
+#include <aros/debug.h>
 #include <aros/symbolsets.h>
-
-#if (AROS_FLAVOUR & AROS_FLAVOUR_NATIVE & defined __mc68000__)
-asm
-(
-    ".text\n"
-    "\n"
-    "move.l      4.w,a6\n"
-    "bra         _detach_entry\n"
-);
-#endif
+#include <aros/startup.h>
 
 int             __detached_manages_detach;
 int             __detacher_go_away;
@@ -52,103 +45,77 @@ STRPTR          __detached_name;
 LONG            __detached_return_value;
 struct Process *__detacher_process;
 
-DECLARESET(PROGRAM_ENTRIES);
-
-AROS_UFP3(static LONG, __detach_entry,
-AROS_UFHA(char *,argstr,A0),
-AROS_UFHA(ULONG,argsize,D0),
-AROS_UFHA(struct ExecBase *,SysBase,A6))  __attribute__((section(".aros.startup")));
-
 AROS_UFP3(static LONG, __detach_trampoline,
 AROS_UFHA(char *,argstr,A0),
 AROS_UFHA(ULONG,argsize,D0),
 AROS_UFHA(struct ExecBase *,SysBase,A6));
 
-AROS_UFH3(static LONG, __detach_entry,
-AROS_UFHA(char *,argstr,A0),
-AROS_UFHA(ULONG,argsize,D0),
-AROS_UFHA(struct ExecBase *,SysBase,A6))
+static void __startup_detach(void)
 {
-    AROS_USERFUNC_INIT
-
-    struct DosLibrary           *DOSBase;
     struct CommandLineInterface *cli;
     struct Process              *newproc;
     BPTR                         mysegment = NULL;
     STRPTR                       detached_name;
 
-    DOSBase = (struct DosLibrary *)OpenLibrary(DOSNAME, 39);
-    if (!DOSBase) return RETURN_FAIL;
+    D(bug("Entering __startup_detach(\"%s\", %d, %x)\n", argstr, argsize, SysBase));
 
     cli = Cli();
     /* Without a CLI detaching makes no sense, just jump to
        the real program.  */
     if (!cli)
     {
-#if 0 /* gcc 4.0 trouble. static follows non-static bla bla bla */
-        AROS_UFC3(LONG, SETELEM(__detach_entry, program_entries)[1],
-        AROS_UFHA(char *,argstr,A0),
-        AROS_UFHA(ULONG,argsize,D0),
-        AROS_UFHA(struct ExecBase *,SysBase,A6));
-#else
-        AROS_UFC3(LONG, SETNAME(PROGRAM_ENTRIES)[1 + 1],
-        AROS_UFHA(char *,argstr,A0),
-        AROS_UFHA(ULONG,argsize,D0),
-        AROS_UFHA(struct ExecBase *,SysBase,A6));
-#endif
-
+        __startup_entries_next();
     }  
-
-    mysegment = cli->cli_Module;
-    cli->cli_Module = NULL;
-
-    detached_name = __detached_name ? __detached_name : (STRPTR)FindTask(NULL)->tc_Node.ln_Name;
-    
-    {
-        struct TagItem tags[] =
-        {
-	    { NP_Seglist,   (IPTR)mysegment            },
-	    { NP_Entry,     (IPTR)&__detach_trampoline },
-	    { NP_Name,      (IPTR)detached_name        },
-	    { NP_Arguments, (IPTR)argstr               },
-	    { NP_Cli,       TRUE                       },
-            { TAG_DONE,     0                          }
-        };
-
-	__detacher_process = (struct Process *)FindTask(NULL);
-
-	/* CreateNewProc() will take care of freeing the seglist */
-	newproc = CreateNewProc(tags);
-    }
-
-    CloseLibrary((struct Library *)DOSBase);
-    
-    if (!newproc)
-    {
-        cli->cli_Module = mysegment;
-	__detached_return_value = RETURN_ERROR;
-    }
     else
-        while (!__detacher_go_away) Wait(SIGF_SINGLE);
+    {
+        mysegment = cli->cli_Module;
+        cli->cli_Module = NULL;
 
-    if (__detached_return_value != RETURN_OK)
-    {
-        PutStr(FindTask(NULL)->tc_Node.ln_Name); PutStr(": Failed to detach.\n");
+        detached_name = __detached_name ? __detached_name : (STRPTR)FindTask(NULL)->tc_Node.ln_Name;
+    
+        {
+            struct TagItem tags[] =
+            {
+                { NP_Seglist,   (IPTR)mysegment            },
+                { NP_Entry,     (IPTR)&__detach_trampoline },
+                { NP_Name,      (IPTR)detached_name        },
+                { NP_Arguments, (IPTR)__argstr             },
+                { NP_Cli,       TRUE                       },
+                { TAG_DONE,     0                          }
+            };
+
+            __detacher_process = (struct Process *)FindTask(NULL);
+
+            /* CreateNewProc() will take care of freeing the seglist */
+            newproc = CreateNewProc(tags);
+        }
+
+        if (!newproc)
+        {
+            cli->cli_Module = mysegment;
+            __detached_return_value = RETURN_ERROR;
+        }
+        else
+            while (!__detacher_go_away) Wait(SIGF_SINGLE);
+
+        if (__detached_return_value != RETURN_OK)
+        {
+            PutStr(FindTask(NULL)->tc_Node.ln_Name); PutStr(": Failed to detach.\n");
+        }
+    
+        if (newproc)
+        {
+            Forbid();
+            Signal(&newproc->pr_Task, SIGF_SINGLE);
+        }
+
+        __aros_startup.as_startup_error = __detached_return_value;
     }
-    
-    if (newproc)
-    {
-        Forbid();
-	Signal(&newproc->pr_Task, SIGF_SINGLE);
-    }
-    
-    return __detached_return_value;
-    
-    AROS_USERFUNC_EXIT
+
+    D(bug("Leaving __startup_detach\n"));
 }
 
-DEFINESET(PROGRAM_ENTRIES);
-ADD2SET(__detach_entry, program_entries, 0);
+ADD2SET(__startup_detach, program_entries, -100);
 
 void __Detach(LONG retval);
 
@@ -161,6 +128,8 @@ AROS_UFHA(struct ExecBase *,SysBase,A6))
     
     LONG retval;
       
+    D(bug("Entering __detach_trampoline(\"%s\", %d, %x)\n", argstr, argsize, SysBase));
+
     /* The program has two options: either take care of telling the detacher
        process when exactly to go away, via the Detach() function, or let this
        startup code take care of it. If __detached_manages_detach is TRUE, then
@@ -169,24 +138,15 @@ AROS_UFHA(struct ExecBase *,SysBase,A6))
     if (!__detached_manages_detach)
        __Detach(RETURN_OK);
 
-#if 0 /* gcc 4.0 trouble. static follows non-static bla bla bla */
-    
-    retval = AROS_UFC3(LONG, SETELEM(__detach_entry, program_entries)[1],
-             AROS_UFHA(char *,argstr,A0),
-             AROS_UFHA(ULONG,argsize,D0),
-             AROS_UFHA(struct ExecBase *,SysBase,A6));
-#else
-    retval = AROS_UFC3(LONG, SETNAME(PROGRAM_ENTRIES)[1 + 1],
-             AROS_UFHA(char *,argstr,A0),
-             AROS_UFHA(ULONG,argsize,D0),
-             AROS_UFHA(struct ExecBase *,SysBase,A6));
-#endif
+    __startup_entries_next();
     
     /* At this point the detacher process might still be around, 
       If the program forgot to detach, or if it couldn't, but in any
       case we need to tell the detacher to go away.  */
     __Detach(retval);
     
+    D(bug("Leaving __detach_trampoline\n"));
+
     return 0;	  
     
     AROS_USERFUNC_EXIT
@@ -194,6 +154,8 @@ AROS_UFHA(struct ExecBase *,SysBase,A6))
 
 void __Detach(LONG retval)
 {
+    D(bug("Entering __Detach(%d)\n", retval));
+
     if (__detacher_process != NULL)
     {
         __detached_return_value = retval;
@@ -207,4 +169,6 @@ void __Detach(LONG retval)
 	Wait(SIGF_SINGLE);
 	__detacher_process = NULL;
     }
+
+    D(bug("Leaving __Detach\n"));
 }

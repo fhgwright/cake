@@ -109,7 +109,7 @@ freeBase(struct LibraryHeader *lib)
   if(UtilityBase)
   {
     DROPINTERFACE(IUtility);
-    CloseLibrary(UtilityBase);
+    CloseLibrary((struct Library *)UtilityBase);
     UtilityBase = NULL;
   }
 
@@ -183,7 +183,7 @@ getSystemCodeset(struct LibraryHeader *lib)
   #ifdef __amigaos4__
   {
     LONG default_charset = GetDiskFontCtrl(DFCTRL_CHARSET);
-		char *charset = (char *)ObtainCharsetInfo(DFCS_NUMBER, default_charset, DFCS_MIMENAME);
+    char *charset = (char *)ObtainCharsetInfo(DFCS_NUMBER, default_charset, DFCS_MIMENAME);
 
     foundCodeset = codesetsFind(&lib->codesets, charset);
 
@@ -344,7 +344,7 @@ initBase(struct LibraryHeader *lib)
   if((DOSBase = (APTR)OpenLibrary("dos.library", 37)) &&
      GETINTERFACE(IDOS, DOSBase))
   {
-    if((UtilityBase = OpenLibrary("utility.library", 37)) &&
+    if((UtilityBase = (APTR)OpenLibrary("utility.library", 37)) &&
        GETINTERFACE(IUtility, UtilityBase))
     {
       // we have to please the internal utilitybase

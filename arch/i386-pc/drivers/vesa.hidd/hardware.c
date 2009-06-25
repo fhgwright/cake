@@ -1,7 +1,7 @@
 /*
     Copyright © 1995-2009, The AROS Development Team. All rights reserved.
     $Id$
- 
+
     Desc: vesa "hardware" functions
     Lang: English
 */
@@ -46,6 +46,24 @@ BOOL initVesaGfxHW(struct HWData *data)
 
     if ((BootLoaderBase = OpenResource("bootloader.resource")))
     {
+    	struct List *list;
+    	struct Node *node;
+
+	if ((list = (struct List *)GetBootInfo(BL_Args)))
+	{
+            ForeachNode(list, node)
+            {
+                if (strncmp(node->ln_Name, "vesagfx=", 8) == 0)
+                {
+		    if (strstr(node->ln_Name, "updaterect"))
+		    {
+		    	data->use_updaterect = TRUE;
+		    }
+		}
+		
+	    }	    
+	}
+
 	D(bug("[Vesa] Init: Bootloader.resource opened\n"));
 	if ((vi = (struct VesaInfo *)GetBootInfo(BL_Video)))
 	{
@@ -101,8 +119,10 @@ BOOL initVesaGfxHW(struct HWData *data)
 		    data->DAC[col*3+i] = cursorPalette[i];
 		DACLoad(data, col, 3);
 	    }
-	    D(bug("[Vesa] HwInit: Clearing framebuffer at 0x%08x size %d KB\n",data->framebuffer, vi->FrameBufferSize));
-	    memset(data->framebuffer, 0, vi->FrameBufferSize * 1024);
+	    D(bug("[Vesa] HwInit: Clearing %d kB of framebuffer at 0x%08x"
+		" size %d kB\n", data->height * data->bytesperline >> 10,
+		data->framebuffer, vi->FrameBufferSize));
+            ClearBuffer(data);
 	    D(bug("[Vesa] HwInit: Linear framebuffer at 0x%08x\n",data->framebuffer));
 	    D(bug("[Vesa] HwInit: Screenmode %dx%dx%d\n",data->width,data->height,data->depth));
 	    D(bug("[Vesa] HwInit: Masks R %08x<<%2d G %08x<<%2d B %08x<<%2d\n",
@@ -113,6 +133,7 @@ BOOL initVesaGfxHW(struct HWData *data)
 	    D(bug("[vesa] HwInit: BytesPerPixel %d\n", data->bytesperpixel));
 	    return TRUE;
 	}
+	
     }
 
     bug("[Vesa] HwInit: No Vesa information from the bootloader. Failing\n");
@@ -121,7 +142,7 @@ BOOL initVesaGfxHW(struct HWData *data)
 
 
 #if BUFFERED_VRAM
-void vesaRefreshArea(struct BitmapData *data, LONG x1, LONG y1, LONG x2, LONG y2)
+void vesaDoRefreshArea(struct BitmapData *data, LONG x1, LONG y1, LONG x2, LONG y2)
 {
     UBYTE *src, *dst;
     ULONG srcmod, dstmod;
@@ -154,6 +175,15 @@ void vesaRefreshArea(struct BitmapData *data, LONG x1, LONG y1, LONG x2, LONG y2
     }
     
 }
+
+void vesaRefreshArea(struct BitmapData *data, LONG x1, LONG y1, LONG x2, LONG y2)
+{
+    if (data->data->use_updaterect == FALSE)
+    {
+    	vesaDoRefreshArea(data, x1, y1, x2, y2);
+    }
+}
+
 #endif
 
 AROS_UFH3(void, Enumerator,
@@ -163,7 +193,7 @@ AROS_UFH3(void, Enumerator,
 {
     AROS_USERFUNC_INIT
 
-    IPTR buf;
+    APTR buf;
     IPTR size;
     IPTR Vendor;
     OOP_Object *driver;
@@ -172,19 +202,19 @@ AROS_UFH3(void, Enumerator,
 
     D(bug("[VESA] Enumerator: Found device\n"));
 
-    OOP_GetAttr(pciDevice, aHidd_PCIDevice_Driver, (APTR)&driver);
-    OOP_GetAttr(pciDevice, aHidd_PCIDevice_VendorID, (APTR)&Vendor);
-    OOP_GetAttr(pciDevice, aHidd_PCIDevice_Base0, (APTR)&buf);
-    OOP_GetAttr(pciDevice, aHidd_PCIDevice_Size0, (APTR)&size);
+    OOP_GetAttr(pciDevice, aHidd_PCIDevice_Driver, (IPTR *)&driver);
+    OOP_GetAttr(pciDevice, aHidd_PCIDevice_VendorID, &Vendor);
+    OOP_GetAttr(pciDevice, aHidd_PCIDevice_Base0, (IPTR *)&buf);
+    OOP_GetAttr(pciDevice, aHidd_PCIDevice_Size0, &size);
 
     /* BIOS of S3 video cards may forget to set up linear framebuffer start address.
        Here we do this manually.
        This thing was looked up in x.org S3 driver source code. Applicable to all S3 cards. */
     if (Vendor == PCI_VENDOR_S3) {
 		outb(0x59, vgaIOBase + 4);
-		outb(buf >> 24, vgaIOBase + 5);  
+		outb((IPTR)buf >> 24, vgaIOBase + 5);  
 		outb(0x5A, vgaIOBase + 4);
-		outb(buf >> 16, vgaIOBase + 5);
+		outb((IPTR)buf >> 16, vgaIOBase + 5);
     }
 
     mappci.mID = OOP_GetMethodID(IID_Hidd_PCIDriver, moHidd_PCIDriver_MapPCI);
@@ -250,4 +280,18 @@ void DACLoad(struct HWData *restore, unsigned char first, int num)
     {
 	outb(restore->DAC[n++], 0x3C9);
     }
+}
+
+/*
+** ClearBuffer --
+**      clear the screen buffer
+*/
+void ClearBuffer(const struct HWData *data)
+{
+    IPTR *p, *limit;
+
+    p = (IPTR *)data->framebuffer;
+    limit = (IPTR *)((IPTR)p + data->height * data->bytesperline);
+    while (p < limit)
+        *p++ = 0;
 }

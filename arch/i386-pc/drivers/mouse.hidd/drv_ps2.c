@@ -1,5 +1,5 @@
 /*
-    Copyright © 1995-2001, The AROS Development Team. All rights reserved.
+    Copyright © 1995-2009, The AROS Development Team. All rights reserved.
     $Id$
 
     Desc: PS/2 mouse driver.
@@ -52,6 +52,7 @@ void kb_wait(void);
 void kbd_write_cmd(int cmd);
 void aux_write_ack(int val);
 void aux_write_noack(int val);
+int kbd_wait_for_input(void);
 void kbd_write_command_w(int data);
 
 /****************************************************************************************/
@@ -118,22 +119,14 @@ struct mouse_data *data = OOP_INST_DATA(cl, o);
 
 /****************************************************************************************/
 
-#define AUX_RECONNECT           170
-#define AUX_ACK                 0xFA
-
-#define aux_write(val)				\
-    ({	data->u.ps2.expected_mouse_acks++;	\
-        aux_write_ack(val);			\
-	})
-
-/****************************************************************************************/
-
 void getps2Event(struct getps2data *, struct pHidd_Mouse_Event *);
 
 void getps2State(OOP_Class *cl, OOP_Object *o, struct pHidd_Mouse_Event *event) {
 struct mouse_data *data = OOP_INST_DATA(cl, o);
 UBYTE ack;
 
+#if 0
+/* The following doesn't seem to do anything useful */
 	aux_write(KBD_OUTCMD_DISABLE);
 	/* switch to remote mode */
 	aux_write(KBD_OUTCMD_SET_REMOTE_MODE);
@@ -142,9 +135,10 @@ UBYTE ack;
 	aux_write(KBD_OUTCMD_READ_DATA);
 	while (data->u.ps2.expected_mouse_acks>=ack)
 		mouse_usleep(1000);
-	/* switch back to sream mode */
+	/* switch back to stream mode */
 	aux_write(KBD_OUTCMD_SET_STREAM_MODE);
 	aux_write(KBD_OUTCMD_ENABLE);
+#endif
 }
 
 /****************************************************************************************/
@@ -179,6 +173,7 @@ int kbd_detect_aux()
 
     } while (--loops);
 
+    D(bug("PS/2 Auxilliary port %sdetected\n", retval ? "" : "not "));
     return retval;
 }
 
@@ -270,23 +265,6 @@ void mouse_ps2int(HIDDT_IRQ_Handler *irq, HIDDT_IRQ_HwInfo *hw)
 	    continue;
 	}
 
-	if ((mousecode == AUX_ACK) && (data->u.ps2.expected_mouse_acks))
-	{
-	    D(bug("  Got a mouse ACK!\n"));
-	    data->u.ps2.expected_mouse_acks--;
-	    continue;
-	}
-
-    #if 1
-	if (mousecode == AUX_RECONNECT)
-	{
-            data->u.ps2.mouse_collected_bytes = 0;
-
-	    /* Ping mouse */
-    	    aux_write(KBD_OUTCMD_ENABLE);
- 	}
-    #endif
-
     	/* Mouse Packet Byte */
 
 	mouse_data = data->u.ps2.mouse_data;
@@ -318,17 +296,15 @@ void mouse_ps2int(HIDDT_IRQ_Handler *irq, HIDDT_IRQ_HwInfo *hw)
          * Let's see whether these data can be right...
          *
          * D7 D6 D5 D4 D3 D2 D1 D0
-         * YV XV YS X2  1  M  R  L
-         * X7 .  .  .  .  .  .  X1   (X, signed)
-         * Y7 .  .  .  .  .  .  Y1   (Y, signed)
+         * YV XV YS XS  1  M  R  L
+         * X7 .  .  .  .  .  .  X1   (X)
+         * Y7 .  .  .  .  .  .  Y1   (Y)
          *
-         * YV,XV : over flow in x/y direction
-         * XS,YS : represents sign of X and Y
-         * X,Y   : displacement in x and y direction.
-         * X and Y are signed, XS, YS are there to double check the
-         * sign and correctnes of the collected data (?).
+         * XV,YV : overflow in x/y direction
+         * XS,YS : most significant bit of X and Y: represents sign
+         * X,Y   : displacement in x and y direction (8 least significant bits).
          *
-         * http://www.hut.fi/~then/mytexts/mouse.htm
+         * X, XS, Y and YS make up two 9-bit two's complement fields.
          */
 
     #if 0
@@ -396,11 +372,11 @@ void mouse_ps2int(HIDDT_IRQ_Handler *irq, HIDDT_IRQ_HwInfo *hw)
 	}
     #endif
 
-    } /* for(; ((info = kbd_read_statues()) & KBD_STATUS_OBF) && work; work--) */
+    } /* for(; ((info = kbd_read_status()) & KBD_STATUS_OBF) && work; work--) */
 
     if (!work)
     {
-        D(bug("kbd.hidd: controller jammed (0x%02X).\n", info));
+        D(bug("mouse.hidd: controller jammed (0x%02X).\n", info));
     }
 
 }
@@ -423,11 +399,14 @@ int mouse_ps2reset(struct mouse_data *data)
 
     kbd_write_command_w(KBD_CTRLCMD_MOUSE_ENABLE);
 
+    /*
+     * Check for a mouse port.
+     */
     if (!kbd_detect_aux())
 	return 0;
 
     /*
-     * Unfortunatley on my computer these commands cause
+     * Unfortunately on my computer these commands cause
      * the mouse not to work at all if they are issued
      * in a different order. So please keep it that way.
      * - Stefan
@@ -439,6 +418,11 @@ int mouse_ps2reset(struct mouse_data *data)
      */
     kbd_write_cmd(AUX_INTS_OFF);
     kbd_write_command_w(KBD_CTRLCMD_KBD_DISABLE);
+
+    /* Reset mouse */
+    aux_write_ack(KBD_OUTCMD_RESET);
+    kbd_wait_for_input();    /* Test result (0xAA) */
+    kbd_wait_for_input();    /* Mouse type */
 
     data->u.ps2.mouse_protocol = PS2_PROTOCOL_STANDARD;
     data->u.ps2.mouse_packetsize = 3;
@@ -454,22 +438,22 @@ int mouse_ps2reset(struct mouse_data *data)
     /*
      * Now the commands themselves.
      */
-    aux_write(KBD_OUTCMD_SET_RATE);
-    aux_write(100);
-    aux_write(KBD_OUTCMD_SET_RES);
-    aux_write(2);
-    aux_write(KBD_OUTCMD_SET_SCALE11);
+    aux_write_ack(KBD_OUTCMD_SET_RATE);
+    aux_write_ack(100);
+    aux_write_ack(KBD_OUTCMD_SET_RES);
+    aux_write_ack(2);
+    aux_write_ack(KBD_OUTCMD_SET_SCALE11);
 
-    /* Enable Aux device */
+    /* Enable Aux device (and re-enable keyboard) */
 
     kbd_write_command_w(KBD_CTRLCMD_KBD_ENABLE);
-    aux_write(KBD_OUTCMD_ENABLE);
+    aux_write_ack(KBD_OUTCMD_ENABLE);
     kbd_write_cmd(AUX_INTS_ON);
 
     /*
      * According to the specs there is an external
      * latch that holds the level-sensitive interrupt
-     * request until the CPU readsport 0x60.
+     * request until the CPU reads port 0x60.
      * If this is not read then the mouse does not
      * work on my computer.- Stefan
      */

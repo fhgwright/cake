@@ -116,6 +116,7 @@ struct MUI_ListData
     LONG entries_top_pixel; /* Where the entries start */
 
     /* Column managment, is allocated by ParseListFormat() and freed by CleanListFormat() */
+    STRPTR format;
     LONG columns; /* Number of columns the list has */
     struct ColumnInfo *ci;
     STRPTR *preparses;
@@ -571,7 +572,6 @@ IPTR List__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     struct TagItem        *tag;
     const struct TagItem  *tags;
     APTR *array = NULL;
-    STRPTR format = NULL;
     LONG new_entries_active = MUIV_List_Active_Off;
 
     obj = (Object *)DoSuperNewTags(cl, obj, NULL,
@@ -634,7 +634,7 @@ IPTR List__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 		    break;
 
 	    case    MUIA_List_Format:
-		    format = (STRPTR)tag->ti_Data;
+		    data->format = StrDup((STRPTR)tag->ti_Data);
 		    break;
 
 	    case    MUIA_List_Title:
@@ -668,7 +668,7 @@ IPTR List__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     }
 
     /* parse the list format */
-    if (!(ParseListFormat(data,format)))
+    if (!(ParseListFormat(data,data->format)))
     {
 	CoerceMethod(cl,obj,OM_DISPOSE);
 	return 0;
@@ -764,6 +764,7 @@ IPTR List__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 	FreeVec(data->entries - 1); /* title is currently before all other elements */
 
     FreeListFormat(data);
+    FreeVec(data->format);
 
     return DoSuperMethodA(cl,obj,msg);
 }
@@ -805,6 +806,13 @@ IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
 		    {
 			set(obj,MUIA_List_First,tag->ti_Data);
 		    }
+		    break;
+
+	    case    MUIA_List_Format:
+		    data->format = StrDup((STRPTR)tag->ti_Data);
+		    ParseListFormat(data,data->format);
+                    // FIXME: should we check for errors?
+		    DoMethod(obj, MUIM_List_Redraw, MUIV_List_Redraw_All);
 		    break;
 
 	    case    MUIA_List_VertProp_Entries:
@@ -947,6 +955,7 @@ IPTR List__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 	case MUIA_List_VertProp_Entries: STORE = STORE = data->vertprop_entries; return 1;
 	case MUIA_List_VertProp_Visible: STORE = data->vertprop_visible; return 1;
 	case MUIA_List_VertProp_First: STORE = data->vertprop_first; return 1;
+	case MUIA_List_Format: STORE = (IPTR)data->format; return 1;
 
 	case MUIA_Listview_DoubleClick: STORE = 0; return 1;
     }
@@ -2134,6 +2143,59 @@ IPTR List__MUIM_Sort(struct IClass *cl, Object *obj, struct MUIP_List_Sort *msg)
 }
 
 /**************************************************************************
+ MUIM_List_Move
+**************************************************************************/
+IPTR List__MUIM_Move(struct IClass *cl, Object *obj, struct MUIP_List_Move *msg)
+{
+    struct MUI_ListData *data = INST_DATA(cl, obj);
+
+    LONG from, to; 
+    int i;
+
+    switch (msg->from)
+    {
+	case MUIV_List_Move_Top:    from = 0;                     break;
+	case MUIV_List_Move_Active: from = data->entries_active;  break;
+	case MUIV_List_Move_Bottom: from = data->entries_num - 1; break;
+        default:                    from = msg->from;
+    }
+
+    switch (msg->to)
+    {
+	case MUIV_List_Move_Top:      to = 0;                     break;
+	case MUIV_List_Move_Active:   to = data->entries_active;  break;
+	case MUIV_List_Move_Bottom:   to = data->entries_num - 1; break;
+	case MUIV_List_Move_Next:     to = from + 1;              break;
+	case MUIV_List_Move_Previous: to = from - 1;              break;
+	default:                      to = msg->to;
+    }
+
+    if(from > data->entries_num - 1 || from < 0 || to > data->entries_num - 1 || 
+	    to < 0 || from == to)
+	return (IPTR) FALSE;
+    
+    if(from < to)
+    {
+	struct ListEntry *backup = data->entries[from];
+	for(i = from; i < to; i++)
+	    data->entries[i] = data->entries[i + 1];
+	data->entries[to] = backup;
+    }
+    else
+    {
+	struct ListEntry *backup = data->entries[from];
+	for(i = from; i > to; i--)
+	    data->entries[i] = data->entries[i - 1];
+	data->entries[to] = backup;
+    }
+    
+    data->update = 1;
+    MUI_Redraw(obj,MADF_DRAWUPDATE);
+
+    return TRUE;
+}
+
+/**************************************************************************
  Dispatcher
 **************************************************************************/
 BOOPSI_DISPATCHER(IPTR, List_Dispatcher, cl, obj, msg)
@@ -2170,6 +2232,7 @@ BOOPSI_DISPATCHER(IPTR, List_Dispatcher, cl, obj, msg)
 	case MUIM_List_CreateImage:        return List__MUIM_CreateImage(cl,obj,(APTR)msg);
 	case MUIM_List_DeleteImage:        return List__MUIM_DeleteImage(cl,obj,(APTR)msg);
 	case MUIM_List_Jump:               return List__MUIM_Jump(cl,obj,(APTR)msg);
+	case MUIM_List_Move:               return List__MUIM_Move(cl,obj,(struct MUIP_List_Move *)msg);
     }
     
     return DoSuperMethodA(cl, obj, msg);

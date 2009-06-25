@@ -42,14 +42,20 @@ VOID MNAME_BM(PutPixel)(OOP_Class *cl, OOP_Object *o, struct pHidd_BitMap_PutPix
     	case 1:
 	    *(UBYTE *)mem = pixel;
     	#if defined(OnBitmap) && defined(BUFFERED_VRAM)
-	    *(UBYTE *)mem2 = pixel;
+	    if (data->data->use_updaterect == FALSE)
+	    {
+	    	*(UBYTE *)mem2 = pixel;
+	    }
     	#endif
 	    break;
 	   
 	case 2:
 	    *(UWORD *)mem = pixel;
     	#if defined(OnBitmap) && defined(BUFFERED_VRAM)
-	    *(UWORD *)mem2 = pixel;
+	    if (data->data->use_updaterect == FALSE)
+	    {
+	    	*(UWORD *)mem2 = pixel;
+	    }
 	#endif
 	    break;
 	    
@@ -64,23 +70,29 @@ VOID MNAME_BM(PutPixel)(OOP_Class *cl, OOP_Object *o, struct pHidd_BitMap_PutPix
 	    *(UBYTE *)(mem + 2) = pixel >> 16;
 	#endif
 
-    	#if defined(OnBitmap) && defined(BUFFERED_VRAM)
-	#if AROS_BIG_ENDIAN
-	    *(UBYTE *)(mem2) = pixel >> 16;
-	    *(UBYTE *)(mem2 + 1) = pixel >> 8;
-	    *(UBYTE *)(mem2 + 2) = pixel;
-	#else
-	    *(UBYTE *)(mem2) = pixel;
-	    *(UBYTE *)(mem2 + 1) = pixel >> 8;
-	    *(UBYTE *)(mem2 + 2) = pixel >> 16;
-	#endif
-	#endif
+        #if defined(OnBitmap) && defined(BUFFERED_VRAM)
+    	    if (data->data->use_updaterect == FALSE)
+	    {
+	    #if AROS_BIG_ENDIAN
+		*(UBYTE *)(mem2) = pixel >> 16;
+		*(UBYTE *)(mem2 + 1) = pixel >> 8;
+		*(UBYTE *)(mem2 + 2) = pixel;
+	    #else
+		*(UBYTE *)(mem2) = pixel;
+		*(UBYTE *)(mem2 + 1) = pixel >> 8;
+		*(UBYTE *)(mem2 + 2) = pixel >> 16;
+	    #endif
+	    }
+        #endif
  	    break;
 	    
 	case 4:
 	    *(ULONG *)mem = pixel;
 	#if defined(OnBitmap) && defined(BUFFERED_VRAM)
-	    *(ULONG *)mem2 = pixel;	    
+	    if (data->data->use_updaterect == FALSE)
+	    {
+	    	*(ULONG *)mem2 = pixel;
+	    }
     	#endif
 	    break;
     }
@@ -953,3 +965,20 @@ BOOL MNAME_BM(SetColors)(OOP_Class *cl, OOP_Object *o, struct pHidd_BitMap_SetCo
 
     return TRUE;
 }
+
+#if defined(OnBitmap) && defined(BUFFERED_VRAM)
+
+BOOL MNAME_BM(UpdateRect)(OOP_Class *cl, OOP_Object *o, struct pHidd_BitMap_UpdateRect *msg)
+{
+    struct BitmapData *data = OOP_INST_DATA(cl, o);
+    struct HWData *hwdata = &XSD(cl)->data;
+    
+    if (hwdata->use_updaterect)
+    {
+        LOCK_FRAMEBUFFER(XSD(cl));    
+        vesaDoRefreshArea(data, msg->x, msg->y, msg->x + msg->width - 1, msg->y + msg->height - 1);    
+        UNLOCK_FRAMEBUFFER(XSD(cl));    	
+    }  
+}
+
+#endif

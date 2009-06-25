@@ -4,27 +4,19 @@
 
 include $(TOP)/config/make.cfg
 
-FILES := \
-    libinit-aros \
-    init \
-    api \
-    handler \
-    prefs \
-    utils
+FILES:= libinit \
+        init    \
+        utils   \
+        api     \
+        handler \
+        prefs   \
+        debug
 
-USER_INCLUDES := -I$(SRCDIR)/$(CURDIR)/../include/aros
+USER_INCLUDES := -I$(SRCDIR)/$(CURDIR)/../include
 
-#MM- workbench-libs-openurl : workbench-libs-openurl-lib
+#MM- workbench-libs-openurl-lib : linklibs workbench-libs-openurl-includes
 
-#MM- workbench-libs-openurl-lib : linklibs
-
-#MM workbench-libs-openurl-lib-includes : \
-#MM     kernel-exec-includes \
-#MM     kernel-dos-includes \
-#MM     kernel-utility-includes \
-#MM     includes-copy
-
-%build_module mmake=workbench-libs-openurl-lib \
+%build_module_simple mmake=workbench-libs-openurl-lib \
     modname=openurl modtype=library \
     files=$(FILES) \
     uselibs="amiga rom"

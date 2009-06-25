@@ -24,36 +24,45 @@
 
 THIS_PROGRAM_HANDLES_SYMBOLSETS
 
-/* Don't define symbols before the entry point. */
-extern struct ExecBase  *SysBase;
-extern struct WBStartup *WBenchMsg;
+/* pass these values to the command line handling function */
+char *__argstr;
+ULONG __argsize;
+
+/* the command line handling functions will pass these values back to us */
+char **__argv;
+int  __argc;
+
+struct ExecBase *SysBase;
+struct DosLibrary *DOSBase;
+struct WBStartup *WBenchMsg;
+
 extern int main(int argc, char ** argv);
 int (*__main_function_ptr)(int argc, char ** argv) __attribute__((__weak__)) = main;
 
-DECLARESET(INIT);
-DECLARESET(EXIT);
-DECLARESET(CTORS);
-DECLARESET(DTORS);
-DECLARESET(PROGRAM_ENTRIES);
+DEFINESET(CTORS);
+DEFINESET(DTORS);
+DEFINESET(INIT);
+DEFINESET(EXIT);
+DEFINESET(PROGRAM_ENTRIES);
 
-/*
-    This won't work for normal AmigaOS because you can't expect SysBase to be
-    in A6. The correct way is to use *(struct ExecBase **)4 and because GCC
-    emits strings for a certain function _before_ the code the program will
-    crash immediately because the first element in the code won't be valid
-    assembler code.
+/* if the programmer hasn't defined a symbol with the name __nocommandline
+   then the code to handle the commandline will be included from the autoinit.lib
 */
+extern int __nocommandline;
+asm(".set __importcommandline, __nocommandline");
 
-extern char *__argstr;
-extern ULONG __argsize;
-extern char **__argv;
-extern int  __argc;
+/* programmers can define the __stdiowin for opening the win that will be used for
+   IO to the standard file descriptors.
+   If none is provided a default value will be used
+*/
 extern char __stdiowin[];
-extern struct DosLibrary *DOSBase;
 
-static struct aros_startup __aros_startup;
+static void __startup_entries_init(void);
 
-AROS_UFP3(static LONG, __startup_entry,
+struct aros_startup __aros_startup;
+
+/* Guarantee that __startup_entry is placed at the beginning of the binary */
+AROS_UFP3(LONG, __startup_entry,
     AROS_UFHA(char *,argstr,A0),
     AROS_UFHA(ULONG,argsize,D0),
     AROS_UFHA(struct ExecBase *,sysbase,A6)
@@ -61,7 +70,7 @@ AROS_UFP3(static LONG, __startup_entry,
 
 #warning TODO: reset and initialize the FPU
 #warning TODO: resident startup
-AROS_UFH3(static LONG, __startup_entry,
+AROS_UFH3(LONG, __startup_entry,
     AROS_UFHA(char *,argstr,A0),
     AROS_UFHA(ULONG,argsize,D0),
     AROS_UFHA(struct ExecBase *,sysbase,A6)
@@ -70,10 +79,10 @@ AROS_UFH3(static LONG, __startup_entry,
     AROS_USERFUNC_INIT
 
     struct Process *myproc;
-    BPTR win = NULL;
-    BPTR old_in, old_out, old_err;
     
     SysBase = sysbase;
+
+    D(bug("Entering __startup_entry(\"%s\", %d, %x)\n", argstr, argsize, SysBase));
 
     /*
         No one program will be able to do anything useful without the dos.library,
@@ -86,8 +95,31 @@ AROS_UFH3(static LONG, __startup_entry,
     __argsize = argsize;
 
     myproc = (struct Process *)FindTask(NULL);
-
     GetIntETask(myproc)->iet_startup = &__aros_startup;
+    __aros_startup.as_startup_error = RETURN_FAIL;
+
+    __startup_entries_init();
+    __startup_entries_next();
+
+    CloseLibrary((struct Library *)DOSBase);
+
+    D(bug("Leaving __startup_entry\n"));
+
+    return __aros_startup.as_startup_error;
+
+    AROS_USERFUNC_EXIT
+} /* entry */
+
+
+static void __startup_fromwb(void)
+{
+    struct Process *myproc;
+    BPTR win = NULL;
+    BPTR old_in, old_out, old_err;
+
+    D(bug("Entering __startup_fromwb()\n"));
+
+    myproc = (struct Process *)FindTask(NULL);
 
     /* Do we have a CLI structure? */
     if (!myproc->pr_CLI)
@@ -112,30 +144,8 @@ AROS_UFH3(static LONG, __startup_entry,
 	}
     }
 
-    __aros_startup.as_startup_error = RETURN_FAIL;
-    
-    if (set_open_libraries())
-    {
-        if
-	(
-	    setjmp(__aros_startup.as_startup_jmp_buf) == 0 &&
-            set_call_funcs(SETNAME(INIT), 1, 1)
-	)
-	{
-            /* ctors/dtors get called in inverse order than init funcs */
-            set_call_funcs(SETNAME(CTORS), -1, 0);
+    __startup_entries_next();
 
-	    /* Invoke the main function. A weak symbol is used as function name so that
-	       it can be overridden (for *nix stuff, for instance).  */
-            __aros_startup.as_startup_error = (*__main_function_ptr) (__argc, __argv);
-		  
-            set_call_funcs(SETNAME(DTORS), 1, 0);
-        }
-        set_call_funcs(SETNAME(EXIT), -1, 0);
-    }
-    set_close_libraries();
-    
-    
     /* Reply startup message to Workbench */
     if (WBenchMsg)
     {
@@ -149,37 +159,72 @@ AROS_UFH3(static LONG, __startup_entry,
         SelectError(old_err);
         Close(win);
     }
-    CloseLibrary((struct Library *)DOSBase);
 
-    return __aros_startup.as_startup_error;
+    D(bug("Leaving __startup_fromwb\n"));
+}
 
-    AROS_USERFUNC_EXIT
-} /* entry */
 
-/* if the programmer hasn't defined a symbol with the name __nocommandline
-   then the code to handle the commandline will be included from the autoinit.lib
-*/
-extern int __nocommandline;
-asm(".set __importcommandline, __nocommandline");
+static void __startup_initexit(void)
+{
+    D(bug("Entering __startup_initexit\n"));
 
-/* pass these values to the command line handling function */
-char *__argstr;
-ULONG __argsize;
+    if (set_open_libraries())
+    {
+        if
+	(
+	    setjmp(__aros_startup.as_startup_jmp_buf) == 0 &&
+            set_call_funcs(SETNAME(INIT), 1, 1)
+	)
+	{
+            /* ctors/dtors get called in inverse order than init funcs */
+            set_call_funcs(SETNAME(CTORS), -1, 0);
 
-/* the command line handling functions will pass these values back to us */
-char **__argv;
-int  __argc;
+            __startup_entries_next();
 
-struct ExecBase *SysBase;
-struct DosLibrary *DOSBase;
-struct WBStartup *WBenchMsg;
+            set_call_funcs(SETNAME(DTORS), 1, 0);
+        }
+        set_call_funcs(SETNAME(EXIT), -1, 0);
+    }
+    set_close_libraries();
+    
+    D(bug("Leaving __startup_initexit\n"));
+}
 
-DEFINESET(CTORS);
-DEFINESET(DTORS);
-DEFINESET(INIT);
-DEFINESET(EXIT);
-DEFINESET(PROGRAM_ENTRIES);
-ADD2SET(__startup_entry, program_entries, 0);
+
+static void __startup_main(void)
+{
+    D(bug("Entering __startup_main\n"));
+
+    /* Invoke the main function. A weak symbol is used as function name so that
+       it can be overridden (for *nix stuff, for instance).  */
+    __aros_startup.as_startup_error = (*__main_function_ptr) (__argc, __argv);
+
+    D(bug("Leaving __startup_main\n"));
+}
+
+ADD2SET(__startup_fromwb, program_entries, -50);
+ADD2SET(__startup_initexit, program_entries, 126);
+ADD2SET(__startup_main, program_entries, 127);
+
+
+static int __startup_entry_pos;
+
+void __startup_entries_init(void)
+{
+    __startup_entry_pos = 1;
+}
+
+void __startup_entries_next(void)
+{
+    void (*entry_func)(void);
+ 
+    entry_func = SETNAME(PROGRAM_ENTRIES)[__startup_entry_pos];
+    if (entry_func)
+    {
+        __startup_entry_pos++;
+        entry_func();
+    }
+}
 
 
 /*
