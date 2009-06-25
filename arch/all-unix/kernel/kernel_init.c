@@ -134,11 +134,11 @@ int __startup startup(struct TagItem *msg) {
 
     BootMsg = msg;
 
-    HostIFace = (struct HostInterface *)krnGetTagData(KRN_HostInterface, 0, msg);
+    HostIFace = (struct HostInterface *) krnGetTagData(KRN_HostInterface, 0, msg);
 
     mykprintf("[kernel] starting up\n");
 
-    mykprintf("[kernel] initialising host module '%s'\n", HOST_MODULE);
+    mykprintf("[kernel] loading host module '%s'\n", HOST_MODULE);
 
     libkernel = HostIFace->HostLib_Open(HOST_MODULE, &err);
     if (libkernel == NULL) {
@@ -172,62 +172,65 @@ int __startup startup(struct TagItem *msg) {
     mykprintf("[kernel] system memory at 0x%x-0x%x (0x%x bytes)\n", memory, memory_end, memory_end-memory+1);
     mykprintf("[kernel] kernel memory at 0x%x-0x%x (0x%x bytes)\n", kernel, kernel_end, kernel_end-kernel+1);
 
-    mykprintf("[Kernel] preparing first mem header\n");
-
     /* Prepare the first mem header and hand it to PrepareExecBase to take SysBase live */
-  mh = memory;
-  mh->mh_Node.ln_Type  = NT_MEMORY;
-  mh->mh_Node.ln_Name = "chip memory";
-  mh->mh_Node.ln_Pri = -5;
-  mh->mh_Attributes = MEMF_CHIP | MEMF_PUBLIC | MEMF_LOCAL | MEMF_24BITDMA | MEMF_KICK;
-  mh->mh_First = memory + MEMHEADER_TOTAL;
-  mh->mh_First->mc_Next = NULL;
-  mh->mh_First->mc_Bytes = memory_end + 1 - memory - MEMHEADER_TOTAL;
-  mh->mh_Lower = memory;
-  mh->mh_Upper = memory_end;
-  mh->mh_Free = mh->mh_First->mc_Bytes;
+    D(mykprintf("[kernel] preparing system memory header\n"));
 
-  mykprintf("[Kernel] calling PrepareExecBase@%p mh_First=%p\n",PrepareExecBase,mh->mh_First);
-  /*
-   * FIXME: This routine is part of exec.library, however it doesn't have an LVO
-   * (it can't have one because exec.library is not initialized yet) and is called
-   * only from here. Probably the code should be reorganized
-   */
-  SysBase = PrepareExecBase(mh);
-  mykprintf("[Kernel] SysBase=%p mhFirst=%p\n",SysBase,mh->mh_First);
+    mh = memory;
+    mh->mh_Node.ln_Type  = NT_MEMORY;
+    mh->mh_Node.ln_Name = "chip memory";
+    mh->mh_Node.ln_Pri = -5;
+    mh->mh_Attributes = MEMF_CHIP | MEMF_PUBLIC | MEMF_LOCAL | MEMF_24BITDMA | MEMF_KICK;
+    mh->mh_First = memory + MEMHEADER_TOTAL;
+    mh->mh_First->mc_Next = NULL;
+    mh->mh_First->mc_Bytes = memory_end + 1 - memory - MEMHEADER_TOTAL;
+    mh->mh_Lower = memory;
+    mh->mh_Upper = memory_end;
+    mh->mh_Free = mh->mh_First->mc_Bytes;
+
+    /*
+     * FIXME: This routine is part of exec.library, however it doesn't have an LVO
+     * (it can't have one because exec.library is not initialized yet) and is called
+     * only from here. Probably the code should be reorganized
+     */
+    D(mykprintf("[kernel] initialising SysBase\n"));
+    SysBase = PrepareExecBase(mh);
+    mykprintf("[kernel] SysBase initialised at 0x%x\n", SysBase);
   
-  /* ROM memory header. This special memory header covers all ROM code and data sections
-   * so that TypeOfMem() will not return 0 for addresses pointing into the kernel.
-   */
-  if ((mh = (struct MemHeader *)AllocMem(sizeof(struct MemHeader), MEMF_PUBLIC)))
-  {
-      mh->mh_Node.ln_Type = NT_MEMORY;
-      mh->mh_Node.ln_Name = "rom memory";
-      mh->mh_Node.ln_Pri = -128;
-      mh->mh_Attributes = MEMF_KICK;
-      mh->mh_First = NULL;
-      mh->mh_Lower = kernel;
-      mh->mh_Upper = kernel_end;
-      mh->mh_Free = 0;                        /* Never allocate from this chunk! */
-      Enqueue(&SysBase->MemList, &mh->mh_Node);
-   }
+    /* ROM memory header. This special memory header covers all ROM code and data sections
+     * so that TypeOfMem() will not return 0 for addresses pointing into the kernel.
+     */
+    D(mykprintf("[kernel] preparing kernel memory header\n"));
+    if ((mh = (struct MemHeader *) AllocMem(sizeof(struct MemHeader), MEMF_PUBLIC))) {
+        mh->mh_Node.ln_Type = NT_MEMORY;
+        mh->mh_Node.ln_Name = "rom memory";
+        mh->mh_Node.ln_Pri = -128;
+        mh->mh_Attributes = MEMF_KICK;
+        mh->mh_First = NULL;
+        mh->mh_Lower = kernel;
+        mh->mh_Upper = kernel_end;
+        mh->mh_Free = 0;                            /* Never allocate from this chunk! */
+        Enqueue(&SysBase->MemList, &mh->mh_Node);
+    }
 
-  ((struct AROSSupportBase *)(SysBase->DebugAROSBase))->kprintf = mykprintf;
-  ((struct AROSSupportBase *)(SysBase->DebugAROSBase))->rkprintf = myrkprintf;
-  ((struct AROSSupportBase *)(SysBase->DebugAROSBase))->vkprintf = myvkprintf;
-      
-  mykprintf("[Kernel] calling Exec_RomTagScanner@%p\n",Exec_RomTagScanner);
-  UWORD * ranges[] = {kernel,kernel_end,(UWORD *)~0};
-  /*
-   * FIXME: Cross-module call again
-   */
-  SysBase->ResModules = Exec_RomTagScanner(SysBase,ranges);
+    D(mykprintf("[kernel] initialising debug print functions\n"));
 
-  mykprintf("[Kernel] initializing host-side kernel module\n");
-  if (!KernelIFace.core_init(SysBase->VBlankFrequency, &SysBase, &KernelBase)) {
-      mykprintf("[Kernel] Failed to initialize!\n");
-      return -1;
-  }
+    struct AROSSupportBase *debug = (struct AROSSupportBase *) SysBase->DebugAROSBase;
+    debug->kprintf = mykprintf;
+    debug->rkprintf = myrkprintf;
+    debug->vkprintf = myvkprintf;
+
+    /*
+     * FIXME: Cross-module call again
+     */
+    mykprintf("[kernel] scanning modules\n");
+    UWORD *ranges[] = { kernel, kernel_end, (UWORD *) -1 };
+    SysBase->ResModules = Exec_RomTagScanner(SysBase, ranges);
+
+    mykprintf("[kernel] initialising host module\n");
+    if (KernelIFace.core_init(SysBase->VBlankFrequency, &SysBase, &KernelBase) < 0) {
+        mykprintf("[kernel] failed to initialise host module\n");
+        return -1;
+    }
 
   mykprintf("[Kernel] calling InitCode(RTF_SINGLETASK,0)\n");
   InitCode(RTF_SINGLETASK, 0);
