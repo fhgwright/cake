@@ -199,6 +199,8 @@ int core_init(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struc
     struct sigaction sa;
     pthread_attr_t thread_attrs;
 
+    return 0;
+
     D(printf("[kernel] initialising interrupts and task switching\n"));
 
     SysBasePtr = SysBasePointer;
