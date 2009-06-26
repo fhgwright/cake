@@ -61,7 +61,9 @@
 		If bit 31 is set, this doesn't point to a Resident module, but
 		to another list of modules.
 	    */
-	    if(*list & 0x80000000) list = (IPTR *)(*list & 0x7fffffff);
+/* XXX commenting this out for the new linux hosted setup. does it need to be
+ * here at all if it stays, how else does one put modules in high memory? */
+//	    if(*list & 0x80000000) list = (IPTR *)(*list & 0x7fffffff);
 
 	    if( (((struct Resident *)*list)->rt_Version >= (UBYTE)version)
 	     && (((struct Resident *)*list)->rt_Flags & (UBYTE)startClass) )
