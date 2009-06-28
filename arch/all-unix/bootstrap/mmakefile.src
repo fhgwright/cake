@@ -6,27 +6,33 @@ TARGETDIR 	:= $(GENDIR)/$(CURDIR)
 BOBJS		:= $(TARGETDIR)/bootstrap.o $(TARGETDIR)/elfloader32.o $(TARGETDIR)/host.o
 FILES		:= bootstrap elfloader32 host
 
-KOBJS_DEVICES   := $(KOBJSDIR)/timer_device.o	     $(KOBJSDIR)/gameport_device.o	   \
-		   $(KOBJSDIR)/input_device.o	     $(KOBJSDIR)/console_device.o	   \
-		   $(KOBJSDIR)/keyboard_device.o
-KOBJS_HIDD	:= $(KOBJSDIR)/hiddclass_hidd.o	     $(KOBJSDIR)/graphics_hidd.o	   \
-		   $(KOBJSDIR)/x11gfx_hidd.o
-KOBJS_LIBS	:= $(KOBJSDIR)/exec_library.o	     $(KOBJSDIR)/expansion_library.o	   \
-		   $(KOBJSDIR)/boot_library.o	     $(KOBJSDIR)/dos_library.o		   \
-		   $(KOBJSDIR)/utility_library.o     $(KOBJSDIR)/intuition_library.o	   \
-		   $(KOBJSDIR)/keymap_library.o      $(KOBJSDIR)/cybergraphics_library.o   \
-		   $(KOBJSDIR)/oop_library.o	     $(KOBJSDIR)/graphics_library.o	   \
-		   $(KOBJSDIR)/layers_library.o	     $(KOBJSDIR)/aros_library.o
-K_RES		:= $(KOBJSDIR)/kernel_resource.o     $(KOBJSDIR)/hostlib_resource.o	   \
-		   $(KOBJSDIR)/battclock_resource.o	   				   \
-		   $(KOBJSDIR)/bootmenu_resource.o   $(KOBJSDIR)/bootloader_resource.o	   \
-		   $(KOBJSDIR)/dosboot_resource.o
-#$(KOBJSDIR)/emul_handler.o	     $(KOBJSDIR)/packet_handler.o	   \
-KOBJS_HANDLERS  := $(KOBJSDIR)/packet_handler.o \
-		   $(KOBJSDIR)/amberram_handler.o    $(KOBJSDIR)/nil_handler.o		   \
-		   $(KOBJSDIR)/con_handler.o
+KOBJS_RESOURCES := $(KOBJSDIR)/kernel_resource.o
 
-KOBJS := $(K_RES) $(KOBJS_HANDLERS) $(KOBJS_LIBS) $(KOBJS_DEVICES) $(KOBJS_HIDD)
+KOBJS_LIBS := $(KOBJSDIR)/exec_library.o
+
+KOBJS := $(KOBJS_RESOURCES) $(KOBJS_LIBS)
+
+#KOBJS_LIBS      := $(KOBJSDIR)/exec_library.o
+#KOBJS_DEVICES   := $(KOBJSDIR)/timer_device.o	     $(KOBJSDIR)/gameport_device.o	   \
+#		   $(KOBJSDIR)/input_device.o	     $(KOBJSDIR)/console_device.o	   \
+#		   $(KOBJSDIR)/keyboard_device.o
+#KOBJS_HIDD	:= $(KOBJSDIR)/hiddclass_hidd.o	     $(KOBJSDIR)/graphics_hidd.o	   \
+#		   $(KOBJSDIR)/x11gfx_hidd.o
+#KOBJS_LIBS	:= $(KOBJSDIR)/exec_library.o	     $(KOBJSDIR)/expansion_library.o	   \
+#		   $(KOBJSDIR)/boot_library.o	     $(KOBJSDIR)/dos_library.o		   \
+#		   $(KOBJSDIR)/utility_library.o     $(KOBJSDIR)/intuition_library.o	   \
+#		   $(KOBJSDIR)/keymap_library.o      $(KOBJSDIR)/cybergraphics_library.o   \
+#		   $(KOBJSDIR)/oop_library.o	     $(KOBJSDIR)/graphics_library.o	   \
+#		   $(KOBJSDIR)/layers_library.o	     $(KOBJSDIR)/aros_library.o
+#K_RES		:= $(KOBJSDIR)/kernel_resource.o     $(KOBJSDIR)/hostlib_resource.o	   \
+#		   $(KOBJSDIR)/battclock_resource.o	   				   \
+#		   $(KOBJSDIR)/bootmenu_resource.o   $(KOBJSDIR)/bootloader_resource.o	   \
+#		   $(KOBJSDIR)/dosboot_resource.o
+#KOBJS_HANDLERS  := $(KOBJSDIR)/emul_handler          $(KOBJSDIR)/packet_handler.o          \
+#		   $(KOBJSDIR)/amberram_handler.o    $(KOBJSDIR)/nil_handler.o		   \
+#		   $(KOBJSDIR)/con_handler.o
+
+#KOBJS := $(K_RES) $(KOBJS_HANDLERS) $(KOBJS_LIBS) $(KOBJS_DEVICES) $(KOBJS_HIDD)
 
 #MM- AROS-unix-i386: kernel-link-unix workbench-hosted kernel-bootstrap-unix arch-common-boot-generatebootsig
 #MM kernel-link-unix: kernel-kernel-linux-kobj	    \
