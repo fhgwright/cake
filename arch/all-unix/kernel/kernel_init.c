@@ -232,14 +232,15 @@ int __startup startup(struct TagItem *msg) {
         return -1;
     }
 
-  mykprintf("[Kernel] calling InitCode(RTF_SINGLETASK,0)\n");
-  InitCode(RTF_SINGLETASK, 0);
+    mykprintf("[kernel] initialising early-start modules\n");
+    InitCode(RTF_SINGLETASK, 0);
 
-  mykprintf("leaving startup!\n");
-  HostIFace->HostLib_Close(libkernel, NULL);
-  return 1;
+    mykprintf("[kernel] leaving kernel boot. system initialisation failed?\n");
+
+    HostIFace->HostLib_Close(libkernel, NULL);
+
+    return -1;
 }
-
 
 struct TagItem *krnNextTagItem(const struct TagItem **tagListPtr)
 {
