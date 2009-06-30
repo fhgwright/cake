@@ -57,13 +57,16 @@
     {
 	while(*list)
 	{
-	    /*
-		If bit 31 is set, this doesn't point to a Resident module, but
-		to another list of modules.
-	    */
-/* XXX commenting this out for the new linux hosted setup. does it need to be
- * here at all if it stays, how else does one put modules in high memory? */
-//	    if(*list & 0x80000000) list = (IPTR *)(*list & 0x7fffffff);
+            /* on amiga, if bit 31 is set then this points to another list of
+             * modules rather than pointing to a single module. bit 31 is
+             * inconvenient on architectures where code may be loaded above
+             * 2GB. on these platforms we assume aligned pointers and use bit
+             * 0 instead */
+#ifdef __mc680000__
+	    if(*list & 0x80000000) list = (IPTR *)(*list & 0x7fffffff);
+#else
+            if(*list & 0x1) list = (IPTR *)(*list & ~(IPTR)0x1);
+#endif
 
 	    if( (((struct Resident *)*list)->rt_Version >= (UBYTE)version)
 	     && (((struct Resident *)*list)->rt_Flags & (UBYTE)startClass) )
