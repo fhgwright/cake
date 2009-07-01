@@ -75,8 +75,7 @@ uint32_t irq_bits;
 sem_t main_sem;
 sem_t switcher_sem;
 
-ucontext_t last_ctx;
-ucontext_t next_ctx;
+ucontext_t **cur_task_ctx;
 
 syscall_id_t syscall;
 
@@ -146,22 +145,22 @@ static void *switcher_entry(void *arg) {
                     break;
 
                 case sc_DISPATCH:
-                    core_Dispatch(&last_ctx, &next_ctx);
+                    core_Dispatch(cur_task_ctx);
                     break;
 
                 case sc_SWITCH:
-                    core_Switch(&last_ctx, &next_ctx);
+                    core_Switch(cur_task_ctx);
                     break;
 
                 case sc_SCHEDULE:
-                    core_Schedule(&last_ctx, &next_ctx);
+                    core_Schedule(cur_task_ctx);
                     break;
             }
         }
 
         /* if interrupts are enabled, then its time to schedule a new task */
         if (irq_enabled)
-            core_ExitInterrupt(&last_ctx, &next_ctx);
+            core_ExitInterrupt(cur_task_ctx);
 
         in_supervisor--;
 
@@ -182,8 +181,8 @@ static void main_switch_handler(int signo, siginfo_t *si, void *vctx) {
     if (sem_trywait(&main_sem) < 0)
         return;
 
-    /* switcher thread is now waiting for us. save the current context somewhere it can get it */
-    memcpy(&last_ctx, vctx, sizeof(ucontext_t));
+    /* switcher thread is now waiting for us. save the context into the task struct */
+    getcontext(*cur_task_ctx);
 
     /* tell the switcher to proceed */
     sem_post(&switcher_sem);
@@ -192,14 +191,12 @@ static void main_switch_handler(int signo, siginfo_t *si, void *vctx) {
     sem_wait(&main_sem);
 
     /* switcher has given us the new context, jump to it */
-    setcontext(&next_ctx);
+    setcontext(*cur_task_ctx);
 }
 
 int core_init(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struct KernelBase **KernelBasePointer) {
     struct sigaction sa;
     pthread_attr_t thread_attrs;
-
-    return 0;
 
     D(printf("[kernel] initialising interrupts and task switching\n"));
 
@@ -223,7 +220,7 @@ int core_init(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struc
     pthread_create(&switcher_thread, &thread_attrs, switcher_entry, NULL);
     pthread_create(&timer_thread, &thread_attrs, timer_entry, NULL);
 
-    D(printf("[kernel] threads started, switcher id %d, timer id %d\n", switcher_thread, timer_thread));
+    D(printf("[kernel] threads started, switcher id 0x%x, timer id 0x%x\n", switcher_thread, timer_thread));
 
     return 0;
 }

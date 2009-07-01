@@ -56,11 +56,10 @@ static inline void core_LeaveInterrupt(void)
 /*
  * Task dispatcher. Basically it may be the same one no matter what scheduling algorithm is used
  */
-void core_Dispatch(ucontext_t *last_ctx, ucontext_t *next_ctx)
+void core_Dispatch(ucontext_t **cur_task_ctx)
 {
     struct ExecBase *SysBase = *SysBasePtr;
     struct Task *task;
-    struct AROSCPUContext *ctx;
 
     irq_enabled = 0;
     D(bug("[KRN] core_Dispatch()\n"));
@@ -105,18 +104,16 @@ void core_Dispatch(ucontext_t *last_ctx, ucontext_t *next_ctx)
     }
         
     /* Restore the task's state */
-    ctx = (struct AROSCPUContext *)GetIntETask(task)->iet_Context;
-    memcpy(ctx, next_ctx, sizeof(ucontext_t));
+    *cur_task_ctx = (ucontext_t *) GetIntETask(task)->iet_Context;
         
     /* Leave interrupt and jump to the new task */
     core_LeaveInterrupt();
 }
 
-void core_Switch(ucontext_t *last_ctx, ucontext_t *next_ctx)
+void core_Switch(ucontext_t **cur_task_ctx)
 {
     struct ExecBase *SysBase = *SysBasePtr;
     struct Task *task;
-    struct AROSCPUContext *ctx;
     
     irq_enabled = 0;
     D(bug("[KRN] core_Switch()\n"));
@@ -125,13 +122,9 @@ void core_Switch(ucontext_t *last_ctx, ucontext_t *next_ctx)
         
     DS(bug("[KRN] Old task = %p (%s)\n", task, task->tc_Node.ln_Name));
         
-    /* Copy current task's context into the ETask structure */
-    ctx = (struct AROSCPUContext *)GetIntETask(task)->iet_Context;
-    memcpy(last_ctx, ctx, sizeof(ucontext_t));
-        
     /* store IDNestCnt into tasks's structure */  
     task->tc_IDNestCnt = SysBase->IDNestCnt;
-    task->tc_SPReg = (APTR)last_ctx->uc_mcontext.gregs[REG_ESP];
+    task->tc_SPReg = (APTR)(*cur_task_ctx)->uc_mcontext.gregs[REG_ESP];
         
     /* And enable interrupts */
     SysBase->IDNestCnt = -1;
@@ -142,7 +135,7 @@ void core_Switch(ucontext_t *last_ctx, ucontext_t *next_ctx)
         task->tc_Switch(SysBase);
     }
     
-    core_Dispatch(last_ctx, next_ctx);
+    core_Dispatch(cur_task_ctx);
 }
 
 
@@ -151,7 +144,7 @@ void core_Switch(ucontext_t *last_ctx, ucontext_t *next_ctx)
  * in some smart way. This function is subject of change and it will be probably replaced
  * by some plugin system in the future
  */
-void core_Schedule(ucontext_t *last_ctx, ucontext_t *next_ctx)
+void core_Schedule(ucontext_t **cur_task_ctx)
 {
     struct ExecBase *SysBase = *SysBasePtr;
     struct Task *task;
@@ -194,7 +187,7 @@ void core_Schedule(ucontext_t *last_ctx, ucontext_t *next_ctx)
     Enqueue(&SysBase->TaskReady, (struct Node *)task);
     
     /* Select new task to run */
-    core_Switch(last_ctx, next_ctx);
+    core_Switch(cur_task_ctx);
 }
 
 
@@ -202,7 +195,7 @@ void core_Schedule(ucontext_t *last_ctx, ucontext_t *next_ctx)
  * Leave the interrupt. This function receives the register frame used to leave the supervisor
  * mode. It reschedules the task if it was asked for.
  */
-void core_ExitInterrupt(ucontext_t *last_ctx, ucontext_t *next_ctx)
+void core_ExitInterrupt(ucontext_t **cur_task_ctx)
 {
     struct ExecBase *SysBase = *SysBasePtr;
     char TDNestCnt;
@@ -217,7 +210,7 @@ void core_ExitInterrupt(ucontext_t *last_ctx, ucontext_t *next_ctx)
         }
     
         if (sleep_state != ss_RUNNING) {
-            core_Dispatch(last_ctx, next_ctx);
+            core_Dispatch(cur_task_ctx);
             return;
         }
     
@@ -233,7 +226,7 @@ void core_ExitInterrupt(ucontext_t *last_ctx, ucontext_t *next_ctx)
             if (SysBase->AttnResched & ARF_AttnSwitch)
             {
                 DS(bug("[Scheduler] Rescheduling\n"));
-                core_Schedule(last_ctx, next_ctx);
+                core_Schedule(cur_task_ctx);
             }
         }
     }
