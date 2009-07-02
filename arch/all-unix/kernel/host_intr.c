@@ -75,7 +75,7 @@ uint32_t irq_bits;
 sem_t main_sem;
 sem_t switcher_sem;
 
-ucontext_t **cur_task_ctx;
+ucontext_t *cur_task_ctx;
 
 syscall_id_t syscall;
 
@@ -93,6 +93,8 @@ static void *timer_entry(void *arg) {
     struct timespec ts;
 
     while (1) {
+        D(printf("[kernel] sleeping\n"));
+
         clock_gettime(CLOCK_REALTIME, &ts);
         ts.tv_nsec += 1000000000 / timer_period;
         if (ts.tv_nsec > 999999999) {
@@ -100,6 +102,8 @@ static void *timer_entry(void *arg) {
             ts.tv_sec++;
         }
         clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &ts, NULL);
+
+        D(printf("[kernel] timer expiry, triggering timer interrupt\n"));
 
         pthread_mutex_lock(&irq_lock);
         irq_bits |= 0x1;
@@ -118,6 +122,8 @@ static void *switcher_entry(void *arg) {
     sem_init(&switcher_sem, 0, 0);
 
     while (1) {
+        D(printf("[kernel] waiting for interrupts\n"));
+
         /* wait for an interrupt */
         pthread_mutex_lock(&irq_lock);
         while (irq_bits == 0) pthread_cond_wait(&irq_cond, &irq_lock);
@@ -145,22 +151,22 @@ static void *switcher_entry(void *arg) {
                     break;
 
                 case sc_DISPATCH:
-                    core_Dispatch(cur_task_ctx);
+                    core_Dispatch(&cur_task_ctx);
                     break;
 
                 case sc_SWITCH:
-                    core_Switch(cur_task_ctx);
+                    core_Switch(&cur_task_ctx);
                     break;
 
                 case sc_SCHEDULE:
-                    core_Schedule(cur_task_ctx);
+                    core_Schedule(&cur_task_ctx);
                     break;
             }
         }
 
         /* if interrupts are enabled, then its time to schedule a new task */
         if (irq_enabled)
-            core_ExitInterrupt(cur_task_ctx);
+            core_ExitInterrupt(&cur_task_ctx);
 
         in_supervisor--;
 
@@ -182,7 +188,7 @@ static void main_switch_handler(int signo, siginfo_t *si, void *vctx) {
         return;
 
     /* switcher thread is now waiting for us. save the context into the task struct */
-    getcontext(*cur_task_ctx);
+    if (cur_task_ctx != NULL) getcontext(cur_task_ctx);
 
     /* tell the switcher to proceed */
     sem_post(&switcher_sem);
@@ -191,7 +197,7 @@ static void main_switch_handler(int signo, siginfo_t *si, void *vctx) {
     sem_wait(&main_sem);
 
     /* switcher has given us the new context, jump to it */
-    setcontext(*cur_task_ctx);
+    setcontext(cur_task_ctx);
 }
 
 int core_init(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struct KernelBase **KernelBasePointer) {
@@ -208,6 +214,8 @@ int core_init(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struc
     sleep_state = 0;
 
     timer_period = TimerPeriod;
+
+    cur_task_ctx = NULL;
 
     sa.sa_flags = SA_SIGINFO;
     sa.sa_sigaction = main_switch_handler;
