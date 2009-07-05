@@ -235,6 +235,8 @@ int __startup startup(struct TagItem *msg) {
     mykprintf("[kernel] initialising early-start modules\n");
     InitCode(RTF_SINGLETASK, 0);
 
+    while (1) { }
+
     mykprintf("[kernel] leaving kernel boot. system initialisation failed?\n");
 
     HostIFace->HostLib_Close(libkernel, NULL);
