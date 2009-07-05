@@ -1,4 +1,4 @@
-#define DEBUG 0
+#define DEBUG 1
 
 #include <aros/system.h>
 
@@ -39,9 +39,9 @@
  * because of OutputDebugString() calls. Looks like WinAPI functions love to perform stack
  * check and silently abort if they think something is wrong.
  */
-#define DINT(x)
-#define DS(x)
-#define DSLEEP(x)
+#define DINT(x) D(x)
+#define DS(x) D(x)
+#define DSLEEP(x) D(x)
 
 static inline void core_LeaveInterrupt(void)
 {
@@ -201,6 +201,23 @@ void core_ExitInterrupt(ucontext_t **cur_task_ctx)
     char TDNestCnt;
 
     D(bug("[Scheduler] core_ExitInterrupt\n"));
+
+#if DEBUG
+    struct Task *task;
+
+    bug("    SysBase 0x%08x\n", SysBase);
+
+    bug("    current task: 0x%08x %d %s\n", SysBase->ThisTask, SysBase->ThisTask->tc_Node.ln_Pri, SysBase->ThisTask->tc_Node.ln_Name);
+    
+    bug("    ready tasks:\n");
+    for (task = (struct Task *) SysBase->TaskReady.lh_Head; task->tc_Node.ln_Succ != NULL; task = (struct Task *) task->tc_Node.ln_Succ)
+        bug("        0x%08x %d %s\n", task, task->tc_Node.ln_Pri, task->tc_Node.ln_Name);
+
+    bug("    waiting tasks:\n");
+    for (task = (struct Task *) SysBase->TaskWait.lh_Head; task->tc_Node.ln_Succ != NULL; task = (struct Task *) task->tc_Node.ln_Succ)
+        bug("        0x%08x %d %s\n", task, task->tc_Node.ln_Pri, task->tc_Node.ln_Name);
+#endif
+
     if (SysBase)
     {
         /* Soft interrupt requested? It's high time to do it */
