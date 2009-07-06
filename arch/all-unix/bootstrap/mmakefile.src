@@ -8,7 +8,13 @@ FILES		:= bootstrap elfloader32 host
 
 KOBJS_RESOURCES := $(KOBJSDIR)/kernel_resource.o
 
-KOBJS_LIBS := $(KOBJSDIR)/exec_library.o $(KOBJSDIR)/intuition_library.o
+KOBJS_LIBS := $(KOBJSDIR)/exec_library.o \
+              $(KOBJSDIR)/intuition_library.o \
+              $(KOBJSDIR)/layers_library.o \
+              $(KOBJSDIR)/graphics_library.o \
+              $(KOBJSDIR)/oop_library.o \
+              $(KOBJSDIR)/utility_library.o \
+              $(KOBJSDIR)/keymap_library.o
 
 KOBJS := $(KOBJS_RESOURCES) $(KOBJS_LIBS)
 
