@@ -1675,13 +1675,13 @@ LONG nGetBlockSize(struct NepClassMS *ncm)
             ncm->ncm_BlockShift = 9;
         }
     } else {
-        ncm->ncm_Geometry.dg_SectorSize = ncm->ncm_BlockSize = capacity[1];
+        ncm->ncm_Geometry.dg_SectorSize = ncm->ncm_BlockSize = AROS_BE2LONG(capacity[1]);
         ncm->ncm_BlockShift = 0;
         while((1<<ncm->ncm_BlockShift) < ncm->ncm_BlockSize)
         {
             ncm->ncm_BlockShift++;
         }
-        ncm->ncm_Geometry.dg_TotalSectors = capacity[0]+1;
+        ncm->ncm_Geometry.dg_TotalSectors = AROS_BE2LONG(capacity[0])+1;
     }
     return(ioerr);
 }
@@ -1973,8 +1973,8 @@ LONG nGetGeometry(struct NepClassMS *ncm, struct IOStdReq *ioreq)
          * 32Bit Totalsectors
          * R.S.
          */
-        ncm->ncm_BlockSize = ncm->ncm_Geometry.dg_SectorSize = capacitydata.SectorSize;
-        ncm->ncm_Geometry.dg_TotalSectors = capacitydata.SectorCount + 1;
+        ncm->ncm_BlockSize = ncm->ncm_Geometry.dg_SectorSize = AROS_BE2LONG(capacitydata.SectorSize);
+        ncm->ncm_Geometry.dg_TotalSectors = AROS_BE2LONG(capacitydata.SectorCount) + 1;
         if(capacitydata.SectorCount == 0xffffffff)
         {
             ncm->ncm_Geometry.dg_TotalSectors--; // set to maximum
@@ -2337,7 +2337,7 @@ LONG nRead64Emul(struct NepClassMS *ncm, struct IOStdReq *ioreq)
             scsicmd.scsi_SenseLength = 18;
             cmd10[0] = SCSI_DA_READ_10;
             cmd10[1] = 0;
-            *((ULONG *) (&cmd10[2])) = startblock;
+            *((ULONG *) (&cmd10[2])) = AROS_LONG2BE(startblock);
             cmd10[6] = 0;
             cmd10[7] = 0;
             cmd10[8] = 1;
@@ -2360,7 +2360,7 @@ LONG nRead64Emul(struct NepClassMS *ncm, struct IOStdReq *ioreq)
             scsicmd.scsi_SenseLength = 18;
             cmd10[0] = SCSI_DA_READ_10;
             cmd10[1] = 0;
-            *((ULONG *) (&cmd10[2])) = startblock;
+            *((ULONG *) (&cmd10[2])) = AROS_LONG2BE(startblock);
             cmd10[6] = 0;
             cmd10[7] = datalen>>(ncm->ncm_BlockShift+8);
             cmd10[8] = datalen>>ncm->ncm_BlockShift;
@@ -2445,7 +2445,7 @@ LONG nWrite64Emul(struct NepClassMS *ncm, struct IOStdReq *ioreq)
             scsicmd.scsi_SenseLength = 18;
             cmd10[0] = SCSI_DA_READ_10;
             cmd10[1] = 0;
-            *((ULONG *) (&cmd10[2])) = startblock;
+            *((ULONG *) (&cmd10[2])) = AROS_LONG2BE(startblock);
             cmd10[6] = 0;
             cmd10[7] = 0;
             cmd10[8] = 1;
@@ -2466,7 +2466,7 @@ LONG nWrite64Emul(struct NepClassMS *ncm, struct IOStdReq *ioreq)
             //scsicmd.scsi_SenseLength = 18;
             cmd10[0] = SCSI_DA_WRITE_10;
             //cmd10[1] = 0;
-            //*((ULONG *) (&cmd10[2])) = startblock;
+            //*((ULONG *) (&cmd10[2])) = AROS_LONG2BE(startblock);
             //cmd10[6] = 0;
             //cmd10[7] = 0;
             //cmd10[8] = 1;
@@ -2488,7 +2488,7 @@ LONG nWrite64Emul(struct NepClassMS *ncm, struct IOStdReq *ioreq)
             scsicmd.scsi_SenseLength = 18;
             cmd10[0] = SCSI_DA_WRITE_10;
             cmd10[1] = 0;
-            *((ULONG *) (&cmd10[2])) = startblock;
+            *((ULONG *) (&cmd10[2])) = AROS_LONG2BE(startblock);
             cmd10[6] = 0;
             cmd10[7] = datalen>>(ncm->ncm_BlockShift+8);
             cmd10[8] = datalen>>ncm->ncm_BlockShift;
@@ -2527,9 +2527,10 @@ LONG nRead64(struct NepClassMS *ncm, struct IOStdReq *ioreq)
     {
         nGetBlockSize(ncm);
     }
-    if(((dataremain >> ncm->ncm_BlockShift)<<ncm->ncm_BlockShift != dataremain) ||
-       ((ioreq->io_Offset >> ncm->ncm_BlockShift)<<ncm->ncm_BlockShift != ioreq->io_Offset))
+    if((((dataremain >> ncm->ncm_BlockShift)<<ncm->ncm_BlockShift) != dataremain) ||
+       (((ioreq->io_Offset >> ncm->ncm_BlockShift)<<ncm->ncm_BlockShift) != ioreq->io_Offset))
     {
+        KPRINTF(20, ("unaligned read access offset %ld, length %ld...\n", ioreq->io_Offset, dataremain));
         if((!(ncm->ncm_CDC->cdc_PatchFlags & PFF_EMUL_LARGE_BLK)) && (!(ncm->ncm_CDC->cdc_PatchFlags & PFF_NO_FALLBACK)))
         {
             ncm->ncm_CDC->cdc_PatchFlags |= PFF_EMUL_LARGE_BLK;
@@ -2585,8 +2586,8 @@ LONG nRead64(struct NepClassMS *ncm, struct IOStdReq *ioreq)
             scsicmd.scsi_CmdLength = 16;
             cmd16[0] = SCSI_DA_READ_16;
             cmd16[1] = 0;
-            *((ULONG *) (&cmd16[2])) = startblockhigh;
-            *((ULONG *) (&cmd16[6])) = startblock;
+            *((ULONG *) (&cmd16[2])) = AROS_LONG2BE(startblockhigh);
+            *((ULONG *) (&cmd16[6])) = AROS_LONG2BE(startblock);
             cmd16[10] = datalen>>(ncm->ncm_BlockShift+24);
             cmd16[11] = datalen>>(ncm->ncm_BlockShift+16);
             cmd16[12] = datalen>>(ncm->ncm_BlockShift+8);
@@ -2598,7 +2599,7 @@ LONG nRead64(struct NepClassMS *ncm, struct IOStdReq *ioreq)
             scsicmd.scsi_CmdLength = 10;
             cmd10[0] = SCSI_DA_READ_10;
             cmd10[1] = 0;
-            *((ULONG *) (&cmd10[2])) = startblock;
+            *((ULONG *) (&cmd10[2])) = AROS_LONG2BE(startblock);
             cmd10[6] = 0;
             cmd10[7] = datalen>>(ncm->ncm_BlockShift+8);
             cmd10[8] = datalen>>ncm->ncm_BlockShift;
@@ -2630,12 +2631,13 @@ LONG nSeek64(struct NepClassMS *ncm, struct IOStdReq *ioreq)
     UBYTE cmd10[10];
     UBYTE sensedata[18];
     struct SCSICmd scsicmd;
+    ULONG startblock;
 
     if(!ncm->ncm_BlockSize)
     {
         nGetBlockSize(ncm);
     }
-    if((ioreq->io_Offset >> ncm->ncm_BlockShift)<<ncm->ncm_BlockShift != ioreq->io_Offset)
+    if(((ioreq->io_Offset >> ncm->ncm_BlockShift)<<ncm->ncm_BlockShift) != ioreq->io_Offset)
     {
         psdAddErrorMsg(RETURN_ERROR, (STRPTR) libname,
                        "Attempt to to seek to unaligned block (%ld %% %ld != 0)!",
@@ -2650,6 +2652,7 @@ LONG nSeek64(struct NepClassMS *ncm, struct IOStdReq *ioreq)
         return(ioreq->io_Error = IOERR_BADADDRESS);
     }
 
+    startblock = (ioreq->io_Offset>>ncm->ncm_BlockShift)|(ioreq->io_Actual<<(32-ncm->ncm_BlockShift));
     scsicmd.scsi_Data = NULL;
     scsicmd.scsi_Length = 0;
     scsicmd.scsi_CmdLength = 10;
@@ -2658,7 +2661,7 @@ LONG nSeek64(struct NepClassMS *ncm, struct IOStdReq *ioreq)
     scsicmd.scsi_SenseLength = 18;
     cmd10[0] = SCSI_DA_SEEK_10;
     cmd10[1] = 0;
-    *((ULONG *) (&cmd10[2])) = (ioreq->io_Offset>>ncm->ncm_BlockShift)|(ioreq->io_Actual<<(32-ncm->ncm_BlockShift));
+    *((ULONG *) (&cmd10[2])) = AROS_LONG2BE(startblock);
     cmd10[6] = 0;
     cmd10[7] = 0;
     cmd10[8] = 0;
@@ -2694,6 +2697,7 @@ LONG nWrite64(struct NepClassMS *ncm, struct IOStdReq *ioreq)
     if(((dataremain >> ncm->ncm_BlockShift)<<ncm->ncm_BlockShift != dataremain) ||
        ((ioreq->io_Offset >> ncm->ncm_BlockShift)<<ncm->ncm_BlockShift != ioreq->io_Offset))
     {
+        KPRINTF(20, ("unaligned write access offset %ld, length %ld...\n", ioreq->io_Offset, dataremain));
         if((!(ncm->ncm_CDC->cdc_PatchFlags & PFF_EMUL_LARGE_BLK)) && (!(ncm->ncm_CDC->cdc_PatchFlags & PFF_NO_FALLBACK)))
         {
             ncm->ncm_CDC->cdc_PatchFlags |= PFF_EMUL_LARGE_BLK;
@@ -2748,8 +2752,8 @@ LONG nWrite64(struct NepClassMS *ncm, struct IOStdReq *ioreq)
             scsicmd.scsi_CmdLength = 16;
             cmd16[0] = SCSI_DA_WRITE_16;
             cmd16[1] = 0;
-            *((ULONG *) (&cmd16[2])) = startblockhigh;
-            *((ULONG *) (&cmd16[6])) = startblock;
+            *((ULONG *) (&cmd16[2])) = AROS_LONG2BE(startblockhigh);
+            *((ULONG *) (&cmd16[6])) = AROS_LONG2BE(startblock);
             cmd16[10] = datalen>>(ncm->ncm_BlockShift+24);
             cmd16[11] = datalen>>(ncm->ncm_BlockShift+16);
             cmd16[12] = datalen>>(ncm->ncm_BlockShift+8);
@@ -2761,7 +2765,7 @@ LONG nWrite64(struct NepClassMS *ncm, struct IOStdReq *ioreq)
             scsicmd.scsi_CmdLength = 10;
             cmd10[0] = SCSI_DA_WRITE_10;
             cmd10[1] = 0;
-            *((ULONG *) (&cmd10[2])) = startblock;
+            *((ULONG *) (&cmd10[2])) = AROS_LONG2BE(startblock);
             cmd10[6] = 0;
             cmd10[7] = datalen>>(ncm->ncm_BlockShift+8);
             cmd10[8] = datalen>>ncm->ncm_BlockShift;
@@ -3564,7 +3568,7 @@ LONG nScsiDirect(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
     if((!res) && ((scsicmd->scsi_Command)[0] == SCSI_DA_READ_CAPACITY) && (pf & PFF_FIX_CAPACITY) && (scsicmd->scsi_Length >= 8))
     {
         ULONG *capacity = ((ULONG *) scsicmd->scsi_Data);
-        (*capacity)--;
+        *capacity = AROS_LONG2BE(AROS_BE2LONG(*capacity)-1);
         psdAddErrorMsg(RETURN_WARN, (STRPTR) libname,
                        "Fix Capacity: Correcting number of blocks.");
     }
@@ -3733,13 +3737,13 @@ LONG nScsiDirectBulk(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
         }
         //psdAddErrorMsg(RETURN_OK, (STRPTR) libname, "Issueing command %s Dlen=%ld", cmdstrbuf, datalen);
 
-        XPRINTF(2, ("command block phase, tag %08lx, len %ld, flags %02lx...\n",
+        KPRINTF(2, ("command block phase, tag %08lx, len %ld, flags %02lx...\n",
                 umscbw.dCBWTag, scsicmd->scsi_CmdLength, scsicmd->scsi_Flags));
-        XPRINTF(2, ("command: %s\n", cmdstrbuf));
+        KPRINTF(2, ("command: %s\n", cmdstrbuf));
         ioerr = psdDoPipe(ncm->ncm_EPOutPipe, &umscbw, UMSCBW_SIZEOF);
         if(ioerr == UHIOERR_STALL) /* Retry on stall */
         {
-            XPRINTF(2, ("stall...\n"));
+            KPRINTF(2, ("stall...\n"));
             nBulkClear(ncm);
             ioerr = psdDoPipe(ncm->ncm_EPOutPipe, &umscbw, UMSCBW_SIZEOF);
         }
@@ -3752,7 +3756,7 @@ LONG nScsiDirectBulk(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
         {
             if(datalen)
             {
-                XPRINTF(2, ("data phase %ld bytes...\n", datalen));
+                KPRINTF(2, ("data phase %ld bytes...\n", datalen));
                 if(ncm->ncm_CDC->cdc_PatchFlags & PFF_DELAY_DATA)
                 {
                     psdDelayMS(1);
@@ -3762,12 +3766,12 @@ LONG nScsiDirectBulk(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
                 scsicmd->scsi_Actual = psdGetPipeActual(pp);
                 if(ioerr == UHIOERR_OVERFLOW)
                 {
-                    XPRINTF(10, ("Extra Data received, but ignored!\n"));
+                    KPRINTF(10, ("Extra Data received, but ignored!\n"));
                     ioerr = 0;
                 }
                 else if(ioerr == UHIOERR_STALL) /* Accept on stall */
                 {
-                    XPRINTF(2, ("stall...\n"));
+                    KPRINTF(2, ("stall...\n"));
                     psdPipeSetup(ncm->ncm_EP0Pipe, URTF_STANDARD|URTF_ENDPOINT,
                                  USR_CLEAR_FEATURE, UFS_ENDPOINT_HALT,
                                  (ULONG) ((scsicmd->scsi_Flags & SCSIF_READ) ? ncm->ncm_EPInNum|URTF_IN : ncm->ncm_EPOutNum));
@@ -3775,7 +3779,7 @@ LONG nScsiDirectBulk(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
                 }
                 else if(ioerr == UHIOERR_RUNTPACKET)
                 {
-                    XPRINTF(10, ("Runt packet ignored...\n"));
+                    KPRINTF(10, ("Runt packet ignored...\n"));
                     ioerr = 0;
                     /*psdPipeSetup(ncm->ncm_EP0Pipe, URTF_STANDARD|URTF_ENDPOINT,
                                  USR_CLEAR_FEATURE, UFS_ENDPOINT_HALT,
@@ -3788,11 +3792,11 @@ LONG nScsiDirectBulk(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
             }
             if(!ioerr)
             {
-                XPRINTF(2, ("command status phase...\n"));
+                KPRINTF(2, ("command status phase...\n"));
                 ioerr = psdDoPipe(ncm->ncm_EPInPipe, &umscsw, UMSCSW_SIZEOF);
                 if(ioerr == UHIOERR_STALL) /* Retry on stall */
                 {
-                    XPRINTF(2, ("stall...\n"));
+                    KPRINTF(2, ("stall...\n"));
                     psdPipeSetup(ncm->ncm_EP0Pipe, URTF_STANDARD|URTF_ENDPOINT,
                                  USR_CLEAR_FEATURE, UFS_ENDPOINT_HALT, (ULONG) ncm->ncm_EPInNum|URTF_IN);
                     ioerr = psdDoPipe(ncm->ncm_EP0Pipe, NULL, 0);
@@ -3809,7 +3813,7 @@ LONG nScsiDirectBulk(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
                 }
                 if(ioerr == UHIOERR_OVERFLOW)
                 {
-                    XPRINTF(10, ("Extra Status received, but ignored!\n"));
+                    KPRINTF(10, ("Extra Status received, but ignored!\n"));
                     ioerr = 0;
                 }
                 if(ncm->ncm_DenyRequests)
@@ -3819,7 +3823,7 @@ LONG nScsiDirectBulk(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
                 }
                 if(!ioerr)
                 {
-                    XPRINTF(2, ("Status:\n"
+                    KPRINTF(2, ("Status:\n"
                                 "  Signature: %08lx\n"
                                 "  Tag      : %08lx\n"
                                 "  Residue  : %08lx\n"
@@ -3876,17 +3880,17 @@ LONG nScsiDirectBulk(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
                             umscbw.CBWCB[3] = 0x00;
                             umscbw.CBWCB[4] = datalen;
                             umscbw.CBWCB[5] = 0;
-                            XPRINTF(2, ("sense command block phase...\n"));
+                            KPRINTF(2, ("sense command block phase...\n"));
                             ioerr = psdDoPipe(ncm->ncm_EPOutPipe, &umscbw, UMSCBW_SIZEOF);
                             if(ioerr == UHIOERR_STALL) /* Retry on stall */
                             {
-                                XPRINTF(2, ("stall...\n"));
+                                KPRINTF(2, ("stall...\n"));
                                 nBulkClear(ncm);
                                 ioerr = psdDoPipe(ncm->ncm_EPOutPipe, &umscbw, UMSCBW_SIZEOF);
                             }
                             if(!ioerr)
                             {
-                                XPRINTF(2, ("sense data phase %ld bytes...\n", datalen));
+                                KPRINTF(2, ("sense data phase %ld bytes...\n", datalen));
                                 if(ncm->ncm_CDC->cdc_PatchFlags & PFF_DELAY_DATA)
                                 {
                                     psdDelayMS(1);
@@ -3901,7 +3905,7 @@ LONG nScsiDirectBulk(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
                                 }
                                 if((ioerr == UHIOERR_RUNTPACKET) || (ioerr == UHIOERR_OVERFLOW))
                                 {
-                                    XPRINTF(10, ("Extra or less data received, but ignored!\n"));
+                                    KPRINTF(10, ("Extra or less data received, but ignored!\n"));
                                     ioerr = 0;
                                 }
 
@@ -3911,11 +3915,11 @@ LONG nScsiDirectBulk(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
                                     {
                                         psdDelayMS(1);
                                     }
-                                    XPRINTF(2, ("sense command status phase...\n"));
+                                    KPRINTF(2, ("sense command status phase...\n"));
                                     ioerr = psdDoPipe(ncm->ncm_EPInPipe, &umscsw, UMSCSW_SIZEOF);
                                     if(ioerr == UHIOERR_STALL) /* Retry on stall */
                                     {
-                                        XPRINTF(2, ("stall...\n"));
+                                        KPRINTF(2, ("stall...\n"));
                                         psdPipeSetup(ncm->ncm_EP0Pipe, URTF_STANDARD|URTF_ENDPOINT,
                                                      USR_CLEAR_FEATURE, UFS_ENDPOINT_HALT, (ULONG) ncm->ncm_EPInNum|URTF_IN);
                                         ioerr = psdDoPipe(ncm->ncm_EP0Pipe, NULL, 0);
@@ -3932,12 +3936,12 @@ LONG nScsiDirectBulk(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
 
                                     if(ioerr == UHIOERR_OVERFLOW)
                                     {
-                                        XPRINTF(10, ("Extra Status received, but ignored!\n"));
+                                        KPRINTF(10, ("Extra Status received, but ignored!\n"));
                                         ioerr = 0;
                                     }
                                     if(!ioerr)
                                     {
-                                        XPRINTF(2, ("sense Status:\n"
+                                        KPRINTF(2, ("sense Status:\n"
                                                     "  Signature: %08lx\n"
                                                     "  Tag      : %08lx\n"
                                                     "  Residue  : %08lx\n"
@@ -3961,7 +3965,7 @@ LONG nScsiDirectBulk(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
                                         }
                                         /* ignore this: too many firmwares report shit */
                                         //scsicmd->scsi_SenseActual = datalen - AROS_LONG2LE(umscsw.dCSWDataResidue);
-                                        if((scsicmd->scsi_SenseActual > 7) && ((*((ULONG *) scsicmd->scsi_SenseData)>>8) == 0x555342) && (((ULONG *) scsicmd->scsi_SenseData)[1] == umscbw.dCBWTag))
+                                        if((scsicmd->scsi_SenseActual > 7) && ((AROS_LONG2BE(*((ULONG *) scsicmd->scsi_SenseData))>>8) == 0x555342) && (((ULONG *) scsicmd->scsi_SenseData)[1] == umscbw.dCBWTag))
                                         {
                                             psdAddErrorMsg(RETURN_ERROR, (STRPTR) libname,
                                                           "Your MSD has a very bad firmware! Havoc!");
@@ -4012,7 +4016,7 @@ LONG nScsiDirectBulk(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
                                                     }
                                                     break;
                                             }
-                                            XPRINTF(10, ("Sense Key: %lx/%02lx/%02lx\n",
+                                            KPRINTF(10, ("Sense Key: %lx/%02lx/%02lx\n",
                                                         scsicmd->scsi_SenseData[2] & SK_MASK,
                                                         scsicmd->scsi_SenseData[12],
                                                         scsicmd->scsi_SenseData[13]));
@@ -4027,7 +4031,7 @@ LONG nScsiDirectBulk(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
                                             }
                                         }
                                     } else {
-                                        XPRINTF(10, ("Sense status failed: %s (%ld)\n", psdNumToStr(NTS_IOERR, ioerr, "unknown"), ioerr));
+                                        KPRINTF(10, ("Sense status failed: %s (%ld)\n", psdNumToStr(NTS_IOERR, ioerr, "unknown"), ioerr));
                                         psdAddErrorMsg(RETURN_WARN, (STRPTR) libname, "Command (%s) okay, but:", cmdstrbuf);
                                         psdAddErrorMsg(RETURN_ERROR, (STRPTR) libname,
                                                        "Sense status failed: %s (%ld)",
@@ -4035,7 +4039,7 @@ LONG nScsiDirectBulk(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
                                         nBulkReset(ncm);
                                     }
                                 } else {
-                                    XPRINTF(10, ("Sense data failed: %s (%ld)\n", psdNumToStr(NTS_IOERR, ioerr, "unknown"), ioerr));
+                                    KPRINTF(10, ("Sense data failed: %s (%ld)\n", psdNumToStr(NTS_IOERR, ioerr, "unknown"), ioerr));
                                     psdAddErrorMsg(RETURN_WARN, (STRPTR) libname, "Command (%s) okay, but:", cmdstrbuf);
                                     psdAddErrorMsg(RETURN_ERROR, (STRPTR) libname,
                                                    "Sense data failed: %s (%ld)",
@@ -4043,7 +4047,7 @@ LONG nScsiDirectBulk(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
                                     nBulkReset(ncm);
                                 }
                             } else {
-                                XPRINTF(10, ("Sense block failed: %s (%ld)\n", psdNumToStr(NTS_IOERR, ioerr, "unknown"), ioerr));
+                                KPRINTF(10, ("Sense block failed: %s (%ld)\n", psdNumToStr(NTS_IOERR, ioerr, "unknown"), ioerr));
                                 psdAddErrorMsg(RETURN_WARN, (STRPTR) libname, "Command (%s) okay, but:", cmdstrbuf);
                                 psdAddErrorMsg(RETURN_ERROR, (STRPTR) libname,
                                                "Sense block failed: %s (%ld)",
@@ -4054,7 +4058,7 @@ LONG nScsiDirectBulk(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
                         rioerr = HFERR_BadStatus;
                     }
                 } else {
-                    XPRINTF(10, ("Command status failed: %s (%ld)\n", psdNumToStr(NTS_IOERR, ioerr, "unknown"), ioerr));
+                    KPRINTF(10, ("Command status failed: %s (%ld)\n", psdNumToStr(NTS_IOERR, ioerr, "unknown"), ioerr));
                     psdAddErrorMsg(RETURN_WARN, (STRPTR) libname, "Command (%s) failed:", cmdstrbuf);
                     psdAddErrorMsg(RETURN_ERROR, (STRPTR) libname,
                                   "Command status failed: %s (%ld)",
@@ -4064,7 +4068,7 @@ LONG nScsiDirectBulk(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
                     nBulkReset(ncm);
                 }
             } else {
-                XPRINTF(10, ("Data phase failed: %s (%ld)\n", psdNumToStr(NTS_IOERR, ioerr, "unknown"), ioerr));
+                KPRINTF(10, ("Data phase failed: %s (%ld)\n", psdNumToStr(NTS_IOERR, ioerr, "unknown"), ioerr));
                 psdAddErrorMsg(RETURN_WARN, (STRPTR) libname, "Command (%s) failed:", cmdstrbuf);
                 psdAddErrorMsg(RETURN_ERROR, (STRPTR) libname,
                                "Data phase failed: %s (%ld)",
@@ -4074,7 +4078,7 @@ LONG nScsiDirectBulk(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
                 nBulkReset(ncm);
             }
         } else {
-            XPRINTF(10, ("Command block failed: %s (%ld)\n", psdNumToStr(NTS_IOERR, ioerr, "unknown"), ioerr));
+            KPRINTF(10, ("Command block failed: %s (%ld)\n", psdNumToStr(NTS_IOERR, ioerr, "unknown"), ioerr));
             scsicmd->scsi_Status = SCSI_CHECK_CONDITION;
             rioerr = HFERR_Phase;
             if(ioerr == UHIOERR_TIMEOUT)
@@ -4091,7 +4095,7 @@ LONG nScsiDirectBulk(struct NepClassMS *ncm, struct SCSICmd *scsicmd)
         {
             break;
         }
-        XPRINTF(1, ("Retrying...\n"));
+        KPRINTF(1, ("Retrying...\n"));
     } while(retrycnt--);
     nUnlockXFer(ncm);
     return(rioerr);

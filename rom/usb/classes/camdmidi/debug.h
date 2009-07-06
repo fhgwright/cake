@@ -3,9 +3,16 @@
 
 #define DB_LEVEL 1
 
-#define DEBUG 1
+//#define DEBUG 1
 
 #include <aros/debug.h>
+
+// DEBUG 0 should equal undefined DEBUG
+#ifdef DEBUG
+#if DEBUG == 0
+#undef DEBUG
+#endif
+#endif
 
 #ifdef DEBUG
 #define KPRINTF(l, x) do { if ((l) >= DB_LEVEL) \
