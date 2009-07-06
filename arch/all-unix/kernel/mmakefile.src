@@ -18,7 +18,7 @@ SO_LDFLAGS := -shared -lpthread -lrt
 kernel-kernel-linux-native: $(NATIVE_BINDIR)/libkernel.so
 
 $(NATIVE_BINDIR)/libkernel.so: $(NATIVE_OBJS) $(NATIVE_BINDIR)
-	$(KERNEL_CC) $(KERNEL_CFLAGS) $(SO_LDFLAGS) -o $@ $(NATIVE_OBJS)
+	$(HOST_CC) $(HOST_CFLAGS) $(SO_LDFLAGS) -o $@ $(NATIVE_OBJS)
 
 $(NATIVE_BINDIR) :
 	mkdir -p $(NATIVE_BINDIR)
@@ -27,4 +27,4 @@ $(NATIVE_DIR) :
 	mkdir $(NATIVE_DIR)
 	 
 $(NATIVE_DIR)/%.o : %.c $(NATIVE_DIR)
-	$(KERNEL_CC) $(KERNEL_CFLAGS) -o $@ -c $< -I$(GENINCDIR) -I$(TOP)/rom/exec -I$(TOP)/arch/all-linux/exec
+	$(HOST_CC) $(HOST_CFLAGS) -o $@ -c $< -I$(GENINCDIR) -I$(TOP)/rom/exec -I$(TOP)/arch/all-linux/exec
