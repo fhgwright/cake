@@ -62,22 +62,22 @@ int core_is_super(void) {
     return in_supervisor;
 }
 
-pthread_t main_thread;
-pthread_t switcher_thread;
-pthread_t timer_thread;
+static pthread_t main_thread;
+static pthread_t switcher_thread;
+static pthread_t timer_thread;
 
-unsigned long timer_period;
+static unsigned long timer_period;
 
-pthread_mutex_t irq_lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t irq_cond = PTHREAD_COND_INITIALIZER;
-uint32_t irq_bits;
+static pthread_mutex_t irq_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t irq_cond = PTHREAD_COND_INITIALIZER;
+static uint32_t irq_bits;
 
-sem_t main_sem;
-sem_t switcher_sem;
+static sem_t main_sem;
+static sem_t switcher_sem;
 
-ucontext_t *cur_task_ctx;
+static ucontext_t *cur_task_ctx;
 
-syscall_id_t syscall;
+static syscall_id_t syscall;
 
 void core_syscall(syscall_id_t type) {
     syscall = type;
