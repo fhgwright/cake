@@ -67,7 +67,7 @@ $(BINDIR)/boot/aros-unix: setup-unix $(KOBJS)
 	  -L$(LIBDIR) -lautoinit -llibinit -lamiga -larossupport -lrom -larosm -lhiddstubs -lhiddgraphicsstubs
 
 $(BINDIR)/boot/AROSBootstrap: $(BOBJS)
-	$(KERNEL_CC) $(KERNEL_CFLAGS) -o $@ $(BOBJS) -ldl
+	$(KERNEL_CC) $(KERNEL_CFLAGS) -o $@ $(BOBJS) -ldl -lpthread
 
 #MM
 clean ::
