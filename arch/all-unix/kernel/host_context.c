@@ -31,6 +31,8 @@ void core_print_context (void *vctx) {
 void core_prepare_context(void *vctx, void *sp, void *pc) {
     ucontext_t *ctx = (ucontext_t *) vctx;
 
+    getcontext(ctx);
+
     ctx->uc_mcontext.gregs[REG_EBP] = 0;
     ctx->uc_mcontext.gregs[REG_EIP] = (greg_t) pc;
     ctx->uc_mcontext.gregs[REG_ESP] = (greg_t) sp;
