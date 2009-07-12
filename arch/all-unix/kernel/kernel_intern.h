@@ -120,10 +120,10 @@ extern int sleep_state;
 extern struct ExecBase **SysBasePtr;
 extern struct KernelBase **KernelBasePtr;
 
-void core_Dispatch(ucontext_t **cur_task_ctx);
-void core_Switch(ucontext_t **cur_task_ctx);
-void core_Schedule(ucontext_t **cur_task_ctx);
-void core_ExitInterrupt(ucontext_t **cur_task_ctx);
+void core_Dispatch(void);
+void core_Switch(void);
+void core_Schedule(void);
+void core_ExitInterrupt(void);
 void core_Cause(struct ExecBase *SysBase);
 void core_intr_enable(void);
 

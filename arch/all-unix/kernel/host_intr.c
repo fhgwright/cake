@@ -37,6 +37,8 @@
 #include <exec/lists.h>
 #include <exec/execbase.h>
 
+#include "etask.h"
+
 #include "kernel_intern.h"
 #include "syscall.h"
 #include "host_debug.h"
@@ -74,8 +76,6 @@ static uint32_t irq_bits;
 
 static sem_t main_sem;
 static sem_t switcher_sem;
-
-static ucontext_t *cur_task_ctx;
 
 static syscall_id_t syscall;
 
@@ -151,22 +151,22 @@ static void *switcher_entry(void *arg) {
                     break;
 
                 case sc_DISPATCH:
-                    core_Dispatch(&cur_task_ctx);
+                    core_Dispatch();
                     break;
 
                 case sc_SWITCH:
-                    core_Switch(&cur_task_ctx);
+                    core_Switch();
                     break;
 
                 case sc_SCHEDULE:
-                    core_Schedule(&cur_task_ctx);
+                    core_Schedule();
                     break;
             }
         }
 
         /* if interrupts are enabled, then its time to schedule a new task */
         if (irq_enabled)
-            core_ExitInterrupt(&cur_task_ctx);
+            core_ExitInterrupt();
 
         in_supervisor--;
 
@@ -188,7 +188,7 @@ static void main_switch_handler(int signo, siginfo_t *si, void *vctx) {
         return;
 
     /* switcher thread is now waiting for us. save the context into the task struct */
-    if (cur_task_ctx != NULL) getcontext(cur_task_ctx);
+    getcontext(GetIntETask((*SysBasePtr)->ThisTask)->iet_Context);
 
     /* tell the switcher to proceed */
     sem_post(&switcher_sem);
@@ -196,8 +196,8 @@ static void main_switch_handler(int signo, siginfo_t *si, void *vctx) {
     /* wait for it to run the scheduler and whatever else */
     sem_wait(&main_sem);
 
-    /* switcher has given us the new context, jump to it */
-    setcontext(cur_task_ctx);
+    /* new task has been switched in, jump to it using its context */
+    setcontext(GetIntETask((*SysBasePtr)->ThisTask)->iet_Context);
 }
 
 int core_init(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struct KernelBase **KernelBasePointer) {
@@ -214,8 +214,6 @@ int core_init(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struc
     sleep_state = 0;
 
     timer_period = TimerPeriod;
-
-    cur_task_ctx = NULL;
 
     sa.sa_flags = SA_SIGINFO;
     sa.sa_sigaction = main_switch_handler;

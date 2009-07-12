@@ -56,7 +56,7 @@ static inline void core_LeaveInterrupt(void)
 /*
  * Task dispatcher. Basically it may be the same one no matter what scheduling algorithm is used
  */
-void core_Dispatch(ucontext_t **cur_task_ctx)
+void core_Dispatch(void)
 {
     struct ExecBase *SysBase = *SysBasePtr;
     struct Task *task;
@@ -103,14 +103,11 @@ void core_Dispatch(ucontext_t **cur_task_ctx)
         task->tc_Launch(SysBase);       
     }
         
-    /* Restore the task's state */
-    *cur_task_ctx = (ucontext_t *) GetIntETask(task)->iet_Context;
-        
     /* Leave interrupt and jump to the new task */
     core_LeaveInterrupt();
 }
 
-void core_Switch(ucontext_t **cur_task_ctx)
+void core_Switch(void)
 {
     struct ExecBase *SysBase = *SysBasePtr;
     struct Task *task;
@@ -124,8 +121,8 @@ void core_Switch(ucontext_t **cur_task_ctx)
         
     /* store IDNestCnt into tasks's structure */  
     task->tc_IDNestCnt = SysBase->IDNestCnt;
-    task->tc_SPReg = (APTR)(*cur_task_ctx)->uc_mcontext.gregs[REG_ESP];
-        
+    task->tc_SPReg = (APTR)((ucontext_t *)GetIntETask((SysBase)->ThisTask)->iet_Context)->uc_mcontext.gregs[REG_ESP];
+
     /* And enable interrupts */
     SysBase->IDNestCnt = -1;
         
@@ -135,7 +132,7 @@ void core_Switch(ucontext_t **cur_task_ctx)
         task->tc_Switch(SysBase);
     }
     
-    core_Dispatch(cur_task_ctx);
+    core_Dispatch();
 }
 
 
@@ -144,7 +141,7 @@ void core_Switch(ucontext_t **cur_task_ctx)
  * in some smart way. This function is subject of change and it will be probably replaced
  * by some plugin system in the future
  */
-void core_Schedule(ucontext_t **cur_task_ctx)
+void core_Schedule(void)
 {
     struct ExecBase *SysBase = *SysBasePtr;
     struct Task *task;
@@ -187,7 +184,7 @@ void core_Schedule(ucontext_t **cur_task_ctx)
     Enqueue(&SysBase->TaskReady, (struct Node *)task);
     
     /* Select new task to run */
-    core_Switch(cur_task_ctx);
+    core_Switch();
 }
 
 
@@ -195,7 +192,7 @@ void core_Schedule(ucontext_t **cur_task_ctx)
  * Leave the interrupt. This function receives the register frame used to leave the supervisor
  * mode. It reschedules the task if it was asked for.
  */
-void core_ExitInterrupt(ucontext_t **cur_task_ctx)
+void core_ExitInterrupt(void)
 {
     struct ExecBase *SysBase = *SysBasePtr;
     char TDNestCnt;
@@ -227,7 +224,7 @@ void core_ExitInterrupt(ucontext_t **cur_task_ctx)
         }
     
         if (sleep_state != ss_RUNNING) {
-            core_Dispatch(cur_task_ctx);
+            core_Dispatch();
             return;
         }
     
@@ -243,7 +240,7 @@ void core_ExitInterrupt(ucontext_t **cur_task_ctx)
             if (SysBase->AttnResched & ARF_AttnSwitch)
             {
                 DS(bug("[Scheduler] Rescheduling\n"));
-                core_Schedule(cur_task_ctx);
+                core_Schedule();
             }
         }
     }
