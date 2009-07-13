@@ -43,6 +43,9 @@
 #include "syscall.h"
 #include "host_debug.h"
 
+#define INT_TIMER   (1<<0)
+#define INT_SYSCALL (1<<1)
+
 struct ExecBase **SysBasePtr;
 struct KernelBase **KernelBasePtr;
 
@@ -83,7 +86,7 @@ void core_syscall(syscall_id_t type) {
     syscall = type;
 
     pthread_mutex_lock(&irq_lock);
-    irq_bits |= 0x2;
+    irq_bits |= INT_SYSCALL;
     pthread_mutex_unlock(&irq_lock);
 
     pthread_cond_signal(&irq_cond);
@@ -106,7 +109,7 @@ static void *timer_entry(void *arg) {
         D(printf("[kernel] timer expiry, triggering timer interrupt\n"));
 
         pthread_mutex_lock(&irq_lock);
-        irq_bits |= 0x1;
+        irq_bits |= INT_TIMER;
         pthread_mutex_unlock(&irq_lock);
 
         pthread_cond_signal(&irq_cond);
@@ -144,7 +147,7 @@ static void *switcher_entry(void *arg) {
 
         in_supervisor++;
 
-        if (irq_bits_current & 0x2) {
+        if (irq_bits_current & INT_SYSCALL) {
             switch (syscall) {
                 case sc_CAUSE:
                     core_Cause(*SysBasePtr);
