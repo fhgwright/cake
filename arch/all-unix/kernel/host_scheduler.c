@@ -47,7 +47,7 @@ static inline void core_LeaveInterrupt(void)
 {
     struct ExecBase *SysBase = *SysBasePtr;
     
-    DINT(bug("[KRN] core_LeaveInterrupt(): IDNestCnt is %d\n", SysBase->IDNestCnt));
+    DINT(bug("[scheduler] core_LeaveInterrupt(): IDNestCnt is %d\n", SysBase->IDNestCnt));
     if ((char )SysBase->IDNestCnt < 0) {
         core_intr_enable();
     }
@@ -62,7 +62,7 @@ void core_Dispatch(void)
     struct Task *task;
 
     irq_enabled = 0;
-    D(bug("[KRN] core_Dispatch()\n"));
+    D(bug("[scheduler] in core_Dispatch()\n"));
 
     /* 
      * Is the list of ready tasks empty? Well, increment the idle switch cound and stop the main thread.
@@ -72,7 +72,7 @@ void core_Dispatch(void)
         if (sleep_state != ss_RUNNING) {
             SysBase->IdleCount++;
             SysBase->AttnResched |= ARF_AttnSwitch;
-            DSLEEP(bug("[KRN] TaskReady list empty. Sleeping for a while...\n"));
+            DSLEEP(bug("[scheduler] TaskReady list empty. Sleeping for a while...\n"));
             /* We are entering sleep mode */
 	    sleep_state = ss_SLEEP_PENDING;
         }
@@ -92,7 +92,7 @@ void core_Dispatch(void)
     task->tc_State = TS_RUN;
     SysBase->IDNestCnt = task->tc_IDNestCnt;
 
-    DS(bug("[KRN] New task = %p (%s)\n", task, task->tc_Node.ln_Name));
+    DS(bug("[scheduler] New task = %p (%s)\n", task, task->tc_Node.ln_Name));
 
     /* Handle tasks's flags */
     if (task->tc_Flags & TF_EXCEPT)
@@ -113,11 +113,11 @@ void core_Switch(void)
     struct Task *task;
     
     irq_enabled = 0;
-    D(bug("[KRN] core_Switch()\n"));
+    D(bug("[scheduler] in core_Switch()\n"));
     
     task = SysBase->ThisTask;
         
-    DS(bug("[KRN] Old task = %p (%s)\n", task, task->tc_Node.ln_Name));
+    DS(bug("[scheduler] Old task = %p (%s)\n", task, task->tc_Node.ln_Name));
         
     /* store IDNestCnt into tasks's structure */  
     task->tc_IDNestCnt = SysBase->IDNestCnt;
@@ -147,7 +147,7 @@ void core_Schedule(void)
     struct Task *task;
 
     irq_enabled = 0;
-    D(bug("[KRN] core_Schedule()\n"));
+    D(bug("[scheduler] in core_Schedule()\n"));
             
     task = SysBase->ThisTask;
     
@@ -197,7 +197,7 @@ void core_ExitInterrupt(void)
     struct ExecBase *SysBase = *SysBasePtr;
     char TDNestCnt;
 
-    D(bug("[Scheduler] core_ExitInterrupt\n"));
+    D(bug("[scheduler] in core_ExitInterrupt()\n"));
 
 #if DEBUG
     struct Task *task;
@@ -219,7 +219,7 @@ void core_ExitInterrupt(void)
     {
         /* Soft interrupt requested? It's high time to do it */
         if (SysBase->SysFlags & SFF_SoftInt) {
-            DS(bug("[Scheduler] Causing SoftInt\n"));
+            DS(bug("[scheduler] Causing SoftInt\n"));
             core_Cause(SysBase);
         }
     
@@ -230,7 +230,7 @@ void core_ExitInterrupt(void)
     
         /* If task switching is disabled, leave immediatelly */
         TDNestCnt = SysBase->TDNestCnt; /* BYTE is unsigned in Windows so we can't use SysBase->TDNestCnt directly */
-        DS(bug("[Scheduler] TDNestCnt is %d\n", TDNestCnt));
+        DS(bug("[scheduler] TDNestCnt is %d\n", TDNestCnt));
         if (TDNestCnt < 0)
         {
             /* 
@@ -239,17 +239,19 @@ void core_ExitInterrupt(void)
              */
             if (SysBase->AttnResched & ARF_AttnSwitch)
             {
-                DS(bug("[Scheduler] Rescheduling\n"));
+                DS(bug("[scheduler] Rescheduling\n"));
                 core_Schedule();
             }
         }
     }
-    	DS(else printf("[Scheduler] SysBase is NULL\n");)
+    	DS(else printf("[scheduler] SysBase is NULL\n");)
 }
 
 void core_Cause(struct ExecBase *SysBase)
 {
     struct IntVector *iv = &SysBase->IntVects[INTB_SOFTINT];
+
+    D(bug("[scheduler] in core_Cause()\n"));
 
     /* If the SoftInt vector in SysBase is set, call it. It will do the rest for us */
     if (iv->iv_Code)
