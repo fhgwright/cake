@@ -130,6 +130,17 @@ static void *switcher_entry(void *arg) {
         irq_bits_current = irq_bits;
         irq_bits = 0;
 
+        /* if interrupts are disabled and this wasn't a syscall request then
+         * we don't want to do anything here */
+        if (!irq_enabled && !(irq_bits_current & INT_SYSCALL)) {
+            pthread_mutex_unlock(&irq_lock);
+            D(printf("[kernel:switcher] interrupts disabled, looping\n"));
+            continue;
+        }
+
+        /* XXX if we ever have a syscall that would not require a context
+         * switch, then don't bother stopping and restarting the main task */
+
         /* tell the main task to stop and wait for its signal to proceed */
         if (sleep_state != ss_SLEEPING) {
             sem_post(&main_sem);
