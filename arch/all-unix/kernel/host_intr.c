@@ -119,11 +119,6 @@ static void *timer_entry(void *arg) {
 static void *switcher_entry(void *arg) {
     uint32_t irq_bits_current;
 
-    irq_bits = 0;
-
-    sem_init(&main_sem, 0, 0);
-    sem_init(&switcher_sem, 0, 0);
-
     while (1) {
         D(printf("[kernel] waiting for interrupts\n"));
 
@@ -217,6 +212,11 @@ int core_init(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struc
     sleep_state = 0;
 
     timer_period = TimerPeriod;
+
+    irq_bits = 0;
+
+    sem_init(&main_sem, 0, 0);
+    sem_init(&switcher_sem, 0, 0);
 
     sa.sa_flags = SA_SIGINFO;
     sa.sa_sigaction = main_switch_handler;
