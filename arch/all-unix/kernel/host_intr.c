@@ -96,7 +96,7 @@ static void *timer_entry(void *arg) {
     struct timespec ts;
 
     while (1) {
-        D(printf("[kernel] sleeping\n"));
+        D(printf("[kernel:timer] sleeping\n"));
 
         clock_gettime(CLOCK_REALTIME, &ts);
         ts.tv_nsec += 1000000000 / timer_period;
@@ -106,7 +106,7 @@ static void *timer_entry(void *arg) {
         }
         clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &ts, NULL);
 
-        D(printf("[kernel] timer expiry, triggering timer interrupt\n"));
+        D(printf("[kernel:timer] timer expiry, triggering timer interrupt\n"));
 
         pthread_mutex_lock(&irq_lock);
         irq_bits |= INT_TIMER;
@@ -120,7 +120,7 @@ static void *switcher_entry(void *arg) {
     uint32_t irq_bits_current;
 
     while (1) {
-        D(printf("[kernel] waiting for interrupts\n"));
+        D(printf("[kernel:switcher] waiting for interrupts\n"));
 
         /* wait for an interrupt */
         pthread_mutex_lock(&irq_lock);
@@ -140,7 +140,7 @@ static void *switcher_entry(void *arg) {
         /* allow further interrupts to arrive */
         pthread_mutex_unlock(&irq_lock);
 
-        D(printf("[kernel] interrupt received, irq bits are 0x%x\n", irq_bits_current));
+        D(printf("[kernel:switcher] interrupt received, irq bits are 0x%x\n", irq_bits_current));
 
         in_supervisor++;
 
