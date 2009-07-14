@@ -126,12 +126,9 @@ static void *switcher_entry(void *arg) {
         pthread_mutex_lock(&irq_lock);
         while (irq_bits == 0) pthread_cond_wait(&irq_cond, &irq_lock);
 
-        /* save the current interrupt bits and allow new interrupts to occur */
+        /* save the current interrupt bits */
         irq_bits_current = irq_bits;
         irq_bits = 0;
-        pthread_mutex_unlock(&irq_lock);
-
-        D(printf("[kernel] interrupt received, irq bits are 0x%x\n", irq_bits_current));
 
         /* tell the main task to stop and wait for its signal to proceed */
         if (sleep_state != ss_SLEEPING) {
@@ -139,6 +136,11 @@ static void *switcher_entry(void *arg) {
             pthread_kill(main_thread, SIGUSR1);
             sem_wait(&switcher_sem);
         }
+
+        /* allow further interrupts to arrive */
+        pthread_mutex_unlock(&irq_lock);
+
+        D(printf("[kernel] interrupt received, irq bits are 0x%x\n", irq_bits_current));
 
         in_supervisor++;
 
