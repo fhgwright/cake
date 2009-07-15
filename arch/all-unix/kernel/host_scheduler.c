@@ -43,6 +43,12 @@
 #define DS(x) D(x)
 #define DSLEEP(x) D(x)
 
+#define RETURN_FROM_INTERRUPT() do {    \
+    if (SysBase->IDNestCnt < 0)         \
+        core_intr_enable();             \
+    return;                             \
+} while (0)
+
 /*
  * Task dispatcher. Basically it may be the same one no matter what scheduling algorithm is used
  */
@@ -51,8 +57,9 @@ void core_Dispatch(void)
     struct ExecBase *SysBase = *SysBasePtr;
     struct Task *task;
 
-    irq_enabled = 0;
     D(bug("[kernel:scheduler] in core_Dispatch()\n"));
+
+    core_intr_disable();
 
     /* 
      * Is the list of ready tasks empty? Well, increment the idle switch cound and stop the main thread.
@@ -62,15 +69,14 @@ void core_Dispatch(void)
         if (sleep_state != ss_RUNNING) {
             SysBase->IdleCount++;
             SysBase->AttnResched |= ARF_AttnSwitch;
+
             DSLEEP(bug("[kernel:scheduler] TaskReady list empty. Sleeping for a while...\n"));
+
             /* We are entering sleep mode */
 	    sleep_state = ss_SLEEP_PENDING;
         }
 
-        if (SysBase->IDNestCnt < 0)
-            core_intr_enable();
-
-        return;
+        RETURN_FROM_INTERRUPT();
     }
 
     sleep_state = ss_RUNNING;
@@ -96,8 +102,7 @@ void core_Dispatch(void)
     }
         
     /* Leave interrupt and jump to the new task */
-    if (SysBase->IDNestCnt < 0)
-        core_intr_enable();
+    RETURN_FROM_INTERRUPT();
 }
 
 void core_Switch(void)
@@ -105,19 +110,22 @@ void core_Switch(void)
     struct ExecBase *SysBase = *SysBasePtr;
     struct Task *task;
     
-    irq_enabled = 0;
     D(bug("[kernel:scheduler] in core_Switch()\n"));
     
+    /* disable interrupts */
+    core_intr_disable();
+
     task = SysBase->ThisTask;
         
-    DS(bug("[kernel:scheduler] Old task = %p (%s)\n", task, task->tc_Node.ln_Name));
+    DS(bug("[kernel:scheduler] switching out task 0x%08lx %d %s\n", task, task->tc_Node.ln_Pri, task->tc_Node.ln_Name));
         
     /* store IDNestCnt into tasks's structure */  
     task->tc_IDNestCnt = SysBase->IDNestCnt;
-    task->tc_SPReg = (APTR)((ucontext_t *)GetIntETask((SysBase)->ThisTask)->iet_Context)->uc_mcontext.gregs[REG_ESP];
+    task->tc_SPReg = (APTR)((ucontext_t *)GetIntETask(task)->iet_Context)->uc_mcontext.gregs[REG_ESP];
 
     /* And enable interrupts */
     SysBase->IDNestCnt = -1;
+    core_intr_enable();
         
     /* TF_SWITCH flag set? Call the switch routine */
     if (task->tc_Flags & TF_SWITCH)
@@ -139,8 +147,10 @@ void core_Schedule(void)
     struct ExecBase *SysBase = *SysBasePtr;
     struct Task *task;
 
-    irq_enabled = 0;
     D(bug("[kernel:scheduler] in core_Schedule()\n"));
+
+    /* disable interrupts */
+    core_intr_disable();
             
     task = SysBase->ThisTask;
     
@@ -151,11 +161,8 @@ void core_Schedule(void)
     if (!(task->tc_Flags & TF_EXCEPT))
     {
         /* Is the TaskReady empty? If yes, then the running task is the only one. Let it work */
-        if (IsListEmpty(&SysBase->TaskReady)) {
-            if (SysBase->IDNestCnt < 0)
-                core_intr_enable();
-            return;
-        }
+        if (IsListEmpty(&SysBase->TaskReady))
+            RETURN_FROM_INTERRUPT();
     
         /* Does the TaskReady list contains tasks with priority equal or lower than current task?
          * If so, then check further... */
@@ -163,11 +170,7 @@ void core_Schedule(void)
         {
             /* If the running task did not used it's whole quantum yet, let it work */
             if (!(SysBase->SysFlags & 0x2000))
-            {
-                if (SysBase->IDNestCnt < 0)
-                    core_intr_enable();
-                return;
-            }
+                RETURN_FROM_INTERRUPT();
         }
     }
     
@@ -237,6 +240,8 @@ void core_ExitInterrupt(void)
                 DS(bug("[kernel:scheduler] Rescheduling\n"));
                 core_Schedule();
             }
+            else
+                RETURN_FROM_INTERRUPT();
         }
     }
     	DS(else printf("[kernel:scheduler] SysBase is NULL\n");)

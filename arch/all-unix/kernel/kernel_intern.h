@@ -114,8 +114,6 @@ enum {
     ss_SLEEPING
 };
 
-extern int irq_enabled;
-extern int in_supervisor;
 extern int sleep_state;
 extern struct ExecBase **SysBasePtr;
 extern struct KernelBase **KernelBasePtr;

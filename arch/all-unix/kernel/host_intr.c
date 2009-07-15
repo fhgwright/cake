@@ -49,8 +49,8 @@
 struct ExecBase **SysBasePtr;
 struct KernelBase **KernelBasePtr;
 
-int irq_enabled;
-int in_supervisor;
+static int irq_enabled;
+static int in_supervisor;
 int sleep_state;
 
 void core_intr_disable(void) {
