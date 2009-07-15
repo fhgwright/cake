@@ -43,16 +43,6 @@
 #define DS(x) D(x)
 #define DSLEEP(x) D(x)
 
-static inline void core_LeaveInterrupt(void)
-{
-    struct ExecBase *SysBase = *SysBasePtr;
-    
-    DINT(bug("[kernel:scheduler] core_LeaveInterrupt(): IDNestCnt is %d\n", SysBase->IDNestCnt));
-    if ((char )SysBase->IDNestCnt < 0) {
-        core_intr_enable();
-    }
-}
-
 /*
  * Task dispatcher. Basically it may be the same one no matter what scheduling algorithm is used
  */
@@ -77,7 +67,9 @@ void core_Dispatch(void)
 	    sleep_state = ss_SLEEP_PENDING;
         }
 
-        core_LeaveInterrupt();
+        if (SysBase->IDNestCnt < 0)
+            core_intr_enable();
+
         return;
     }
 
@@ -104,7 +96,8 @@ void core_Dispatch(void)
     }
         
     /* Leave interrupt and jump to the new task */
-    core_LeaveInterrupt();
+    if (SysBase->IDNestCnt < 0)
+        core_intr_enable();
 }
 
 void core_Switch(void)
@@ -159,7 +152,8 @@ void core_Schedule(void)
     {
         /* Is the TaskReady empty? If yes, then the running task is the only one. Let it work */
         if (IsListEmpty(&SysBase->TaskReady)) {
-            core_LeaveInterrupt();
+            if (SysBase->IDNestCnt < 0)
+                core_intr_enable();
             return;
         }
     
@@ -170,7 +164,8 @@ void core_Schedule(void)
             /* If the running task did not used it's whole quantum yet, let it work */
             if (!(SysBase->SysFlags & 0x2000))
             {
-                core_LeaveInterrupt();
+                if (SysBase->IDNestCnt < 0)
+                    core_intr_enable();
                 return;
             }
         }
