@@ -33,12 +33,12 @@ static int in_supervisor;
 int sleep_state;
 
 void core_intr_disable(void) {
-    D(printf("[kernel] disabling interrupts\n"));
+    //D(printf("[kernel] disabling interrupts\n"));
     irq_enabled = 0;
 }
 
 void core_intr_enable(void) {
-    D(printf("[kernel] enabling interrupts\n"));
+    //D(printf("[kernel] enabling interrupts\n"));
     irq_enabled = 1;
 }
 
