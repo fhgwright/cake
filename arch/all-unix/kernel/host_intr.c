@@ -121,8 +121,6 @@ static void irq_handler (int irq_bits) {
 }
 
 static void irq_trampoline (int signo, siginfo_t *si, void *vctx) {
-    ucontext_t *ctx = GetIntETask((*SysBasePtr)->ThisTask)->iet_Context;
-
     if (!irq_enabled && !(si->si_value.sival_int & IRQ_SYSCALL)) return;
 
     getcontext(&irq_ctx);
