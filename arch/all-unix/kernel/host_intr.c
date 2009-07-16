@@ -22,8 +22,8 @@
 #include "syscall.h"
 #include "host_debug.h"
 
-#define INT_TIMER   (1<<0)
-#define INT_SYSCALL (1<<1)
+#define IRQ_TIMER   (1<<0)
+#define IRQ_SYSCALL (1<<1)
 
 struct ExecBase **SysBasePtr;
 struct KernelBase **KernelBasePtr;
@@ -56,7 +56,7 @@ static unsigned long timer_period;
 static ucontext_t idle_ctx;
 
 void core_syscall(syscall_id_t type) {
-    sigqueue(pid, SIGUSR1, (const union sigval) (int) (INT_SYSCALL | ((type & 0xffff) << 16)));
+    sigqueue(pid, SIGUSR1, (const union sigval) (int) (IRQ_SYSCALL | ((type & 0xffff) << 16)));
 }
 
 static void *timer_entry(void *arg) {
@@ -79,14 +79,14 @@ static void *timer_entry(void *arg) {
 
         D(printf("[kernel:timer] timer expiry, triggering timer interrupt\n"));
 
-        sigqueue(pid, SIGUSR1, (const union sigval) INT_TIMER);
+        sigqueue(pid, SIGUSR1, (const union sigval) IRQ_TIMER);
     }
 }
 
 static void irq_handler (int irq_bits) {
     in_supervisor++;
 
-    if (irq_bits & INT_SYSCALL) {
+    if (irq_bits & IRQ_SYSCALL) {
         switch ((irq_bits & 0xffff0000) >> 16) {
             case sc_CAUSE:
                 core_Cause(*SysBasePtr);
@@ -123,7 +123,7 @@ static void irq_handler (int irq_bits) {
 static void irq_trampoline (int signo, siginfo_t *si, void *vctx) {
     ucontext_t *ctx = GetIntETask((*SysBasePtr)->ThisTask)->iet_Context;
 
-    if (!irq_enabled && !(si->si_value.sival_int & INT_SYSCALL)) return;
+    if (!irq_enabled && !(si->si_value.sival_int & IRQ_SYSCALL)) return;
 
     getcontext(&irq_ctx);
     irq_ctx.uc_stack.ss_sp = irq_stack;
