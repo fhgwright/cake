@@ -1,26 +1,3 @@
-/* theory of operation
- *
- * at the start, there's a single process. core_init() is called system
- * initialisation. it starts a thread, the switcher thread.
- *
- * the main thread runs the "current" aros task. thats all. if left unchecked,
- * it would run the same task forever. thats not much fun though, which is
- * what the switcher thread is for.
- *
- * the switcher thread receives interrupts from a variety of sources (virtual
- * hardware) including a timer thread (for normal task switch operation). when
- * an interrupt occurs, the following happens (high level)
- *
- * - switcher signals main that its time for a context switch
- * - main responds by storing the current context and then waiting
- * - switcher saves the current context into the current aros task
- * - switcher runs the scheduler with the current interrupt state
- * - switcher loads the context for the scheduled task as the new current context
- * - switcher signals main
- * - main wakes up and jumps to the current context
- * - switcher loops and waits for the next interrupt
- */
-
 #define DEBUG 1
 
 #include <aros/system.h>
@@ -31,8 +8,10 @@
 #include <string.h>
 #include <ucontext.h>
 #include <pthread.h>
-#include <semaphore.h>
+#include <signal.h>
 #include <time.h>
+#include <unistd.h>
+#include <limits.h>
 
 #include <exec/lists.h>
 #include <exec/execbase.h>
@@ -67,33 +46,25 @@ int core_is_super(void) {
     return in_supervisor;
 }
 
-static pthread_t main_thread;
-static pthread_t switcher_thread;
-static pthread_t timer_thread;
+static pid_t pid;
+
+static ucontext_t irq_ctx;
+static void *irq_stack;
 
 static unsigned long timer_period;
 
-static pthread_mutex_t irq_lock = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t irq_cond = PTHREAD_COND_INITIALIZER;
-static uint32_t irq_bits;
-
-static sem_t main_sem;
-static sem_t switcher_sem;
-
-static syscall_id_t syscall;
+static ucontext_t idle_ctx;
 
 void core_syscall(syscall_id_t type) {
-    syscall = type;
-
-    pthread_mutex_lock(&irq_lock);
-    irq_bits |= INT_SYSCALL;
-    pthread_mutex_unlock(&irq_lock);
-
-    pthread_cond_signal(&irq_cond);
+    sigqueue(pid, SIGUSR1, (const union sigval) (int) (INT_SYSCALL | ((type & 0xffff) << 16)));
 }
 
 static void *timer_entry(void *arg) {
+    sigset_t sigset;
     struct timespec ts;
+
+    sigfillset(&sigset);
+    sigprocmask(SIG_BLOCK, &sigset, NULL);
 
     while (1) {
         D(printf("[kernel:timer] sleeping\n"));
@@ -108,111 +79,70 @@ static void *timer_entry(void *arg) {
 
         D(printf("[kernel:timer] timer expiry, triggering timer interrupt\n"));
 
-        pthread_mutex_lock(&irq_lock);
-        irq_bits |= INT_TIMER;
-        pthread_mutex_unlock(&irq_lock);
-
-        pthread_cond_signal(&irq_cond);
+        sigqueue(pid, SIGUSR1, (const union sigval) INT_TIMER);
     }
 }
 
-static void *switcher_entry(void *arg) {
-    uint32_t irq_bits_current;
+static void irq_handler (int irq_bits) {
+    in_supervisor++;
 
-    while (1) {
-        D(printf("[kernel:switcher] waiting for interrupts\n"));
+    if (irq_bits & INT_SYSCALL) {
+        switch ((irq_bits & 0xffff0000) >> 16) {
+            case sc_CAUSE:
+                core_Cause(*SysBasePtr);
+                break;
 
-        /* wait for an interrupt */
-        pthread_mutex_lock(&irq_lock);
-        while (irq_bits == 0) pthread_cond_wait(&irq_cond, &irq_lock);
+            case sc_DISPATCH:
+                core_Dispatch();
+                break;
 
-        /* save the current interrupt bits */
-        irq_bits_current = irq_bits;
-        irq_bits = 0;
+            case sc_SWITCH:
+                core_Switch();
+                break;
 
-        /* if interrupts are disabled and this wasn't a syscall request then
-         * we don't want to do anything here */
-        if (!irq_enabled && !(irq_bits_current & INT_SYSCALL)) {
-            pthread_mutex_unlock(&irq_lock);
-            D(printf("[kernel:switcher] interrupts disabled, looping\n"));
-            continue;
+            case sc_SCHEDULE:
+                core_Schedule();
+                break;
         }
-
-        /* XXX if we ever have a syscall that would not require a context
-         * switch, then don't bother stopping and restarting the main task */
-
-        /* tell the main task to stop and wait for its signal to proceed */
-        if (sleep_state != ss_SLEEPING) {
-            sem_post(&main_sem);
-            pthread_kill(main_thread, SIGUSR1);
-            sem_wait(&switcher_sem);
-        }
-
-        /* allow further interrupts to arrive */
-        pthread_mutex_unlock(&irq_lock);
-
-        D(printf("[kernel:switcher] interrupt received, irq bits are 0x%x\n", irq_bits_current));
-
-        in_supervisor++;
-
-        if (irq_bits_current & INT_SYSCALL) {
-            switch (syscall) {
-                case sc_CAUSE:
-                    core_Cause(*SysBasePtr);
-                    break;
-
-                case sc_DISPATCH:
-                    core_Dispatch();
-                    break;
-
-                case sc_SWITCH:
-                    core_Switch();
-                    break;
-
-                case sc_SCHEDULE:
-                    core_Schedule();
-                    break;
-            }
-        }
-
-        /* if interrupts are enabled, then its time to schedule a new task */
-        if (irq_enabled)
-            core_ExitInterrupt();
-
-        in_supervisor--;
-
-        /* if we're sleeping then we don't want to wake the main task just now */
-        if (sleep_state != ss_RUNNING)
-            sleep_state = ss_SLEEPING;
-
-        /* ready to go, give the main task a kick */
-        else
-            sem_post(&main_sem);
     }
 
-    return NULL;
+    if (irq_enabled)
+        core_ExitInterrupt();
+
+    in_supervisor--;
+
+    if (sleep_state != ss_RUNNING) {
+        sleep_state = ss_SLEEPING;
+
+        setcontext(&idle_ctx);
+    }
+
+    setcontext((ucontext_t *) GetIntETask((*SysBasePtr)->ThisTask)->iet_Context);
 }
 
-static void main_switch_handler(int signo, siginfo_t *si, void *vctx) {
-    /* make sure we were signalled by the switcher thread and not somewhere else */
-    if (sem_trywait(&main_sem) < 0)
-        return;
+static void irq_trampoline (int signo, siginfo_t *si, void *vctx) {
+    ucontext_t *ctx = GetIntETask((*SysBasePtr)->ThisTask)->iet_Context;
 
-    /* switcher thread is now waiting for us. save the context into the task struct */
-    getcontext(GetIntETask((*SysBasePtr)->ThisTask)->iet_Context);
+    if (!irq_enabled && !(si->si_value.sival_int & INT_SYSCALL)) return;
 
-    /* tell the switcher to proceed */
-    sem_post(&switcher_sem);
+    getcontext(&irq_ctx);
+    irq_ctx.uc_stack.ss_sp = irq_stack;
+    irq_ctx.uc_stack.ss_size = SIGSTKSZ;
+    irq_ctx.uc_stack.ss_flags = 0;
+    sigemptyset(&irq_ctx.uc_sigmask);
+    makecontext(&irq_ctx, (void (*)()) irq_handler, 1, si->si_value.sival_int);
 
-    /* wait for it to run the scheduler and whatever else */
-    sem_wait(&main_sem);
-
-    /* new task has been switched in, jump to it using its context */
-    setcontext(GetIntETask((*SysBasePtr)->ThisTask)->iet_Context);
+    swapcontext((ucontext_t *) GetIntETask((*SysBasePtr)->ThisTask)->iet_Context, &irq_ctx);
 }
 
-int core_init(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struct KernelBase **KernelBasePointer) {
+static void idle_handler (void) {
+    while (1) sleep(INT_MAX);
+}
+
+int core_init (unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struct KernelBase **KernelBasePointer) {
+    sigset_t sigset;
     struct sigaction sa;
+    pthread_t thread;
     pthread_attr_t thread_attrs;
 
     D(printf("[kernel] initialising interrupts and task switching\n"));
@@ -226,23 +156,26 @@ int core_init(unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struc
 
     timer_period = TimerPeriod;
 
-    irq_bits = 0;
+    irq_stack = malloc(SIGSTKSZ);
 
-    sem_init(&main_sem, 0, 0);
-    sem_init(&switcher_sem, 0, 0);
+    pid = getpid();
 
+    memset(&sa, 0, sizeof(sa));
     sa.sa_flags = SA_SIGINFO;
-    sa.sa_sigaction = main_switch_handler;
+    sa.sa_sigaction = irq_trampoline;
     sigaction(SIGUSR1, &sa, NULL);
 
-    main_thread = pthread_self();
+    getcontext(&idle_ctx);
+    idle_ctx.uc_stack.ss_sp = malloc(SIGSTKSZ);
+    idle_ctx.uc_stack.ss_size = SIGSTKSZ;
+    idle_ctx.uc_stack.ss_flags = 0;
+    makecontext(&idle_ctx, (void (*)()) idle_handler, 0);
 
     pthread_attr_init(&thread_attrs);
     pthread_attr_setdetachstate(&thread_attrs, PTHREAD_CREATE_DETACHED);
-    pthread_create(&switcher_thread, &thread_attrs, switcher_entry, NULL);
-    pthread_create(&timer_thread, &thread_attrs, timer_entry, NULL);
+    pthread_create(&thread, &thread_attrs, timer_entry, NULL);
 
-    D(printf("[kernel] threads started, switcher id 0x%x, timer id 0x%x\n", switcher_thread, timer_thread));
+    D(printf("[kernel] timer started, frequency is %dhz\n", timer_period));
 
     return 0;
 }
