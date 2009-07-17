@@ -134,7 +134,7 @@ static void irq_trampoline (int signo, siginfo_t *si, void *vctx) {
 }
 
 static void idle_handler (void) {
-    while (1) sleep(INT_MAX);
+    while (1) sleep(UINT_MAX);
 }
 
 int core_init (unsigned long TimerPeriod, struct ExecBase **SysBasePointer, struct KernelBase **KernelBasePointer) {
