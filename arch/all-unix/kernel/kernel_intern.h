@@ -125,6 +125,8 @@ void core_ExitInterrupt(void);
 void core_Cause(struct ExecBase *SysBase);
 void core_intr_enable(void);
 
+void *get_stack_pointer (void *vctx);
+
 #endif
 
 #endif /*KERNEL_INTERN_H_*/

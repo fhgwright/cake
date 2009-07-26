@@ -121,7 +121,7 @@ void core_Switch(void)
         
     /* store IDNestCnt into tasks's structure */  
     task->tc_IDNestCnt = SysBase->IDNestCnt;
-    task->tc_SPReg = (APTR)((ucontext_t *)GetIntETask(task)->iet_Context)->uc_mcontext.gregs[REG_ESP];
+    task->tc_SPReg = (APTR) get_stack_pointer((void *) GetIntETask(task)->iet_Context);
 
     /* And enable interrupts */
     SysBase->IDNestCnt = -1;
